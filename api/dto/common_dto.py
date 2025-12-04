@@ -45,7 +45,7 @@ class HealthCheckResponse(BaseModel):
 
 class ServerInfoResponse(BaseModel):
     """服务器信息响应DTO"""
-    service: str = Field(..., description="服务名称", example="ppt2html")
+    service: str = Field(..., description="服务名称", example="dataprocess")
     version: str = Field(..., description="服务版本", example="1.0.0")
     supported_formats: List[str] = Field(..., description="支持的文件格式", example=["pptx", "ppt"])
     max_file_size_mb: int = Field(..., description="最大文件大小(MB)", example=100, gt=0)

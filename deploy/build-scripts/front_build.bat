@@ -1,8 +1,8 @@
 @echo off
 
 rem Calculate project root directory from script path instead of using hardcoded path
-set "PROJECT_ROOT=E:\projectcode\ppt2html"
-set "PROJECT_Deploy_Dir=E:\projectcode\ppt2html\deploy"
+set "PROJECT_ROOT=E:\projectcode\dataprocess"
+set "PROJECT_Deploy_Dir=%PROJECT_ROOT%\deploy"
 set "BUILD_FRONT_DIR=%PROJECT_Deploy_Dir%\build_ready\front"
 
 set "VUE_DIR=%PROJECT_ROOT%\vue"

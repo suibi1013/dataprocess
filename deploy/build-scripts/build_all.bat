@@ -1,15 +1,15 @@
 @echo off
 rem ================================================
-rem PPT2HTML Project Build Automation Script
+rem dataprocess Project Build Automation Script
 rem This script runs all build scripts in sequence
 rem ================================================
 
 set "SCRIPT_DIR=%~dp0"
-set "PROJECT_ROOT=E:\projectcode\ppt2html"
+set "PROJECT_ROOT=E:\projectcode\dataprocess"
 set "LOG_FILE=%SCRIPT_DIR%\build_all.log"
 
 echo ================================================
-echo PPT2HTML Project Build Started
+echo dataprocess Project Build Started
 echo Start Time: %date% %time%
 echo ================================================
 
@@ -18,7 +18,7 @@ del "%LOG_FILE%" 2>nul
 
 echo.>>"%LOG_FILE%"
 echo ================================================>>"%LOG_FILE%"
-echo PPT2HTML Project Build Started>>"%LOG_FILE%"
+echo dataprocess Project Build Started>>"%LOG_FILE%"
 echo Start Time: %date% %time%>>"%LOG_FILE%"
 echo ================================================>>"%LOG_FILE%"
 echo.>>"%LOG_FILE%"
@@ -89,14 +89,14 @@ echo [5/5] Electron Packaging Completed!>>"%LOG_FILE%"
 echo.>>"%LOG_FILE%"
 
 echo ================================================
-echo PPT2HTML Project Build Successful!
+echo dataprocess Project Build Successful!
 echo End Time: %date% %time%
 echo Build log saved to: %LOG_FILE%
 echo ================================================
 
 echo.>>"%LOG_FILE%"
 echo ================================================>>"%LOG_FILE%"
-echo PPT2HTML Project Build Successful!>>"%LOG_FILE%"
+echo dataprocess Project Build Successful!>>"%LOG_FILE%"
 echo End Time: %date% %time%>>"%LOG_FILE%"
 echo ================================================>>"%LOG_FILE%"
 
@@ -105,12 +105,12 @@ goto :EOF
 :BUILD_FAILED
 echo.>>"%LOG_FILE%"
 echo ================================================>>"%LOG_FILE%"
-echo PPT2HTML Project Build Failed!>>"%LOG_FILE%"
+echo dataprocess Project Build Failed!>>"%LOG_FILE%"
 echo End Time: %date% %time%>>"%LOG_FILE%"
 echo ================================================>>"%LOG_FILE%"
 
 echo ================================================
-echo PPT2HTML Project Build Failed!
+echo dataprocess Project Build Failed!
 echo End Time: %date% %time%
 echo Check build log for details: %LOG_FILE%
 echo ================================================

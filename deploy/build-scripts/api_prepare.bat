@@ -1,6 +1,6 @@
 @echo off
-set "PROJECT_ROOT=E:\projectcode\ppt2html"
-set "PROJECT_Deploy_Dir=E:\projectcode\ppt2html\deploy"
+set "PROJECT_ROOT=E:\projectcode\dataprocess"
+set "PROJECT_Deploy_Dir=%PROJECT_ROOT%\deploy"
 set "BUILD_DIR=%PROJECT_Deploy_Dir%\build_ready"
 set "BUILD_BACKEND_DIR=%PROJECT_Deploy_Dir%\build_ready\backend"
 

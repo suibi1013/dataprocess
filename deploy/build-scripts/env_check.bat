@@ -1,6 +1,6 @@
 @echo off
 rem ================================================
-rem PPT2HTML Project Environment Check and Preparation Script
+rem dataprocess Project Environment Check and Preparation Script
 rem ================================================
 
 rem Check Node.js environment

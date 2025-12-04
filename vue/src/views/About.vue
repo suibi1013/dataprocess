@@ -70,21 +70,21 @@
             <div class="contact-icon">📧</div>
             <div>
               <strong>邮箱支持</strong>
-              <p>support@ppt2html.com</p>
+              <p>support@dataprocess.com</p>
             </div>
           </div>
           <div class="contact-item">
             <div class="contact-icon">🌐</div>
             <div>
               <strong>官方网站</strong>
-              <p>www.ppt2html.com</p>
+              <p>www.dataprocess.com</p>
             </div>
           </div>
           <div class="contact-item">
             <div class="contact-icon">📚</div>
             <div>
               <strong>文档中心</strong>
-              <p>docs.ppt2html.com</p>
+              <p>docs.dataprocess.com</p>
             </div>
           </div>
         </div>

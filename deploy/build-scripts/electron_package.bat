@@ -1,9 +1,10 @@
 @echo off
 
 rem ================================================
-rem PPT2HTML Project Electron Packaging Script
+rem dataprocess Project Electron Packaging Script
 rem ================================================
-set "PROJECT_Deploy_Dir=E:\projectcode\ppt2html\deploy"
+set "PROJECT_ROOT=E:\projectcode\dataprocess"
+set "PROJECT_Deploy_Dir=%PROJECT_ROOT%\deploy"
 set "SOURCEFILES_DIR=%PROJECT_Deploy_Dir%\sourcefiles"
 set "BUILD_READY_DIR=%PROJECT_Deploy_Dir%\build_ready"
 
