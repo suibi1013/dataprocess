@@ -1,0 +1,688 @@
+
+================================================
+PPT2HTML Project Build Started
+Start Time: Âë®Âõõ 2025/12/04 15:05:17.62
+================================================
+
+[1/5] Running Environment Check...
+Checking Node.js environment...
+v22.17.0
+Checking npm environment...
+10.9.2
+[1/5] Environment Check Passed!
+
+[2/5] Running Build Preparation...
+Copying Python...
+
+-------------------------------------------------------------------------------
+   ROBOCOPY     ::     Robust File Copy for Windows                              
+-------------------------------------------------------------------------------
+
+  Started : 2025Âπ¥12Êúà4Êó• 15:05:22
+   Source : E:\projectcode\ppt2html\deploy\sourcefiles\python-3.13.0-embed-amd64\
+     Dest : E:\projectcode\ppt2html\deploy\build_ready\python-embed\
+
+    Files : *.*
+	    
+  Options : *.* /S /E /DCOPY:DA /COPY:DAT /R:1000000 /W:30 
+
+------------------------------------------------------------------------------
+
+	  New Dir         37	E:\projectcode\ppt2html\deploy\sourcefiles\python-3.13.0-embed-amd64\
+	    New File  		   4.9 m	libcrypto-3.dll 20%   40%   60%   80%  100%  
+	    New File  		   39696	libffi-8.dll100%  
+	    New File  		  792856	libssl-3.dll100%  
+	    New File  		   33861	LICENSE.txt100%  
+	    New File  		  201488	pyexpat.pyd100%  
+	    New File  		  558555	python.cat100%  
+	    New File  		  103696	python.exe100%  
+	    New File  		   70416	python3.dll100%  
+	    New File  		   5.8 m	python313.dll 17.2% 34.4% 51.7% 68.9% 86.1%100%  
+	    New File  		   3.5 m	python313.zip 27%   55%   83%  100%  
+	    New File  		      96	python313._pth100%  
+	    New File  		  102160	pythonw.exe100%  
+	    New File  		   30992	select.pyd100%  
+	    New File  		   1.4 m	sqlite3.dll 68%  100%  
+	    New File  		   1.7 m	tcl86t.dll 57%  100%  
+	    New File  		   1.4 m	tk86t.dll 66%  100%  
+	    New File  		  709904	unicodedata.pyd100%  
+	    New File  		  120400	vcruntime140.dll100%  
+	    New File  		   49744	vcruntime140_1.dll100%  
+	    New File  		   29968	winsound.pyd100%  
+	    New File  		  146192	zlib1.dll100%  
+	    New File  		   70928	_asyncio.pyd100%  
+	    New File  		   84240	_bz2.pyd100%  
+	    New File  		  131344	_ctypes.pyd100%  
+	    New File  		  277776	_decimal.pyd100%  
+	    New File  		  133904	_elementtree.pyd100%  
+	    New File  		   64272	_hashlib.pyd100%  
+	    New File  		  157968	_lzma.pyd100%  
+	    New File  		   35600	_multiprocessing.pyd100%  
+	    New File  		   55568	_overlapped.pyd100%  
+	    New File  		   33552	_queue.pyd100%  
+	    New File  		   83728	_socket.pyd100%  
+	    New File  		  128272	_sqlite3.pyd100%  
+	    New File  		  181520	_ssl.pyd100%  
+	    New File  		   25872	_uuid.pyd100%  
+	    New File  		   38160	_wmi.pyd100%  
+	    New File  		   49424	_zoneinfo.pyd100%  
+
+------------------------------------------------------------------------------
+
+               Total    Copied   Skipped  Mismatch    FAILED    Extras
+    Dirs :         1         1         0         0         0         0
+   Files :        37        37         0         0         0         0
+   Bytes :   23.40 m   23.40 m         0         0         0         0
+   Times :   0:00:00   0:00:00                       0:00:00   0:00:00
+
+
+   Speed :           908,843,777 Bytes/sec.
+   Speed :            52,004.457 MegaBytes/min.
+   Ended : 2025Âπ¥12Êúà4Êó• 15:05:22
+
+        1 file(s) copied.
+Collecting pip
+  Using cached pip-25.3-py3-none-any.whl.metadata (4.7 kB)
+Using cached pip-25.3-py3-none-any.whl (1.8 MB)
+Installing collected packages: pip
+Successfully installed pip-25.3
+pip 25.3 from E:\projectcode\ppt2html\deploy\build_ready\site-packages\pip (python 3.13)
+build prepare successfully
+[2/5] Build Preparation Completed!
+
+[3/5] Building Frontend...
+
+up to date, audited 994 packages in 2s
+
+136 packages are looking for funding
+  run `npm fund` for details
+
+11 vulnerabilities (6 moderate, 5 high)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues possible (including breaking changes), run:
+  npm audit fix --force
+
+Some issues need review, and may require choosing
+a different dependency.
+
+Run `npm audit` for details.
+
+> vue-ts-project@0.1.0 build
+> vue-cli-service build
+
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+All browser targets in the browserslist configuration have supported ES module.
+Therefore we don't build two separate bundles for differential loading.
+
+
+-  Building for production...
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+ WARNING  Compiled with 2 warnings15:06:01
+
+ warning  
+
+asset size limit: The following asset(s) exceed the recommended size limit (244 KiB).
+This can impact web performance.
+Assets: 
+  css/chunk-vendors.b44a99a7.css (334 KiB)
+  js/chunk-vendors.262d22e2.js (1.74 MiB)
+
+ warning  
+
+entrypoint size limit: The following entrypoint(s) combined asset size exceeds the recommended limit (244 KiB). This can impact web performance.
+Entrypoints:
+  app (2.37 MiB)
+      css/chunk-vendors.b44a99a7.css
+      js/chunk-vendors.262d22e2.js
+      css/app.d8848642.css
+      js/app.a9893298.js
+
+
+  File                                   Size              Gzipped
+
+  dist\js\chunk-vendors.262d22e2.js      1782.13 KiB       532.00 KiB
+  dist\js\app.a9893298.js                225.58 KiB        61.33 KiB
+  dist\js\536.5b6510b4.js                38.17 KiB         10.67 KiB
+  dist\css\chunk-vendors.b44a99a7.css    333.67 KiB        45.98 KiB
+  dist\css\app.d8848642.css              84.37 KiB         13.01 KiB
+  dist\css\536.1a663edb.css              15.15 KiB         3.18 KiB
+
+  Images and other types of assets omitted.
+  Build at: 2025-12-04T07:06:01.900Z - Hash: f22eee80f546905c - Time: 29684ms
+
+ DONE  Build complete. The dist directory is ready to be deployed.
+ INFO  Check out deployment instructions at https://cli.vuejs.org/guide/deployment.html
+       
+
+-------------------------------------------------------------------------------
+   ROBOCOPY     ::     Robust File Copy for Windows                              
+-------------------------------------------------------------------------------
+
+  Started : 2025Âπ¥12Êúà4Êó• 15:06:02
+   Source : E:\projectcode\ppt2html\vue\dist\
+     Dest : E:\projectcode\ppt2html\deploy\build_ready\front\
+
+    Files : *.*
+	    
+  Options : *.* /S /E /DCOPY:DA /COPY:DAT /R:1000000 /W:30 
+
+------------------------------------------------------------------------------
+
+	                   2	E:\projectcode\ppt2html\vue\dist\
+	    New File  		    4286	favicon.ico100%  
+	    New File  		     671	index.html100%  
+	  New Dir          3	E:\projectcode\ppt2html\vue\dist\css\
+	    New File  		   15518	536.1a663edb.css100%  
+	    New File  		   86392	app.d8848642.css100%  
+	    New File  		  341673	chunk-vendors.b44a99a7.css100%  
+	  New Dir          6	E:\projectcode\ppt2html\vue\dist\js\
+	    New File  		   39084	536.5b6510b4.js100%  
+	    New File  		  192791	536.5b6510b4.js.map100%  
+	    New File  		  230997	app.a9893298.js100%  
+	    New File  		   1.2 m	app.a9893298.js.map 82%  100%  
+	    New File  		   1.7 m	chunk-vendors.262d22e2.js 57%  100%  
+	    New File  		   6.1 m	chunk-vendors.262d22e2.js.map 16.1% 32.3% 48.5% 64.7% 80.8% 97.0%100%  
+
+------------------------------------------------------------------------------
+
+               Total    Copied   Skipped  Mismatch    FAILED    Extras
+    Dirs :         3         2         1         0         0         0
+   Files :        11        11         0         0         0         0
+   Bytes :   10.00 m   10.00 m         0         0         0         0
+   Times :   0:00:00   0:00:00                       0:00:00   0:00:00
+
+
+   Speed :           1,311,155,500 Bytes/sec.
+   Speed :              75,024.922 MegaBytes/min.
+   Ended : 2025Âπ¥12Êúà4Êó• 15:06:02
+
+[Frontend Build] Build results copied successfully
+[3/5] Frontend Build Completed!
+
+[4/5] Preparing Backend API...
+
+-------------------------------------------------------------------------------
+   ROBOCOPY     ::     Robust File Copy for Windows                              
+-------------------------------------------------------------------------------
+
+  Started : 2025Âπ¥12Êúà4Êó• 15:06:02
+   Source : E:\projectcode\ppt2html\api\
+     Dest : E:\projectcode\ppt2html\deploy\build_ready\backend\
+
+    Files : *.*
+	    
+  Options : *.* /S /E /DCOPY:DA /COPY:DAT /R:1000000 /W:30 
+
+------------------------------------------------------------------------------
+
+	                   4	E:\projectcode\ppt2html\api\
+	    New File  		    2399	config.py100%  
+	    New File  		    3248	main.py100%  
+	    New File  		     340	requirements.txt100%  
+	    New File  		      23	__init__.py100%  
+	  New Dir          0	E:\projectcode\ppt2html\api\config_infos\
+	  New Dir          2	E:\projectcode\ppt2html\api\config_infos\data_processes\
+	    New File  		  261067	execution_history.json100%  
+	    New File  		   20211	saved_processes.json100%  
+	  New Dir          1	E:\projectcode\ppt2html\api\config_infos\data_sources\
+	    New File  		    4179	data_sources.json100%  
+	  New Dir         51	E:\projectcode\ppt2html\api\config_infos\data_sources\excel_files\
+	    New File  		   33828	20251010_115215_0b74f083_-V1.250808.xlsx100%  
+	    New File  		   12791	20251010_115215_8c4594d9_-V1.241112.xlsx100%  
+	    New File  		   33828	20251010_115248_29fab682_-V1.250808.xlsx100%  
+	    New File  		   12791	20251010_115325_4a0f31bb_-V1.241112.xlsx100%  
+	    New File  		   33828	20251010_115356_23756bcc_-V1.250808.xlsx100%  
+	    New File  		   33828	20251010_115509_2c88792c_-V1.250808.xlsx100%  
+	    New File  		   33828	20251010_115540_8cc97a65_-V1.250808.xlsx100%  
+	    New File  		   33828	20251010_115604_6c1eec11_-V1.250808.xlsx100%  
+	    New File  		   33828	20251010_115703_1469de90_-V1.250808.xlsx100%  
+	    New File  		   33828	20251010_115752_7876957e_-V1.250808.xlsx100%  
+	    New File  		   33828	20251010_120703_842d2fe9_-V1.250808.xlsx100%  
+	    New File  		   33828	20251010_121211_67318654_-V1.250808.xlsx100%  
+	    New File  		   11347	20251014_161447_8274947c_auto1.xlsx100%  
+	    New File  		   10272	20251016_110821_89a62407_data_-_.xlsx100%  
+	    New File  		    7666	20251031_160120_c11a9fb0_data.xlsx100%  
+	    New File  		    7666	20251031_160749_ccb189d0_data.xlsx100%  
+	    New File  		    5436	20251103_095409_71565dd0_newfile.xlsx100%  
+	    New File  		    5436	20251103_111757_5685c114_newfile.xlsx100%  
+	    New File  		    5436	20251103_131754_c1f32deb_newfile.xlsx100%  
+	    New File  		    5436	20251103_132436_25d47552_newfile.xlsx100%  
+	    New File  		    5437	20251103_132728_19764a2b_newfile (1).xlsx100%  
+	    New File  		    5437	20251103_132925_cbe5d98b_newfile (2).xlsx100%  
+	    New File  		    5437	20251103_133100_828f656c_newfile (2).xlsx100%  
+	    New File  		    5437	20251103_134237_d22004e1_newfile (3).xlsx100%  
+	    New File  		    5437	20251103_134927_d7686144_newfile (2).xlsx100%  
+	    New File  		    5437	20251103_134932_092a6d8c_newfile (3).xlsx100%  
+	    New File  		   10272	20251103_135339_79d4ef00_data - ∏±±æ.xlsx100%  
+	    New File  		   10272	20251103_135521_6814a015_data - ∏±±æ.xlsx100%  
+	    New File  		   17988	20251103_140022_d4a2c477_Ã‚ø‚ƒ£∞Â.xlsx100%  
+	    New File  		    5436	20251103_143823_11f42916_newfile.xlsx100%  
+	    New File  		   10272	20251103_143851_bf6026ed_data - ∏±±æ.xlsx100%  
+	    New File  		   17988	20251103_144414_079974ac_Ã‚ø‚ƒ£∞Â.xlsx100%  
+	    New File  		   10272	20251103_144952_c3f049cc_data - ∏±±æ.xlsx100%  
+	    New File  		    5436	20251103_145914_eb2a7dcd_newfile.xlsx100%  
+	    New File  		    5436	20251103_150904_defdf7db_newfile.xlsx100%  
+	    New File  		   10272	20251103_150929_7625c9e8_data - ∏±±æ.xlsx100%  
+	    New File  		   10272	20251103_151007_7e018822_data - ∏±±æ.xlsx100%  
+	    New File  		   17988	20251103_151145_c38374c1_Ã‚ø‚ƒ£∞Â.xlsx100%  
+	    New File  		   10272	20251103_152008_89da3cd7_data - ∏±±æ.xlsx100%  
+	    New File  		   10272	20251103_152202_4624a37e_data - ∏±±æ.xlsx100%  
+	    New File  		   17988	20251103_152624_7c22d2f2_Ã‚ø‚ƒ£∞Â.xlsx100%  
+	    New File  		   17988	20251103_152914_1b82765e_Ã‚ø‚ƒ£∞Â.xlsx100%  
+	    New File  		    5436	20251103_153432_34000b97_newfile.xlsx100%  
+	    New File  		   17988	20251103_153746_71d14a47_Ã‚ø‚ƒ£∞Â.xlsx100%  
+	    New File  		   11328	5pig5bCE6KGoLXYxLjI1MDgwNw==.xlsx100%  
+	    New File  		   89075	6K6h566X5YWs5byP5ray5aW2LVYxLjI1MDkwOQ.xlsx100%  
+	    New File  		   10183	6K6h566X5YWs5byP5ray5aW2LVYxLjI1MDkwOQ==.xlsx100%  
+	    New File  		    6366	6L6T5Ye65qih5p2_.xlsx100%  
+	    New File  		  489777	MzI1LeaKpOiCpOWTgTIwMjUwNDAy.xlsx100%  
+	    New File  		   32749	YXV0bzE.xlsx100%  
+	    New File  		   33006	YXV0bzE=.xlsx100%  
+	  New Dir          2	E:\projectcode\ppt2html\api\config_infos\instructions\
+	    New File  		     771	categories.json100%  
+	    New File  		   73354	items.json100%  
+	  New Dir          3	E:\projectcode\ppt2html\api\config_infos\templates\
+	    New File  		   1.5 m	20251010_162045_cf4697e8_.json 65%  100%  
+	    New File  		   1.5 m	20251010_174658_73194395_.json 65%  100%  
+	    New File  		   4.6 m	20251014_161514_1b8e9479_ppt2html.json 21%   42%   63%   85%  100%  
+	  New Dir          1	E:\projectcode\ppt2html\api\config_infos\uploads\
+	    New File  		    4938	20251106143806_newfilesss.xlsx100%  
+	  New Dir          3	E:\projectcode\ppt2html\api\config_infos\uploads\20250929_164210_8d0e9ed7_\
+	    New File  		  185442	20250929_164210_8d0e9ed7_.pptx100%  
+	    New File  		   1.5 m	config.json 65%  100%  
+	    New File  		   1.5 m	ppt_editor.html 65%  100%  
+	  New Dir          3	E:\projectcode\ppt2html\api\config_infos\uploads\20250930_173229_353893dd_ppt2html\
+	    New File  		  433995	20250930_173229_353893dd_ppt2html.pptx100%  
+	    New File  		   4.5 m	config.json 21%   43%   65%   87%  100%  
+	    New File  		   4.5 m	ppt_editor.html 21%   43%   65%   87%  100%  
+	  New Dir          3	E:\projectcode\ppt2html\api\config_infos\uploads\20251010_162045_cf4697e8_\
+	    New File  		  185442	20251010_162045_cf4697e8_.pptx100%  
+	    New File  		   1.5 m	config.json 65%  100%  
+	    New File  		   1.5 m	ppt_editor.html 65%  100%  
+	  New Dir          3	E:\projectcode\ppt2html\api\config_infos\uploads\20251010_162146_55294140_ppt2html\
+	    New File  		  433995	20251010_162146_55294140_ppt2html.pptx100%  
+	    New File  		   4.5 m	config.json 21%   43%   65%   87%  100%  
+	    New File  		   4.5 m	ppt_editor.html 21%   43%   65%   87%  100%  
+	  New Dir          3	E:\projectcode\ppt2html\api\config_infos\uploads\20251010_170341_abffa1a0_ppt2html\
+	    New File  		  433995	20251010_170341_abffa1a0_ppt2html.pptx100%  
+	    New File  		   4.5 m	config.json 21%   43%   65%   87%  100%  
+	    New File  		   4.5 m	ppt_editor.html 21%   43%   65%   87%  100%  
+	  New Dir          3	E:\projectcode\ppt2html\api\config_infos\uploads\20251010_170813_9fa860ce_\
+	    New File  		  185442	20251010_170813_9fa860ce_.pptx100%  
+	    New File  		   1.5 m	config.json 65%  100%  
+	    New File  		   1.5 m	ppt_editor.html 65%  100%  
+	  New Dir          3	E:\projectcode\ppt2html\api\config_infos\uploads\20251010_172257_4aea5214_\
+	    New File  		  185442	20251010_172257_4aea5214_.pptx100%  
+	    New File  		   1.5 m	config.json 65%  100%  
+	    New File  		   1.5 m	ppt_editor.html 65%  100%  
+	  New Dir          3	E:\projectcode\ppt2html\api\config_infos\uploads\20251010_173002_d4bb53f2_\
+	    New File  		  185442	20251010_173002_d4bb53f2_.pptx100%  
+	    New File  		   1.5 m	config.json 65%  100%  
+	    New File  		   1.5 m	ppt_editor.html 65%  100%  
+	  New Dir          3	E:\projectcode\ppt2html\api\config_infos\uploads\20251010_173052_5bbb7e9d_\
+	    New File  		  185442	20251010_173052_5bbb7e9d_.pptx100%  
+	    New File  		   1.5 m	config.json 65%  100%  
+	    New File  		   1.5 m	ppt_editor.html 65%  100%  
+	  New Dir          3	E:\projectcode\ppt2html\api\config_infos\uploads\20251010_173341_c57c7c36_\
+	    New File  		  185442	20251010_173341_c57c7c36_.pptx100%  
+	    New File  		   1.5 m	config.json 65%  100%  
+	    New File  		   1.5 m	ppt_editor.html 65%  100%  
+	  New Dir          3	E:\projectcode\ppt2html\api\config_infos\uploads\20251010_173459_f5512dfa_ppt2html\
+	    New File  		  433995	20251010_173459_f5512dfa_ppt2html.pptx100%  
+	    New File  		   4.5 m	config.json 21%   43%   65%   87%  100%  
+	    New File  		   4.5 m	ppt_editor.html 21%   43%   65%   87%  100%  
+	  New Dir          3	E:\projectcode\ppt2html\api\config_infos\uploads\20251010_173902_5c9b5d8b_\
+	    New File  		  185442	20251010_173902_5c9b5d8b_.pptx100%  
+	    New File  		   1.5 m	config.json 65%  100%  
+	    New File  		   1.5 m	ppt_editor.html 65%  100%  
+	  New Dir          3	E:\projectcode\ppt2html\api\config_infos\uploads\20251010_174658_73194395_\
+	    New File  		  185442	20251010_174658_73194395_.pptx100%  
+	    New File  		   1.5 m	config.json 65%  100%  
+	    New File  		   1.5 m	ppt_editor.html 65%  100%  
+	  New Dir          3	E:\projectcode\ppt2html\api\config_infos\uploads\20251014_161514_1b8e9479_ppt2html\
+	    New File  		  433995	20251014_161514_1b8e9479_ppt2html.pptx100%  
+	    New File  		   4.5 m	config.json 21%   43%   65%   87%  100%  
+	    New File  		   4.5 m	ppt_editor.html 21%   43%   65%   87%  100%  
+	  New Dir         35	E:\projectcode\ppt2html\api\config_infos\uploads\tempfiles\
+	    New File  		    4938	20251106144011_newfilesss.xlsx100%  
+	    New File  		    4938	20251106153723_newfile.xlsx100%  
+	    New File  		    4938	20251106153808_newfile.xlsx100%  
+	    New File  		    5498	20251106153846_newfile.xlsx100%  
+	    New File  		    5497	20251106154112_newfile.xlsx100%  
+	    New File  		    5497	20251106155209_newfile.xlsx100%  
+	    New File  		    5498	20251106155413_newfile.xlsx100%  
+	    New File  		    5498	20251106155922_newfile.xlsx100%  
+	    New File  		    5497	20251106160045_newfile.xlsx100%  
+	    New File  		    5651	20251112110539_result.xlsx100%  
+	    New File  		    4938	20251112154045_result.xlsx100%  
+	    New File  		    4938	20251112154601_result.xlsx100%  
+	    New File  		    4938	20251112172158_result.xlsx100%  
+	    New File  		    4938	20251112173132_result.xlsx100%  
+	    New File  		    4938	20251112173227_result.xlsx100%  
+	    New File  		    4938	20251112173524_result.xlsx100%  
+	    New File  		    5133	20251112173914_result.xlsx100%  
+	    New File  		    5135	20251112174455_result.xlsx100%  
+	    New File  		    5136	20251112174603_result.xlsx100%  
+	    New File  		    5130	20251112174724_result.xlsx100%  
+	    New File  		    5134	20251112174739_result.xlsx100%  
+	    New File  		    5136	20251112174841_result.xlsx100%  
+	    New File  		    5134	20251112174929_result.xlsx100%  
+	    New File  		    5133	20251112175203_result.xlsx100%  
+	    New File  		    5136	20251112175658_result.xlsx100%  
+	    New File  		    5136	20251113095352_result.xlsx100%  
+	    New File  		    5136	20251113102944_result.xlsx100%  
+	    New File  		    5133	20251113103247_result.xlsx100%  
+	    New File  		    5133	20251113103507_result.xlsx100%  
+	    New File  		    5131	20251113123105_result.xlsx100%  
+	    New File  		    5132	20251113123539_result.xlsx100%  
+	    New File  		    6207	20251113124223_result.xlsx100%  
+	    New File  		      16	test.txt100%  
+	    New File  		    4938	_newfile.xlsx100%  
+	    New File  		    4938	_newfile1.xlsx100%  
+	  New Dir          6	E:\projectcode\ppt2html\api\controller\
+	    New File  		   23645	data_process_api.py100%  
+	    New File  		   21241	data_source_api.py100%  
+	    New File  		    8729	file_api.py100%  
+	    New File  		    7599	instruction_api.py100%  
+	    New File  		   10576	ppt_api.py100%  
+	    New File  		      14	__init__.py100%  
+	  New Dir          6	E:\projectcode\ppt2html\api\controller\__pycache__\
+	    New File  		   23038	data_process_api.cpython-313.pyc100%  
+	    New File  		   23848	data_source_api.cpython-313.pyc100%  
+	    New File  		    8704	file_api.cpython-313.pyc100%  
+	    New File  		    8587	instruction_api.cpython-313.pyc100%  
+	    New File  		   13922	ppt_api.cpython-313.pyc100%  
+	    New File  		     147	__init__.cpython-313.pyc100%  
+	  New Dir          4	E:\projectcode\ppt2html\api\converter\
+	    New File  		    1810	base_converter.py100%  
+	    New File  		    6269	logger_config.py100%  
+	    New File  		  116173	ppt_converter.py100%  
+	    New File  		     474	__init__.py100%  
+	  New Dir          3	E:\projectcode\ppt2html\api\converter\__pycache__\
+	    New File  		    2541	base_converter.cpython-313.pyc100%  
+	    New File  		   90864	ppt_converter.cpython-313.pyc100%  
+	    New File  		     540	__init__.cpython-313.pyc100%  
+	  New Dir          3	E:\projectcode\ppt2html\api\di\
+	    New File  		    1449	config.py100%  
+	    New File  		    3735	container.py100%  
+	    New File  		       0	__init__.py
+	  New Dir          3	E:\projectcode\ppt2html\api\di\__pycache__\
+	    New File  		    1655	config.cpython-313.pyc100%  
+	    New File  		    5185	container.cpython-313.pyc100%  
+	    New File  		     139	__init__.cpython-313.pyc100%  
+	  New Dir          6	E:\projectcode\ppt2html\api\dto\
+	    New File  		    2734	common_dto.py100%  
+	    New File  		   12391	datasource_dto.py100%  
+	    New File  		    6090	file_dto.py100%  
+	    New File  		    5699	instruction_dto.py100%  
+	    New File  		    6192	ppt_dto.py100%  
+	    New File  		       0	__init__.py
+	  New Dir          6	E:\projectcode\ppt2html\api\dto\__pycache__\
+	    New File  		    4365	common_dto.cpython-313.pyc100%  
+	    New File  		   17652	datasource_dto.cpython-313.pyc100%  
+	    New File  		    9983	file_dto.cpython-313.pyc100%  
+	    New File  		    8841	instruction_dto.cpython-313.pyc100%  
+	    New File  		    9194	ppt_dto.cpython-313.pyc100%  
+	    New File  		     140	__init__.cpython-313.pyc100%  
+	  New Dir         10	E:\projectcode\ppt2html\api\service\
+	    New File  		     869	base_service.py100%  
+	    New File  		    2918	config_service.py100%  
+	    New File  		   39503	data_process_service.py100%  
+	    New File  		   30319	data_source_service.py100%  
+	    New File  		    2526	file_service.py100%  
+	    New File  		   27101	instruction_service.py100%  
+	    New File  		    2823	ppt_conversion_service.py100%  
+	    New File  		    3578	ppt_service.py100%  
+	    New File  		    1867	result.py100%  
+	    New File  		      14	__init__.py100%  
+	  New Dir         10	E:\projectcode\ppt2html\api\service\__pycache__\
+	    New File  		    1617	base_service.cpython-313.pyc100%  
+	    New File  		    4889	config_service.cpython-313.pyc100%  
+	    New File  		   37695	data_process_service.cpython-313.pyc100%  
+	    New File  		   31033	data_source_service.cpython-313.pyc100%  
+	    New File  		    3985	file_service.cpython-313.pyc100%  
+	    New File  		   27160	instruction_service.cpython-313.pyc100%  
+	    New File  		    3091	ppt_conversion_service.cpython-313.pyc100%  
+	    New File  		    4180	ppt_service.cpython-313.pyc100%  
+	    New File  		    2444	result.cpython-313.pyc100%  
+	    New File  		     144	__init__.cpython-313.pyc100%  
+	  New Dir          2	E:\projectcode\ppt2html\api\utils\
+	    New File  		    2245	common.py100%  
+	    New File  		   26520	excel_helper.py100%  
+	  New Dir          3	E:\projectcode\ppt2html\api\utils\__pycache__\
+	    New File  		    2350	common.cpython-313.pyc100%  
+	    New File  		   25285	excel_helper.cpython-313.pyc100%  
+	    New File  		   10436	file_helper.cpython-313.pyc100%  
+	  New Dir          3	E:\projectcode\ppt2html\api\__pycache__\
+	    New File  		    3733	config.cpython-313.pyc100%  
+	    New File  		    3931	main.cpython-313.pyc100%  
+	    New File  		     136	__init__.cpython-313.pyc100%  
+
+------------------------------------------------------------------------------
+
+               Total    Copied   Skipped  Mismatch    FAILED    Extras
+    Dirs :        36        35         1         0         0         0
+   Files :       206       206         0         0         0         0
+   Bytes :   87.04 m   87.04 m         0         0         0         0
+   Times :   0:00:00   0:00:00                       0:00:00   0:00:00
+
+
+   Speed :           540,049,976 Bytes/sec.
+   Speed :            30,901.908 MegaBytes/min.
+   Ended : 2025Âπ¥12Êúà4Êó• 15:06:02
+
+Python copied successfully
+Collecting fastapi==0.104.1 (from -r E:\projectcode\ppt2html\deploy\build_ready\backend\requirements.txt (line 2))
+  Using cached fastapi-0.104.1-py3-none-any.whl.metadata (24 kB)
+Collecting uvicorn==0.24.0 (from uvicorn[standard]==0.24.0->-r E:\projectcode\ppt2html\deploy\build_ready\backend\requirements.txt (line 3))
+  Using cached uvicorn-0.24.0-py3-none-any.whl.metadata (6.4 kB)
+Collecting python-multipart==0.0.6 (from -r E:\projectcode\ppt2html\deploy\build_ready\backend\requirements.txt (line 4))
+  Using cached python_multipart-0.0.6-py3-none-any.whl.metadata (2.5 kB)
+Collecting pydantic>=2.6.0 (from -r E:\projectcode\ppt2html\deploy\build_ready\backend\requirements.txt (line 5))
+  Using cached pydantic-2.12.5-py3-none-any.whl.metadata (90 kB)
+Collecting pydantic-settings==2.1.0 (from -r E:\projectcode\ppt2html\deploy\build_ready\backend\requirements.txt (line 6))
+  Using cached pydantic_settings-2.1.0-py3-none-any.whl.metadata (2.9 kB)
+Collecting python-pptx>=0.6.23 (from -r E:\projectcode\ppt2html\deploy\build_ready\backend\requirements.txt (line 9))
+  Using cached python_pptx-1.0.2-py3-none-any.whl.metadata (2.5 kB)
+Collecting Pillow>=10.2.0 (from -r E:\projectcode\ppt2html\deploy\build_ready\backend\requirements.txt (line 10))
+  Using cached pillow-12.0.0-cp313-cp313-win_amd64.whl.metadata (9.0 kB)
+Collecting pywin32>=307 (from -r E:\projectcode\ppt2html\deploy\build_ready\backend\requirements.txt (line 11))
+  Using cached pywin32-311-cp313-cp313-win_amd64.whl.metadata (10 kB)
+Collecting xlwings>=0.30.10 (from -r E:\projectcode\ppt2html\deploy\build_ready\backend\requirements.txt (line 14))
+  Using cached xlwings-0.33.16-cp313-cp313-win_amd64.whl.metadata (6.4 kB)
+Collecting pandas>=2.1.1 (from -r E:\projectcode\ppt2html\deploy\build_ready\backend\requirements.txt (line 15))
+  Using cached pandas-2.3.3-cp313-cp313-win_amd64.whl.metadata (19 kB)
+Collecting requests==2.31.0 (from -r E:\projectcode\ppt2html\deploy\build_ready\backend\requirements.txt (line 18))
+  Using cached requests-2.31.0-py3-none-any.whl.metadata (4.6 kB)
+Collecting werkzeug==2.3.7 (from -r E:\projectcode\ppt2html\deploy\build_ready\backend\requirements.txt (line 19))
+  Using cached werkzeug-2.3.7-py3-none-any.whl.metadata (4.1 kB)
+Collecting anyio<4.0.0,>=3.7.1 (from fastapi==0.104.1->-r E:\projectcode\ppt2html\deploy\build_ready\backend\requirements.txt (line 2))
+  Using cached anyio-3.7.1-py3-none-any.whl.metadata (4.7 kB)
+Collecting starlette<0.28.0,>=0.27.0 (from fastapi==0.104.1->-r E:\projectcode\ppt2html\deploy\build_ready\backend\requirements.txt (line 2))
+  Using cached starlette-0.27.0-py3-none-any.whl.metadata (5.8 kB)
+Collecting typing-extensions>=4.8.0 (from fastapi==0.104.1->-r E:\projectcode\ppt2html\deploy\build_ready\backend\requirements.txt (line 2))
+  Using cached typing_extensions-4.15.0-py3-none-any.whl.metadata (3.3 kB)
+Collecting click>=7.0 (from uvicorn==0.24.0->uvicorn[standard]==0.24.0->-r E:\projectcode\ppt2html\deploy\build_ready\backend\requirements.txt (line 3))
+  Using cached click-8.3.1-py3-none-any.whl.metadata (2.6 kB)
+Collecting h11>=0.8 (from uvicorn==0.24.0->uvicorn[standard]==0.24.0->-r E:\projectcode\ppt2html\deploy\build_ready\backend\requirements.txt (line 3))
+  Using cached h11-0.16.0-py3-none-any.whl.metadata (8.3 kB)
+Collecting python-dotenv>=0.21.0 (from pydantic-settings==2.1.0->-r E:\projectcode\ppt2html\deploy\build_ready\backend\requirements.txt (line 6))
+  Using cached python_dotenv-1.2.1-py3-none-any.whl.metadata (25 kB)
+Collecting charset-normalizer<4,>=2 (from requests==2.31.0->-r E:\projectcode\ppt2html\deploy\build_ready\backend\requirements.txt (line 18))
+  Using cached charset_normalizer-3.4.4-cp313-cp313-win_amd64.whl.metadata (38 kB)
+Collecting idna<4,>=2.5 (from requests==2.31.0->-r E:\projectcode\ppt2html\deploy\build_ready\backend\requirements.txt (line 18))
+  Using cached idna-3.11-py3-none-any.whl.metadata (8.4 kB)
+Collecting urllib3<3,>=1.21.1 (from requests==2.31.0->-r E:\projectcode\ppt2html\deploy\build_ready\backend\requirements.txt (line 18))
+  Using cached urllib3-2.5.0-py3-none-any.whl.metadata (6.5 kB)
+Collecting certifi>=2017.4.17 (from requests==2.31.0->-r E:\projectcode\ppt2html\deploy\build_ready\backend\requirements.txt (line 18))
+  Using cached certifi-2025.11.12-py3-none-any.whl.metadata (2.5 kB)
+Collecting MarkupSafe>=2.1.1 (from werkzeug==2.3.7->-r E:\projectcode\ppt2html\deploy\build_ready\backend\requirements.txt (line 19))
+  Using cached markupsafe-3.0.3-cp313-cp313-win_amd64.whl.metadata (2.8 kB)
+Collecting colorama>=0.4 (from uvicorn[standard]==0.24.0->-r E:\projectcode\ppt2html\deploy\build_ready\backend\requirements.txt (line 3))
+  Using cached colorama-0.4.6-py2.py3-none-any.whl.metadata (17 kB)
+Collecting httptools>=0.5.0 (from uvicorn[standard]==0.24.0->-r E:\projectcode\ppt2html\deploy\build_ready\backend\requirements.txt (line 3))
+  Using cached httptools-0.7.1-cp313-cp313-win_amd64.whl.metadata (3.6 kB)
+Collecting pyyaml>=5.1 (from uvicorn[standard]==0.24.0->-r E:\projectcode\ppt2html\deploy\build_ready\backend\requirements.txt (line 3))
+  Using cached pyyaml-6.0.3-cp313-cp313-win_amd64.whl.metadata (2.4 kB)
+Collecting watchfiles>=0.13 (from uvicorn[standard]==0.24.0->-r E:\projectcode\ppt2html\deploy\build_ready\backend\requirements.txt (line 3))
+  Using cached watchfiles-1.1.1-cp313-cp313-win_amd64.whl.metadata (5.0 kB)
+Collecting websockets>=10.4 (from uvicorn[standard]==0.24.0->-r E:\projectcode\ppt2html\deploy\build_ready\backend\requirements.txt (line 3))
+  Using cached websockets-15.0.1-cp313-cp313-win_amd64.whl.metadata (7.0 kB)
+Collecting annotated-types>=0.6.0 (from pydantic>=2.6.0->-r E:\projectcode\ppt2html\deploy\build_ready\backend\requirements.txt (line 5))
+  Using cached annotated_types-0.7.0-py3-none-any.whl.metadata (15 kB)
+Collecting pydantic-core==2.41.5 (from pydantic>=2.6.0->-r E:\projectcode\ppt2html\deploy\build_ready\backend\requirements.txt (line 5))
+  Using cached pydantic_core-2.41.5-cp313-cp313-win_amd64.whl.metadata (7.4 kB)
+Collecting typing-inspection>=0.4.2 (from pydantic>=2.6.0->-r E:\projectcode\ppt2html\deploy\build_ready\backend\requirements.txt (line 5))
+  Using cached typing_inspection-0.4.2-py3-none-any.whl.metadata (2.6 kB)
+Collecting sniffio>=1.1 (from anyio<4.0.0,>=3.7.1->fastapi==0.104.1->-r E:\projectcode\ppt2html\deploy\build_ready\backend\requirements.txt (line 2))
+  Using cached sniffio-1.3.1-py3-none-any.whl.metadata (3.9 kB)
+Collecting XlsxWriter>=0.5.7 (from python-pptx>=0.6.23->-r E:\projectcode\ppt2html\deploy\build_ready\backend\requirements.txt (line 9))
+  Using cached xlsxwriter-3.2.9-py3-none-any.whl.metadata (2.7 kB)
+Collecting lxml>=3.1.0 (from python-pptx>=0.6.23->-r E:\projectcode\ppt2html\deploy\build_ready\backend\requirements.txt (line 9))
+  Using cached lxml-6.0.2-cp313-cp313-win_amd64.whl.metadata (3.7 kB)
+Collecting numpy>=1.26.0 (from pandas>=2.1.1->-r E:\projectcode\ppt2html\deploy\build_ready\backend\requirements.txt (line 15))
+  Using cached numpy-2.3.5-cp313-cp313-win_amd64.whl.metadata (60 kB)
+Collecting python-dateutil>=2.8.2 (from pandas>=2.1.1->-r E:\projectcode\ppt2html\deploy\build_ready\backend\requirements.txt (line 15))
+  Using cached python_dateutil-2.9.0.post0-py2.py3-none-any.whl.metadata (8.4 kB)
+Collecting pytz>=2020.1 (from pandas>=2.1.1->-r E:\projectcode\ppt2html\deploy\build_ready\backend\requirements.txt (line 15))
+  Using cached pytz-2025.2-py2.py3-none-any.whl.metadata (22 kB)
+Collecting tzdata>=2022.7 (from pandas>=2.1.1->-r E:\projectcode\ppt2html\deploy\build_ready\backend\requirements.txt (line 15))
+  Using cached tzdata-2025.2-py2.py3-none-any.whl.metadata (1.4 kB)
+Collecting six>=1.5 (from python-dateutil>=2.8.2->pandas>=2.1.1->-r E:\projectcode\ppt2html\deploy\build_ready\backend\requirements.txt (line 15))
+  Using cached six-1.17.0-py2.py3-none-any.whl.metadata (1.7 kB)
+Using cached fastapi-0.104.1-py3-none-any.whl (92 kB)
+Using cached uvicorn-0.24.0-py3-none-any.whl (59 kB)
+Using cached python_multipart-0.0.6-py3-none-any.whl (45 kB)
+Using cached pydantic_settings-2.1.0-py3-none-any.whl (11 kB)
+Using cached requests-2.31.0-py3-none-any.whl (62 kB)
+Using cached werkzeug-2.3.7-py3-none-any.whl (242 kB)
+Using cached pydantic-2.12.5-py3-none-any.whl (463 kB)
+Using cached pydantic_core-2.41.5-cp313-cp313-win_amd64.whl (2.0 MB)
+Using cached anyio-3.7.1-py3-none-any.whl (80 kB)
+Using cached charset_normalizer-3.4.4-cp313-cp313-win_amd64.whl (107 kB)
+Using cached idna-3.11-py3-none-any.whl (71 kB)
+Using cached starlette-0.27.0-py3-none-any.whl (66 kB)
+Using cached urllib3-2.5.0-py3-none-any.whl (129 kB)
+Using cached python_pptx-1.0.2-py3-none-any.whl (472 kB)
+Using cached pillow-12.0.0-cp313-cp313-win_amd64.whl (7.0 MB)
+Using cached pywin32-311-cp313-cp313-win_amd64.whl (9.5 MB)
+Using cached xlwings-0.33.16-cp313-cp313-win_amd64.whl (1.6 MB)
+Using cached pandas-2.3.3-cp313-cp313-win_amd64.whl (11.0 MB)
+Using cached annotated_types-0.7.0-py3-none-any.whl (13 kB)
+Using cached certifi-2025.11.12-py3-none-any.whl (159 kB)
+Using cached click-8.3.1-py3-none-any.whl (108 kB)
+Using cached colorama-0.4.6-py2.py3-none-any.whl (25 kB)
+Using cached h11-0.16.0-py3-none-any.whl (37 kB)
+Using cached httptools-0.7.1-cp313-cp313-win_amd64.whl (85 kB)
+Using cached lxml-6.0.2-cp313-cp313-win_amd64.whl (4.0 MB)
+Using cached markupsafe-3.0.3-cp313-cp313-win_amd64.whl (15 kB)
+Using cached numpy-2.3.5-cp313-cp313-win_amd64.whl (12.8 MB)
+Using cached python_dateutil-2.9.0.post0-py2.py3-none-any.whl (229 kB)
+Using cached python_dotenv-1.2.1-py3-none-any.whl (21 kB)
+Using cached pytz-2025.2-py2.py3-none-any.whl (509 kB)
+Using cached pyyaml-6.0.3-cp313-cp313-win_amd64.whl (154 kB)
+Using cached six-1.17.0-py2.py3-none-any.whl (11 kB)
+Using cached sniffio-1.3.1-py3-none-any.whl (10 kB)
+Using cached typing_extensions-4.15.0-py3-none-any.whl (44 kB)
+Using cached typing_inspection-0.4.2-py3-none-any.whl (14 kB)
+Using cached tzdata-2025.2-py2.py3-none-any.whl (347 kB)
+Using cached watchfiles-1.1.1-cp313-cp313-win_amd64.whl (288 kB)
+Using cached websockets-15.0.1-cp313-cp313-win_amd64.whl (176 kB)
+Using cached xlsxwriter-3.2.9-py3-none-any.whl (175 kB)
+Installing collected packages: pywin32, pytz, xlwings, XlsxWriter, websockets, urllib3, tzdata, typing-extensions, sniffio, six, pyyaml, python-multipart, python-dotenv, Pillow, numpy, MarkupSafe, lxml, idna, httptools, h11, colorama, charset-normalizer, certifi, annotated-types, werkzeug, typing-inspection, requests, python-pptx, python-dateutil, pydantic-core, click, anyio, watchfiles, uvicorn, starlette, pydantic, pandas, pydantic-settings, fastapi
+
+Successfully installed MarkupSafe-3.0.3 Pillow-12.0.0 XlsxWriter-3.2.9 annotated-types-0.7.0 anyio-3.7.1 certifi-2025.11.12 charset-normalizer-3.4.4 click-8.3.1 colorama-0.4.6 fastapi-0.104.1 h11-0.16.0 httptools-0.7.1 idna-3.11 lxml-6.0.2 numpy-2.3.5 pandas-2.3.3 pydantic-2.12.5 pydantic-core-2.41.5 pydantic-settings-2.1.0 python-dateutil-2.9.0.post0 python-dotenv-1.2.1 python-multipart-0.0.6 python-pptx-1.0.2 pytz-2025.2 pywin32-311 pyyaml-6.0.3 requests-2.31.0 six-1.17.0 sniffio-1.3.1 starlette-0.27.0 typing-extensions-4.15.0 typing-inspection-0.4.2 tzdata-2025.2 urllib3-2.5.0 uvicorn-0.24.0 watchfiles-1.1.1 websockets-15.0.1 werkzeug-2.3.7 xlwings-0.33.16
+WARNING: Target directory E:\projectcode\ppt2html\deploy\build_ready\site-packages\bin already exists. Specify --upgrade to force replacement.
+[4/5] API Preparation Completed!
+
+[5/5] Packaging Electron Application...
+        1 file(s) copied.
+        1 file(s) copied.
+        1 file(s) copied.
+
+-------------------------------------------------------------------------------
+   ROBOCOPY     ::     Robust File Copy for Windows                              
+-------------------------------------------------------------------------------
+
+  Started : 2025Âπ¥12Êúà4Êó• 15:06:32
+   Source : E:\projectcode\ppt2html\deploy\sourcefiles\icon-resources\
+     Dest : E:\projectcode\ppt2html\deploy\build_ready\icon-resources\
+
+    Files : *.*
+	    
+  Options : *.* /S /E /DCOPY:DA /COPY:DAT /R:1000000 /W:30 
+
+------------------------------------------------------------------------------
+
+	  New Dir          6	E:\projectcode\ppt2html\deploy\sourcefiles\icon-resources\
+	    New File  		    3042	convert-icon.js100%  
+	    New File  		    4455	embed-python.js100%  
+	    New File  		     438	icon-notes.txt100%  
+	    New File  		  349470	icon.ico100%  
+	    New File  		    4683	icon.png100%  
+	    New File  		    1393	icon.svg100%  
+
+------------------------------------------------------------------------------
+
+               Total    Copied   Skipped  Mismatch    FAILED    Extras
+    Dirs :         1         1         0         0         0         0
+   Files :         6         6         0         0         0         0
+   Bytes :   354.9 k   354.9 k         0         0         0         0
+   Times :   0:00:00   0:00:00                       0:00:00   0:00:00
+
+
+   Speed :           40,386,777 Bytes/sec.
+   Speed :            2,310.950 MegaBytes/min.
+   Ended : 2025Âπ¥12Êúà4Êó• 15:06:32
+
+npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+npm warn deprecated phin@2.9.3: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
+npm warn deprecated phin@3.7.1: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
+npm warn deprecated har-validator@5.1.5: this library is no longer supported
+npm warn deprecated glob@7.2.3: Glob versions prior to v9 are no longer supported
+npm warn deprecated boolean@3.2.0: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
+npm warn deprecated uuid@3.4.0: Please upgrade  to version 7 or higher.  Older versions may use Math.random() in certain circumstances, which is known to be problematic.  See https://v8.dev/blog/math-random for details.
+npm warn deprecated request@2.88.2: request has been deprecated, see https://github.com/request/request/issues/3142
+npm warn deprecated mkdirp@0.5.1: Legacy versions of mkdirp are no longer supported. Please update to mkdirp 1.x. (Note that the API surface has changed to use Promises in 1.x.)
+
+added 489 packages, and audited 490 packages in 36s
+
+65 packages are looking for funding
+  run `npm fund` for details
+
+15 vulnerabilities (8 moderate, 2 high, 5 critical)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+  ‚Ä¢ electron-builder  version=24.13.3 os=10.0.26100
+  ‚Ä¢ loaded configuration  file=package.json ("build" field)
+  ‚Ä¢ author is missed in the package.json  appPackageFile=E:\projectcode\ppt2html\deploy\build_ready\package.json
+  ‚Ä¢ rebuilding native dependencies  dependencies=canvas@3.2.0 platform=win32 arch=x64
+  ‚Ä¢ install prebuilt binary  name=canvas version=3.2.0 platform=win32 arch=x64 napi= 
+  ‚Ä¢ packaging       platform=win32 arch=x64 electron=27.3.11 appOutDir=electron-dist-final\win-unpacked
+  ‚Ä¢ building        target=nsis file=electron-dist-final\Êï∞ÊçÆÊµÅÁ®ãÂèØËßÜÂåñÂ∑•ÂÖ∑ Setup 1.0.0.exe archs=x64 oneClick=true perMachine=false
+  ‚Ä¢ building block map  blockMapFile=electron-dist-final\Êï∞ÊçÆÊµÅÁ®ãÂèØËßÜÂåñÂ∑•ÂÖ∑ Setup 1.0.0.exe.blockmap
+[5/5] Electron Packaging Completed!
+
+
+================================================
+PPT2HTML Project Build Successful!
+End Time: Âë®Âõõ 2025/12/04 15:08:42.67
+================================================

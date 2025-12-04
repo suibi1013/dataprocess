@@ -1,0 +1,834 @@
+[
+  {
+    "id": "fef6f8de-46df-4f6a-8da8-548aa861f610",
+    "name": "数据提取",
+    "icon": "el-icon-document-copy",
+    "description": "从excel文件中提取数据",
+    "category_id": "data_operation",
+    "python_script": "import openpyxl\nfrom openpyxl.styles import Font, Border, PatternFill, Alignment\nfrom openpyxl.utils import column_index_from_string, get_column_letter\nfrom openpyxl.worksheet.worksheet import Worksheet\nimport os\nimport re\nfrom openpyxl.styles.colors import COLOR_INDEX\n\n# ========== 辅助函数：颜色解析 ==========\ndef _theme_and_tint_to_rgb(theme, tint, workbook):\n    \"\"\"将 Excel 主题色 + 色调转换为 ARGB 字符串（如 'FF00FF00'）\"\"\"\n    try:\n        clr_scheme = workbook.theme.themeElements.clrScheme\n        # 映射 theme 索引到 clrScheme 属性\n        theme_colors = [\n            clr_scheme.lt1.val,   # 0: Light 1 (usually white)\n            clr_scheme.dk1.val,   # 1: Dark 1 (usually black)\n            clr_scheme.lt2.val,   # 2: Light 2\n            clr_scheme.dk2.val,   # 3: Dark 2\n            clr_scheme.accent1.val,\n            clr_scheme.accent2.val,\n            clr_scheme.accent3.val,\n            clr_scheme.accent4.val,\n            clr_scheme.accent5.val,\n            clr_scheme.accent6.val,\n        ]\n        if theme < len(theme_colors):\n            base_rgb = theme_colors[theme]\n        else:\n            return None\n\n        # 验证 base_rgb 是 6 位十六进制\n        if not base_rgb or not re.match(r'^[0-9A-Fa-f]{6}$', base_rgb):\n            return None\n\n        # 应用 tint（色调调整）\n        def apply_tint(rgb_hex, tint_value):\n            r = int(rgb_hex[0:2], 16)\n            g = int(rgb_hex[2:4], 16)\n            b = int(rgb_hex[4:6], 16)\n\n            if tint_value < 0:\n                # Darken\n                r = int(r * (1 + tint_value))\n                g = int(g * (1 + tint_value))\n                b = int(b * (1 + tint_value))\n            else:\n                # Lighten\n                r = int(r * (1 - tint_value) + 255 * tint_value)\n                g = int(g * (1 - tint_value) + 255 * tint_value)\n                b = int(b * (1 - tint_value) + 255 * tint_value)\n\n            r = max(0, min(255, r))\n            g = max(0, min(255, g))\n            b = max(0, min(255, b))\n            return f\"{r:02X}{g:02X}{b:02X}\"\n\n        rgb = apply_tint(base_rgb, tint)\n        return f\"FF{rgb}\".upper()  # Alpha=FF (不透明)\n    except Exception:\n        return None\n\n\ndef _get_rgb_color(color_obj, workbook=None):\n    \"\"\"安全获取颜色的 ARGB 字符串表示\"\"\"\n    if color_obj is None:\n        return None\n\n    if hasattr(color_obj, 'type'):\n        if color_obj.type == 'rgb' and color_obj.rgb:\n            return color_obj.rgb  # already like 'FF0000FF'\n        elif color_obj.type == 'theme' and workbook is not None:\n            tint = getattr(color_obj, 'tint', 0.0)\n            return _theme_and_tint_to_rgb(color_obj.theme, tint, workbook)\n        elif color_obj.type == 'indexed':\n            idx = color_obj.indexed\n            if isinstance(idx, int) and 0 <= idx < len(COLOR_INDEX):\n                val = COLOR_INDEX[idx]\n                if val and isinstance(val, str) and len(val) == 6:\n                    return f\"FF{val}\".upper()\n    return None\n\n\n# ========== 主函数 ==========\ndef read_excel_range(\n    datasPath: str = None,\n    sheetName: str = None,\n    startRow: int = None,\n    endRow: int = None,\n    startColumn: str = None,\n    endColumn: str = None\n):\n    \"\"\"\n    读取 Excel 指定区域单元格的数据和样式（含正确解析的背景色）。\n\n    参数:\n        datasPath (str, optional): Excel 文件路径。默认为 None。\n        sheetName (str, optional): 工作表名称。默认为 None (读取活动工作表或第一个工作表)。\n        startRow (int, optional): 起始行号 (1-based)。默认为 None (从第一行开始)。\n        endRow (int, optional): 结束行号 (1-based)。默认为 None (到最后一行结束)。\n        startColumn (str, optional): 起始列号 (字母, e.g., 'A')。默认为 None (从第一列开始)。\n        endColumn (str, optional): 结束列号 (字母, e.g., 'Z')。默认为 None (到最后一列结束)。\n\n    返回:\n        list: 包含单元格信息的列表，每个单元格信息是一个字典，\n              包含 'value', 'font', 'border', 'fill', 'alignment' 等键。\n              如果发生错误，则返回 None。\n    \"\"\"\n    if not datasPath:\n        print(\"错误: 必须提供 datasPath 参数。\")\n        return None\n\n    if not os.path.exists(datasPath):\n        print(f\"错误: 文件路径 '{datasPath}' 不存在。\")\n        return None\n\n    try:\n        workbook = openpyxl.load_workbook(datasPath, data_only=True)\n    except Exception as e:\n        print(f\"错误: 无法加载工作簿 '{datasPath}'。原因: {e}\")\n        return None\n\n    # 获取工作表\n    worksheet = None\n    if sheetName:\n        if sheetName in workbook.sheetnames:\n            worksheet = workbook[sheetName]\n        else:\n            print(f\"警告: 工作表 '{sheetName}' 未找到，将使用活动工作表或第一个工作表。\")\n\n    if worksheet is None:\n        worksheet = workbook.active if workbook.active else (workbook.worksheets[0] if workbook.worksheets else None)\n        if worksheet is None:\n            print(\"错误: 工作簿中没有可用的工作表。\")\n            return None\n        else:\n            print(f\"信息: 使用工作表 '{worksheet.title}'.\")\n\n    # 获取实际维度\n    max_row = worksheet.max_row\n    max_column = worksheet.max_column\n\n    # 处理默认值\n    startRow = max(1, startRow or 1)\n    endRow = min(max_row, endRow or max_row)\n\n    def safe_col_index(col_str):\n        if col_str is None:\n            return 1\n        try:\n            return column_index_from_string(col_str.upper())\n        except:\n            print(f\"警告: 列号 '{col_str}' 无效，将使用默认列。\")\n            return 1\n\n    startColIndex = max(1, safe_col_index(startColumn))\n    endColIndex = min(max_column, safe_col_index(endColumn) if endColumn else max_column)\n\n    if startRow > endRow or startColIndex > endColIndex:\n        print(\"警告: 指定的范围无效 (起始位置大于结束位置)，将返回空列表。\")\n        return []\n\n    print(f\"信息: 正在读取范围 {get_column_letter(startColIndex)}{startRow}:{get_column_letter(endColIndex)}{endRow}...\")\n\n    result_data = []\n\n    for row in range(startRow, endRow + 1):\n        row_data = []\n        for col in range(startColIndex, endColIndex + 1):\n            cell = worksheet.cell(row=row, column=col)\n\n            # 提取字体颜色（可选扩展）\n            font_color_rgb = _get_rgb_color(cell.font.color, workbook) if cell.font else None\n\n            cell_info = {\n                \"coordinate\": cell.coordinate,\n                \"value\": cell.value,\n                \"font\": {\n                    \"name\": cell.font.name if cell.font else None,\n                    \"sz\": cell.font.sz if cell.font else None,\n                    \"colorRGB\": font_color_rgb,\n                    \"b\": cell.font.b if cell.font else None,\n                    \"i\": cell.font.i if cell.font else None,  # italic\n                    \"u\": cell.font.u if cell.font else None,  # underline\n                },\n                \"border\": {\n                    \"left\": {\n                        \"style\": cell.border.left.style if cell.border and cell.border.left else None,\n                        \"colorRGB\": _get_rgb_color(cell.border.left.color, workbook) if cell.border and cell.border.left else None,\n                    },\n                    \"right\": {\n                        \"style\": cell.border.right.style if cell.border and cell.border.right else None,\n                        \"colorRGB\": _get_rgb_color(cell.border.right.color, workbook) if cell.border and cell.border.right else None,\n                    },\n                    \"top\": {\n                        \"style\": cell.border.top.style if cell.border and cell.border.top else None,\n                        \"colorRGB\": _get_rgb_color(cell.border.top.color, workbook) if cell.border and cell.border.top else None,\n                    },\n                    \"bottom\": {\n                        \"style\": cell.border.bottom.style if cell.border and cell.border.bottom else None,\n                        \"colorRGB\": _get_rgb_color(cell.border.bottom.color, workbook) if cell.border and cell.border.bottom else None,\n                    },\n                },\n                \"fill\": {\n                    \"patternType\": cell.fill.patternType if cell.fill else None,\n                    \"fgColorRGB\": _get_rgb_color(cell.fill.fgColor, workbook) if cell.fill else None,\n                    \"bgColorRGB\": _get_rgb_color(cell.fill.bgColor, workbook) if cell.fill else None,\n                },\n                \"alignment\": {\n                    \"horizontal\": cell.alignment.horizontal if cell.alignment else None,\n                    \"vertical\": cell.alignment.vertical if cell.alignment else None,\n                    \"wrap_text\": cell.alignment.wrapText if cell.alignment else None,\n                    \"text_rotation\": cell.alignment.textRotation if cell.alignment else None,\n                }\n            }\n            row_data.append(cell_info)\n        result_data.append(row_data)\n\n    return result_data",
+    "sort_order": 1,
+    "is_active": true,
+    "created_at": "2025-09-23T14:11:57.659825",
+    "updated_at": "2025-11-12T15:02:17.189235",
+    "params": [
+      {
+        "name": "datasPath",
+        "label": "数据源文件",
+        "description": "",
+        "type": "string",
+        "required": true,
+        "defaultValue": "",
+        "direction": 0,
+        "apiUrl": "http://127.0.0.1:5001/api/datasource/all-options"
+      },
+      {
+        "name": "sheetName",
+        "label": "sheet名称",
+        "description": "",
+        "type": "string",
+        "required": true,
+        "defaultValue": "",
+        "direction": 0,
+        "apiUrl": ""
+      },
+      {
+        "name": "startRow",
+        "label": "起始行",
+        "description": "",
+        "type": "string",
+        "required": true,
+        "defaultValue": "1",
+        "direction": 0,
+        "apiUrl": ""
+      },
+      {
+        "name": "endRow",
+        "label": "结束行",
+        "description": "",
+        "type": "string",
+        "required": true,
+        "defaultValue": "10",
+        "direction": 0,
+        "apiUrl": ""
+      },
+      {
+        "name": "startColumn",
+        "label": "起始列",
+        "description": "",
+        "type": "string",
+        "required": true,
+        "defaultValue": "A",
+        "direction": 0,
+        "apiUrl": ""
+      },
+      {
+        "name": "endColumn",
+        "label": "结束列",
+        "description": "",
+        "type": "string",
+        "required": true,
+        "defaultValue": "D",
+        "direction": 0,
+        "apiUrl": ""
+      },
+      {
+        "name": "result_variable_name",
+        "label": "结果变量名称",
+        "description": "",
+        "type": "string",
+        "required": true,
+        "defaultValue": "data_result",
+        "direction": 1,
+        "apiUrl": ""
+      }
+    ]
+  },
+  {
+    "id": "d22d6d99-b929-4cb4-8112-6fa8ca61f9c7",
+    "name": "数据写入",
+    "icon": "📤",
+    "description": "将数据写入到目标位置",
+    "category_id": "data_operation",
+    "python_script": "import openpyxl\nfrom openpyxl.styles import Font, Border, Side, PatternFill, Alignment, Color\nfrom openpyxl.utils import get_column_letter, column_index_from_string\nimport os\nimport json\nimport sys\nimport os\nimport re\nfrom openpyxl import load_workbook\n\ndef _sanitize_sheet_name(name: str, existing_names) -> str:\n    name = str(name).strip() if name else \"\"\n    name = re.sub(r'[^\\u4e00-\\u9fa5a-zA-Z0-9]', '_', name)\n    name = name[:31].rstrip('_') or \"Sheet\"\n    candidate = name\n    counter = 1\n    while candidate in existing_names:\n        suffix = f\" ({counter})\"\n        base = name[:31 - len(suffix)]\n        candidate = base + suffix\n        counter += 1\n    print(f\"最终工作表名: {candidate}\")\n    return candidate\n\ndef safe_write_excel_range(data, target_path:str, sheet_name:str=None, startrow:int=1, startcol:str='A', with_style:bool=True):\n    \"\"\"\n    将数据写入 Excel，支持样式还原（优化版）。\n    \n    功能改进：\n    1. 优先使用ast.literal_eval作为主要解析引擎，提供最佳的Python语法兼容性\n    2. 移除重复的工作簿保存代码\n    3. 正确处理Unicode字符和换行符\n    4. 修复填充颜色设置逻辑\n    5. 增强数据类型处理，支持Python格式和JavaScript格式的值\n    6. 改进JSON字符串解析逻辑，处理各种格式的输入字符串\n    \"\"\"\n    data_obj = None\n    \n    try:\n        # 尝试将data解析为JSON对象\n        if isinstance(data, str):\n            # 优先使用ast.literal_eval（更强的Python语法兼容性）\n            try:\n                import ast\n                print(\"信息: 优先尝试使用ast.literal_eval解析数据...\")\n                data_obj = ast.literal_eval(data)\n                print(\"信息: 成功使用ast.literal_eval解析数据\")\n            except (ValueError, SyntaxError) as e0:\n                print(f\"信息: ast.literal_eval解析失败，错误: {e0}，尝试json解析...\")\n                \n                try:\n                    # 尝试直接使用json.loads\n                    data_obj = json.loads(data)\n                    print(\"信息: 成功直接解析JSON字符串\")\n                except json.JSONDecodeError as e1:\n                    print(f\"信息: 直接解析失败，尝试预处理后解析。第一次错误: {e1}\")\n                    \n                    # 预处理1: 处理字符串中的Python格式值（None/True/False）\n                    # 注意使用正则表达式的思想，但用更安全的字符串替换顺序\n                    processed_data = data\n                    \n                    # 先处理特殊情况，确保不会错误替换\n                    # 确保只替换完整的单词，而不是部分单词\n                    # 替换None\n                    processed_data = processed_data.replace(' None,', ' null,').replace(' None}', ' null}')\n                    processed_data = processed_data.replace(': None,', ': null,').replace(': None}', ': null}')\n                    processed_data = processed_data.replace('\"None\"', 'null')\n                    \n                    # 替换True\n                    processed_data = processed_data.replace(' True,', ' true,').replace(' True}', ' true}')\n                    processed_data = processed_data.replace(': True,', ': true,').replace(': True}', ': true}')\n                    processed_data = processed_data.replace('\"True\"', 'true')\n                    \n                    # 替换False\n                    processed_data = processed_data.replace(' False,', ' false,').replace(' False}', ' false}')\n                    processed_data = processed_data.replace(': False,', ': false,').replace(': False}', ': false}')\n                    processed_data = processed_data.replace('\"False\"', 'false')\n                    \n                    # 预处理2: 处理可能的单引号问题\n                    if processed_data.count(\"'\") > processed_data.count('\"'):\n                        print(\"信息: 检测到可能的单引号JSON格式，尝试转换\")\n                        # 替换键名的单引号为双引号，但保留字符串值中的单引号\n                        # 这是一个简化处理，在实际复杂情况下可能需要更复杂的解析\n                        temp_data = \"\"\n                        in_string = False\n                        last_char = \"\"\n                        for char in processed_data:\n                            if char == '\"' and last_char != '\\\\':\n                                in_string = not in_string\n                            elif char == \"'\" and not in_string:\n                                temp_data += '\"'\n                            else:\n                                temp_data += char\n                            last_char = char\n                        processed_data = temp_data\n                    \n                    # 尝试解析预处理后的数据\n                    try:\n                        data_obj = json.loads(processed_data)\n                        print(\"信息: 预处理后成功解析JSON字符串\")\n                    except json.JSONDecodeError as e2:\n                        print(f\"错误: 预处理后仍无法解析输入数据为JSON对象。第二次错误: {e2}\")\n                        print(f\"前200字符的原始数据: {data[:200]}...\")\n                        print(f\"前200字符的处理后数据: {processed_data[:200]}...\")\n                        return\n        else:\n            # 如果data已经是对象，直接使用\n            data_obj = data\n            print(\"信息: 输入已是对象类型，直接使用\")\n    except Exception as e:\n        print(f\"错误: 处理数据时发生异常: {e}\")\n        import traceback\n        traceback.print_exc()\n        return\n    \n    if data_obj is None:\n        print(\"错误: 无法解析输入数据\")\n        return\n\n    if not data_obj:\n        print(\"警告: 输入数据为空，没有内容可写入。\")\n        # 仍继续创建/保存空文件\n\n    # --- 参数校验 ---\n    try:\n        startrow = int(startrow)\n    except ValueError:\n        print(f\"错误: startrow 必须是整数，收到: {startrow}\")\n        return\n        \n    if not isinstance(startrow, int) or startrow < 1:\n        raise ValueError(\"startrow 必须是大于等于1的整数。\")\n    if not isinstance(startcol, str):\n        raise ValueError(\"startcol 必须是字符串形式的Excel列字母。\")\n    try:\n        startcol_index = column_index_from_string(startcol.upper())\n    except Exception as e:\n        raise ValueError(f\"无效的Excel列字母 '{startcol}': {e}\")\n\n    # --- 打开或创建工作簿 ---\n    try:\n        if os.path.exists(target_path):\n            try:\n                workbook = openpyxl.load_workbook(target_path)\n                print(f\"信息: 已加载现有工作簿 '{target_path}'。\")\n            except Exception as e:\n                print(f\"错误: 无法加载现有工作簿 '{target_path}'。原因: {e}\")\n                # 尝试创建新工作簿替代\n                workbook = openpyxl.Workbook()\n                print(f\"信息: 创建了新的工作簿替代。\")\n        else:\n            workbook = openpyxl.Workbook()\n            print(f\"信息: 创建了新的工作簿 '{target_path}'。\")\n    except Exception as e:\n        print(f\"错误: 创建或打开工作簿时发生异常: {e}\")\n        return\n    # sheet名称去掉非法字符\n    existing = workbook.sheetnames\n    cleaned_sheet_name = _sanitize_sheet_name(sheet_name, existing)\n    # --- 获取或创建工作表 ---\n    worksheet = None\n    try:\n        if cleaned_sheet_name:\n            if cleaned_sheet_name in workbook.sheetnames:\n                worksheet = workbook[cleaned_sheet_name]\n                print(f\"信息: 使用现有工作表 '{cleaned_sheet_name}'。\")\n            else:\n                worksheet = workbook.create_sheet(title=cleaned_sheet_name)\n                print(f\"信息: 创建了新工作表 '{cleaned_sheet_name}'。\")\n        else:\n            worksheet = workbook.active\n            if worksheet is None:\n                worksheet = workbook.create_sheet(title=\"Sheet1\")\n            print(f\"信息: 使用工作表 '{worksheet.title}'。\")\n    except Exception as e:\n        print(f\"错误: 获取或创建工作表时发生异常: {e}\")\n        return\n\n    # --- 写入数据和样式 ---\n    num_rows_written = 0\n    num_cols_written = 0\n\n    if data_obj:\n        try:\n            for r_idx, row_data in enumerate(data_obj):\n                target_row = startrow + r_idx\n                num_cols_in_this_row = 0\n\n                for c_idx, cell_info in enumerate(row_data):\n                    target_col_index = startcol_index + c_idx\n                    target_cell = worksheet.cell(row=target_row, column=target_col_index)\n\n                    # --- 写入值 ---\n                    value = cell_info.get('value')\n                    # 确保正确处理换行符和特殊字符\n                    if isinstance(value, str):\n                        # 确保字符串中的换行符被正确处理\n                        value = value.replace('\\\\n', '\\n')\n                    target_cell.value = value\n\n                    if with_style:\n                        # === 1. 字体 ===\n                        font_data = cell_info.get('font', {})\n                        if font_data:\n                            font_kwargs = {}\n                            if font_data.get('name') is not None:\n                                font_kwargs['name'] = font_data['name']\n                            if font_data.get('sz') is not None:\n                                font_kwargs['size'] = font_data['sz']\n                            if font_data.get('b') is not None:\n                                font_kwargs['bold'] = font_data['b']\n                            if font_data.get('i') is not None:\n                                font_kwargs['italic'] = font_data['i']\n                            if font_data.get('u') is not None:\n                                font_kwargs['underline'] = font_data['u']\n\n                            color_rgb = font_data.get('colorRGB')\n                            if color_rgb and isinstance(color_rgb, str) and len(color_rgb) == 8:\n                                try:\n                                    font_kwargs['color'] = Color(rgb=color_rgb)\n                                except Exception as e:\n                                    print(f\"警告: 设置字体颜色时出错: {e}\")\n\n                            if font_kwargs:\n                                try:\n                                    target_cell.font = Font(**font_kwargs)\n                                except Exception as e:\n                                    print(f\"警告: 设置字体时出错: {e}\")\n\n                        # === 2. 边框 ===\n                        border_data = cell_info.get('border', {})\n                        if border_data:\n                            def create_side(side_dict):\n                                style = side_dict.get('style')\n                                color_rgb = side_dict.get('colorRGB')\n                                if not style and not color_rgb:\n                                    return Side()  # 默认无边框\n                                side_kwargs = {}\n                                if style:\n                                    side_kwargs['style'] = style\n                                if color_rgb and isinstance(color_rgb, str) and len(color_rgb) == 8:\n                                    try:\n                                        side_kwargs['color'] = Color(rgb=color_rgb)\n                                    except Exception as e:\n                                        print(f\"警告: 设置边框颜色时出错: {e}\")\n                                return Side(**side_kwargs)\n\n                            try:\n                                left = create_side(border_data.get('left', {}))\n                                right = create_side(border_data.get('right', {}))\n                                top = create_side(border_data.get('top', {}))\n                                bottom = create_side(border_data.get('bottom', {}))\n                                target_cell.border = Border(left=left, right=right, top=top, bottom=bottom)\n                            except Exception as e:\n                                print(f\"警告: 设置边框时出错: {e}\")\n\n                        # === 3. 填充（背景色）- 修复版 ===\n                        fill_data = cell_info.get('fill', {})\n                        if fill_data:\n                            pattern_type = fill_data.get('patternType')\n                            fg_color_rgb = fill_data.get('fgColorRGB')\n\n                            # 修复填充颜色逻辑\n                            try:\n                                if fg_color_rgb and fg_color_rgb != '00000000':\n                                    # 有颜色时，确保设置patternType为solid\n                                    pattern_type = pattern_type or 'solid'\n                                    fill_kwargs = {'patternType': pattern_type}\n                                    \n                                    # 正确设置前景色\n                                    if isinstance(fg_color_rgb, str) and len(fg_color_rgb) == 8:\n                                        try:\n                                            # 对于openpyxl，使用fgColor属性设置填充色\n                                            fill_kwargs['fgColor'] = Color(rgb=fg_color_rgb)\n                                            target_cell.fill = PatternFill(**fill_kwargs)\n                                        except Exception as e:\n                                            print(f\"警告: 设置填充颜色时出错: {e}\")\n                            except Exception as e:\n                                print(f\"警告: 处理填充样式时出错: {e}\")\n\n                        # === 4. 对齐 ===\n                        alignment_data = cell_info.get('alignment', {})\n                        if alignment_data:\n                            align_kwargs = {}\n                            h = alignment_data.get('horizontal')\n                            v = alignment_data.get('vertical')\n                            wrap = alignment_data.get('wrap_text')\n                            rotation = alignment_data.get('text_rotation')\n\n                            if h: align_kwargs['horizontal'] = h\n                            if v: align_kwargs['vertical'] = v\n                            if wrap is not None: align_kwargs['wrap_text'] = wrap\n                            if rotation is not None: align_kwargs['text_rotation'] = rotation\n\n                            if align_kwargs:\n                                try:\n                                    target_cell.alignment = Alignment(**align_kwargs)\n                                except Exception as e:\n                                    print(f\"警告: 设置对齐方式时出错: {e}\")\n\n                    num_cols_in_this_row += 1\n\n                num_rows_written += 1\n                if num_cols_in_this_row > num_cols_written:\n                    num_cols_written = num_cols_in_this_row\n\n            style_msg = \"及样式\" if with_style else \"（仅数据）\"\n            print(f\"信息: 成功写入 {num_rows_written} 行，{num_cols_written} 列数据{style_msg}到 '{target_path}' 的工作表 '{worksheet.title}'，起始位置 {startcol}{startrow}。\")\n\n        except Exception as e:\n            print(f\"错误: 在写入数据时发生异常: {e}\")\n            import traceback\n            traceback.print_exc()\n            return\n\n    # --- 保存工作簿（只保存一次，修复重复保存问题）---\n    try:\n        workbook.save(target_path)\n        print(f\"信息: 工作簿已成功保存到 '{target_path}'。\")\n        return True\n    except Exception as e:\n        print(f\"错误: 无法保存工作簿到 '{target_path}'。原因: {e}\")\n        import traceback\n        traceback.print_exc()\n        return False\n",
+    "sort_order": 2,
+    "is_active": true,
+    "created_at": "2025-09-23T14:11:57.659825",
+    "updated_at": "2025-11-13T12:42:11.803824",
+    "params": [
+      {
+        "name": "data",
+        "label": "待写入数据",
+        "description": "",
+        "type": "string",
+        "required": true,
+        "defaultValue": "",
+        "direction": 0,
+        "apiUrl": ""
+      },
+      {
+        "name": "target_path",
+        "label": "目标文件路径",
+        "description": "",
+        "type": "string",
+        "required": true,
+        "defaultValue": "",
+        "direction": 0,
+        "apiUrl": ""
+      },
+      {
+        "name": "sheet_name",
+        "label": "sheet名",
+        "description": "",
+        "type": "string",
+        "required": true,
+        "defaultValue": "",
+        "direction": 0,
+        "apiUrl": ""
+      },
+      {
+        "name": "startrow",
+        "label": "目标单元格起始行",
+        "description": "",
+        "type": "string",
+        "required": true,
+        "defaultValue": "1",
+        "direction": 0,
+        "apiUrl": ""
+      },
+      {
+        "name": "startcol",
+        "label": "目标单元格起始列",
+        "description": "",
+        "type": "string",
+        "required": true,
+        "defaultValue": "",
+        "direction": 0,
+        "apiUrl": ""
+      },
+      {
+        "name": "with_style",
+        "label": "是否写入样式",
+        "description": "",
+        "type": "boolean",
+        "required": true,
+        "defaultValue": "true",
+        "direction": 0,
+        "apiUrl": ""
+      }
+    ]
+  },
+  {
+    "id": "e62d6d7d-c9d8-43e3-9bd7-66498a0fb8eb",
+    "name": "排序",
+    "icon": "🔢",
+    "description": "对数据进行排序",
+    "category_id": "flow_control",
+    "python_script": "# 数据排序脚本\ndef sort_data(data, column_name, ascending=True):\n    \"\"\"对数据进行排序\"\"\"\n    import pandas as pd\n    return data.sort_values(by=column_name, ascending=ascending)",
+    "sort_order": 1,
+    "is_active": true,
+    "created_at": "2025-09-23T14:11:57.659825",
+    "updated_at": "2025-11-10T16:05:50.057342",
+    "params": [
+      {
+        "name": "data",
+        "label": "数据",
+        "description": "",
+        "type": "string",
+        "required": true,
+        "defaultValue": "",
+        "direction": 0,
+        "apiUrl": ""
+      },
+      {
+        "name": "column_name",
+        "label": "列名",
+        "description": "",
+        "type": "string",
+        "required": true,
+        "defaultValue": "",
+        "direction": 0,
+        "apiUrl": ""
+      },
+      {
+        "name": "ascending",
+        "label": "是否正序",
+        "description": "",
+        "type": "boolean",
+        "required": true,
+        "defaultValue": "false",
+        "direction": 0,
+        "apiUrl": ""
+      }
+    ]
+  },
+  {
+    "id": "d0c8d15c-b0b7-4b36-9f03-8c16edbbdb62",
+    "name": "新建excel",
+    "icon": "el-icon-document-add",
+    "description": "创建新的excel文件",
+    "category_id": "data_operation",
+    "python_script": "import os\nimport pandas as pd\nimport datetime\n\ndef create_excel_file(filename):\n    try:\n        # 确保文件名以 .xlsx 结尾\n        if not filename.lower().endswith('.xlsx'):\n            filename += '.xlsx'\n        time_format=datetime.datetime.now().strftime(\"%Y%m%d%H%M%S\")\n        file_path = os.path.join('config_infos\\\\uploads\\\\tempfiles', f\"{time_format}_{filename}\")\n        \n        # 创建一个空的 DataFrame 或包含默认数据\n        df = pd.DataFrame({})\n        \n        # 保存为 Excel\n        df.to_excel(file_path, index=False)\n        \n        print(f\"Excel 文件已创建：{file_path}\")\n        return file_path\n\n    except Exception as e:\n        print(f\"创建 Excel 文件时出错：{e}\")\n        return None",
+    "sort_order": 3,
+    "is_active": true,
+    "created_at": "2025-10-21T17:54:56.378894",
+    "updated_at": "2025-11-06T15:37:58.905856",
+    "params": [
+      {
+        "name": "filename",
+        "label": "文件名",
+        "description": "",
+        "type": "string",
+        "required": true,
+        "defaultValue": "",
+        "direction": 0,
+        "apiUrl": ""
+      },
+      {
+        "name": "filepath",
+        "label": "文件地址",
+        "description": "",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "direction": 1,
+        "apiUrl": ""
+      }
+    ]
+  },
+  {
+    "id": "85a57948-ee58-4bb0-8fd8-62931339a061",
+    "name": "文件下载",
+    "icon": "el-icon-download",
+    "description": "下载文件，输出文件流",
+    "category_id": "flow_control",
+    "python_script": "def download_file_to_base64_dict(filepath: str):\n    \"\"\"\n    下载文件（URL 或本地路径），返回包含文件名、Base64 内容、MIME 类型、大小的字典。\n    供前端使用。\n    \"\"\"\n    import requests\n    import os\n    from urllib.parse import urlparse\n    import base64\n    import mimetypes\n    try:\n        parsed = urlparse(filepath)\n        file_content = None\n\n        # 1. 判断是网络文件还是本地文件\n        if parsed.scheme in ('http', 'https'):\n            # 网络文件\n            response = requests.get(filepath, stream=True, timeout=30)\n            response.raise_for_status()\n            file_content = response.content\n\n        else:\n            # 本地文件\n            if not os.path.exists(filepath):\n                raise FileNotFoundError(f\"本地文件不存在: {filepath}\")\n            if not os.path.isfile(filepath):\n                raise IsADirectoryError(f\"路径不是文件: {filepath}\")\n            with open(filepath, 'rb') as f:\n                file_content = f.read()\n\n        if not file_content:\n            raise ValueError(\"文件内容为空\")\n\n        # 2. 推测文件名\n        filename = os.path.basename(filepath)\n        if not filename or '.' not in filename:\n            # 从 URL path 或 Content-Disposition 尝试获取\n            parsed_path = parsed.path\n            if parsed_path and '/' in parsed_path:\n                filename = os.path.basename(parsed_path)\n            if not os.path.splitext(filename)[1]:\n                # 仍然没有扩展名\n                filename += '.bin'\n\n        # 3. 推测 MIME 类型\n        content_type, _ = mimetypes.guess_type(filepath)\n        if content_type is None:\n            content_type = 'application/octet-stream'\n\n        # 4. Base64 编码\n        base64_content = base64.b64encode(file_content).decode('utf-8')\n\n        # 5. 构造返回字典\n        result = {\n            \"file_name\": filename,\n            \"file_data\": base64_content,\n            \"content_type\": content_type,\n            \"file_size\": len(file_content)\n        }\n\n        return result\n\n    except Exception as e:\n        print(f\"文件处理失败: {e}\")\n        return {\n            \"error\": str(e),\n            \"file_name\": None,\n            \"file_data\": None,\n            \"content_type\": None,\n            \"file_size\": 0\n        }",
+    "sort_order": 4,
+    "is_active": true,
+    "created_at": "2025-10-21T18:00:16.568714",
+    "updated_at": "2025-11-10T16:06:04.321731",
+    "params": [
+      {
+        "name": "filepath",
+        "label": "文件地址",
+        "description": "",
+        "type": "string",
+        "required": true,
+        "defaultValue": "",
+        "direction": 0,
+        "apiUrl": ""
+      }
+    ]
+  },
+  {
+    "id": "8262be12-683a-45c9-b6d2-381f9bf2984b",
+    "name": "转为网络地址",
+    "icon": "el-icon-link",
+    "description": "将文件本地路径转为网络地址",
+    "category_id": "flow_control",
+    "python_script": "from config import config\nimport urllib.parse\ndef getWebUrl(filepath:str):\n    # 统一转换为正斜杠\n    filepath = filepath.replace('\\\\', '/')\n    # 通过urllib.parse模块直接使用quote函数\n    interfaceAddress='/api/file/download_file?filepath='\n    encoded = urllib.parse.quote(str(filepath), safe='')\n    return f\"{config.SCHEME}://{config.HOST}:{config.PORT}{interfaceAddress}{encoded}\"",
+    "sort_order": 5,
+    "is_active": true,
+    "created_at": "2025-11-06T13:26:39.473920",
+    "updated_at": "2025-11-10T16:05:05.584068",
+    "params": [
+      {
+        "name": "filepath",
+        "label": "文件路径",
+        "description": "",
+        "type": "string",
+        "required": true,
+        "defaultValue": "",
+        "direction": 0,
+        "apiUrl": ""
+      },
+      {
+        "name": "weburl",
+        "label": "网络地址",
+        "description": "",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "direction": 1,
+        "apiUrl": ""
+      }
+    ]
+  },
+  {
+    "id": "d15812ec-59bc-437d-9dc2-98dee59404b8",
+    "name": "获取数据源路径",
+    "icon": "el-icon-apple",
+    "description": "获取数据源路径",
+    "category_id": "data_processing",
+    "python_script": "def execute(select_source_file):\n    return select_source_file",
+    "sort_order": 1,
+    "is_active": true,
+    "created_at": "2025-11-06T17:07:21.679013",
+    "updated_at": "2025-11-10T16:04:53.909401",
+    "params": [
+      {
+        "name": "select_source_file",
+        "label": "选择数据源文件",
+        "description": "",
+        "type": "select_excelpath",
+        "required": true,
+        "defaultValue": "",
+        "direction": 0,
+        "apiUrl": "http://127.0.0.1:5001/api/datasource/all-options"
+      }
+    ]
+  },
+  {
+    "id": "15d889a9-0147-4605-9b53-517434ea3ad8",
+    "name": "获取区域内最小行号",
+    "icon": "el-icon-aim",
+    "description": "获取excel指定区域内，最小行号",
+    "category_id": "data_operation",
+    "python_script": "from openpyxl import load_workbook\nfrom openpyxl.utils import coordinate_to_tuple, get_column_letter\n\ndef get_current_region(filepath,sheetname, start_cell):\n    \"\"\"\n    模拟 Excel 的 Range.CurrentRegion\n    返回 (min_row, max_row, min_col, max_col)\n    \"\"\"\n    wb = load_workbook(filepath)\n    sheet = wb[sheetname]\n    if isinstance(start_cell, str):\n        start_row, start_col = coordinate_to_tuple(start_cell)\n    else:\n        start_row, start_col = start_cell\n\n    # 初始化区域边界\n    min_row = max_row = start_row\n    min_col = max_col = start_col\n\n    expanded = True\n    while expanded:\n        expanded = False\n\n        # 尝试向上扩展\n        if min_row > 1:\n            row = min_row - 1\n            # 检查该行在 [min_col, max_col] 范围内是否全为空\n            if any(sheet.cell(row=row, column=col).value is not None for col in range(min_col, max_col + 1)):\n                min_row = row\n                expanded = True\n\n        # 尝试向下扩展\n        row = max_row + 1\n        if any(sheet.cell(row=row, column=col).value is not None for col in range(min_col, max_col + 1)):\n            max_row = row\n            expanded = True\n\n        # 尝试向左扩展\n        if min_col > 1:\n            col = min_col - 1\n            if any(sheet.cell(row=row, column=col).value is not None for row in range(min_row, max_row + 1)):\n                min_col = col\n                expanded = True\n\n        # 尝试向右扩展\n        col = max_col + 1\n        if any(sheet.cell(row=row, column=col).value is not None for row in range(min_row, max_row + 1)):\n            max_col = col\n            expanded = True\n\n    return min_row",
+    "sort_order": 5,
+    "is_active": true,
+    "created_at": "2025-11-10T16:02:28.924133",
+    "updated_at": "2025-11-10T16:18:41.441410",
+    "params": [
+      {
+        "name": "filepath",
+        "label": "文件路径",
+        "description": "",
+        "type": "string",
+        "required": true,
+        "defaultValue": "",
+        "direction": 0,
+        "apiUrl": ""
+      },
+      {
+        "name": "sheetname",
+        "label": "sheet名称",
+        "description": "",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "direction": 0,
+        "apiUrl": ""
+      },
+      {
+        "name": "start_cell",
+        "label": "单元格位置",
+        "description": "示例：A3",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "direction": 0,
+        "apiUrl": ""
+      },
+      {
+        "name": "min_row",
+        "label": "输出最小行号",
+        "description": "",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "direction": 1,
+        "apiUrl": ""
+      }
+    ]
+  },
+  {
+    "id": "15d889a9-0147-4605-9b53-517434ea3ad5",
+    "name": "获取区域内最大行号",
+    "icon": "el-icon-aim",
+    "description": "获取excel指定区域内，最大行号",
+    "category_id": "data_operation",
+    "python_script": "from openpyxl import load_workbook\nfrom openpyxl.utils import coordinate_to_tuple, get_column_letter\n\ndef get_current_region(filepath,sheetname, start_cell):\n    \"\"\"\n    模拟 Excel 的 Range.CurrentRegion\n    返回 (min_row, max_row, min_col, max_col)\n    \"\"\"\n    wb = load_workbook(filepath)\n    sheet = wb[sheetname]\n    if isinstance(start_cell, str):\n        start_row, start_col = coordinate_to_tuple(start_cell)\n    else:\n        start_row, start_col = start_cell\n\n    # 初始化区域边界\n    min_row = max_row = start_row\n    min_col = max_col = start_col\n\n    expanded = True\n    while expanded:\n        expanded = False\n\n        # 尝试向上扩展\n        if min_row > 1:\n            row = min_row - 1\n            # 检查该行在 [min_col, max_col] 范围内是否全为空\n            if any(sheet.cell(row=row, column=col).value is not None for col in range(min_col, max_col + 1)):\n                min_row = row\n                expanded = True\n\n        # 尝试向下扩展\n        row = max_row + 1\n        if any(sheet.cell(row=row, column=col).value is not None for col in range(min_col, max_col + 1)):\n            max_row = row\n            expanded = True\n\n        # 尝试向左扩展\n        if min_col > 1:\n            col = min_col - 1\n            if any(sheet.cell(row=row, column=col).value is not None for row in range(min_row, max_row + 1)):\n                min_col = col\n                expanded = True\n\n        # 尝试向右扩展\n        col = max_col + 1\n        if any(sheet.cell(row=row, column=col).value is not None for row in range(min_row, max_row + 1)):\n            max_col = col\n            expanded = True\n\n    return max_row",
+    "sort_order": 6,
+    "is_active": true,
+    "created_at": "2025-11-10T16:02:28.924133",
+    "updated_at": "2025-11-10T16:19:04.208033",
+    "params": [
+      {
+        "name": "filepath",
+        "label": "文件路径",
+        "description": "",
+        "type": "string",
+        "required": true,
+        "defaultValue": "",
+        "direction": 0,
+        "apiUrl": ""
+      },
+      {
+        "name": "sheetname",
+        "label": "sheet名称",
+        "description": "",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "direction": 0,
+        "apiUrl": ""
+      },
+      {
+        "name": "start_cell",
+        "label": "单元格位置",
+        "description": "示例：A3",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "direction": 0,
+        "apiUrl": ""
+      },
+      {
+        "name": "max_row",
+        "label": "输出最大行号",
+        "description": "",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "direction": 1,
+        "apiUrl": ""
+      }
+    ]
+  },
+  {
+    "id": "15d889a9-0147-4605-9b53-517434ea3ad6",
+    "name": "获取区域内最小列号",
+    "icon": "el-icon-aim",
+    "description": "获取excel指定区域内，最小列号",
+    "category_id": "data_operation",
+    "python_script": "from openpyxl import load_workbook\nfrom openpyxl.utils import coordinate_to_tuple, get_column_letter\n\ndef get_current_region(filepath,sheetname, start_cell):\n    \"\"\"\n    模拟 Excel 的 Range.CurrentRegion\n    返回 (min_row, max_row, min_col, max_col)\n    \"\"\"\n    wb = load_workbook(filepath)\n    sheet = wb[sheetname]\n    if isinstance(start_cell, str):\n        start_row, start_col = coordinate_to_tuple(start_cell)\n    else:\n        start_row, start_col = start_cell\n\n    # 初始化区域边界\n    min_row = max_row = start_row\n    min_col = max_col = start_col\n\n    expanded = True\n    while expanded:\n        expanded = False\n\n        # 尝试向上扩展\n        if min_row > 1:\n            row = min_row - 1\n            # 检查该行在 [min_col, max_col] 范围内是否全为空\n            if any(sheet.cell(row=row, column=col).value is not None for col in range(min_col, max_col + 1)):\n                min_row = row\n                expanded = True\n\n        # 尝试向下扩展\n        row = max_row + 1\n        if any(sheet.cell(row=row, column=col).value is not None for col in range(min_col, max_col + 1)):\n            max_row = row\n            expanded = True\n\n        # 尝试向左扩展\n        if min_col > 1:\n            col = min_col - 1\n            if any(sheet.cell(row=row, column=col).value is not None for row in range(min_row, max_row + 1)):\n                min_col = col\n                expanded = True\n\n        # 尝试向右扩展\n        col = max_col + 1\n        if any(sheet.cell(row=row, column=col).value is not None for row in range(min_row, max_row + 1)):\n            max_col = col\n            expanded = True\n\n    return get_column_letter(min_col)",
+    "sort_order": 7,
+    "is_active": true,
+    "created_at": "2025-11-10T16:02:28.924133",
+    "updated_at": "2025-11-10T16:19:27.902987",
+    "params": [
+      {
+        "name": "filepath",
+        "label": "文件路径",
+        "description": "",
+        "type": "string",
+        "required": true,
+        "defaultValue": "",
+        "direction": 0,
+        "apiUrl": ""
+      },
+      {
+        "name": "sheetname",
+        "label": "sheet名称",
+        "description": "",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "direction": 0,
+        "apiUrl": ""
+      },
+      {
+        "name": "start_cell",
+        "label": "单元格位置",
+        "description": "示例：A3",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "direction": 0,
+        "apiUrl": ""
+      },
+      {
+        "name": "min_col",
+        "label": "输出最小列号",
+        "description": "",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "direction": 1,
+        "apiUrl": ""
+      }
+    ]
+  },
+  {
+    "id": "15d889a9-0147-4605-9b53-517434ea3ad7",
+    "name": "获取区域内最大列号",
+    "icon": "el-icon-aim",
+    "description": "获取excel指定区域内，最大列号",
+    "category_id": "data_operation",
+    "python_script": "from openpyxl import load_workbook\nfrom openpyxl.utils import coordinate_to_tuple, get_column_letter\n\ndef get_current_region(filepath,sheetname, start_cell):\n    \"\"\"\n    模拟 Excel 的 Range.CurrentRegion\n    返回 (min_row, max_row, min_col, max_col)\n    \"\"\"\n    wb = load_workbook(filepath)\n    sheet = wb[sheetname]\n    if isinstance(start_cell, str):\n        start_row, start_col = coordinate_to_tuple(start_cell)\n    else:\n        start_row, start_col = start_cell\n\n    # 初始化区域边界\n    min_row = max_row = start_row\n    min_col = max_col = start_col\n\n    expanded = True\n    while expanded:\n        expanded = False\n\n        # 尝试向上扩展\n        if min_row > 1:\n            row = min_row - 1\n            # 检查该行在 [min_col, max_col] 范围内是否全为空\n            if any(sheet.cell(row=row, column=col).value is not None for col in range(min_col, max_col + 1)):\n                min_row = row\n                expanded = True\n\n        # 尝试向下扩展\n        row = max_row + 1\n        if any(sheet.cell(row=row, column=col).value is not None for col in range(min_col, max_col + 1)):\n            max_row = row\n            expanded = True\n\n        # 尝试向左扩展\n        if min_col > 1:\n            col = min_col - 1\n            if any(sheet.cell(row=row, column=col).value is not None for row in range(min_row, max_row + 1)):\n                min_col = col\n                expanded = True\n\n        # 尝试向右扩展\n        col = max_col + 1\n        if any(sheet.cell(row=row, column=col).value is not None for row in range(min_row, max_row + 1)):\n            max_col = col\n            expanded = True\n\n    return get_column_letter(max_col)",
+    "sort_order": 8,
+    "is_active": true,
+    "created_at": "2025-11-10T16:02:28.924133",
+    "updated_at": "2025-11-10T16:19:43.595964",
+    "params": [
+      {
+        "name": "filepath",
+        "label": "文件路径",
+        "description": "",
+        "type": "string",
+        "required": true,
+        "defaultValue": "",
+        "direction": 0,
+        "apiUrl": ""
+      },
+      {
+        "name": "sheetname",
+        "label": "sheet名称",
+        "description": "",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "direction": 0,
+        "apiUrl": ""
+      },
+      {
+        "name": "start_cell",
+        "label": "单元格位置",
+        "description": "示例：A3",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "direction": 0,
+        "apiUrl": ""
+      },
+      {
+        "name": "max_col",
+        "label": "输出最大列号",
+        "description": "",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "direction": 1,
+        "apiUrl": ""
+      }
+    ]
+  },
+  {
+    "id": "6d867fef-eac7-4cf1-b9a5-3ad2ff7b024c",
+    "name": "查找单元格位置",
+    "icon": "el-icon-add-location",
+    "description": "查找指定字符串在单元格中的位置",
+    "category_id": "data_operation",
+    "python_script": "from openpyxl import load_workbook\nfrom openpyxl.utils import get_column_letter\n\ndef find_exact_string_with_newline(file_path, sheet_name, target_string):\n    \"\"\"\n    在 Excel 中精确查找包含换行符的目标字符串。\n    \n    :param file_path: Excel 文件路径\n    :param sheet_name: 工作表名\n    :param target_string: 要查找的字符串（含 \\n 换行）\n    :return: 匹配的单元格地址列表\n    \"\"\"\n    wb = load_workbook(file_path, read_only=True)\n    ws = wb[sheet_name]\n    addr = ''\n\n    for row in ws.iter_rows():\n        for cell in row:\n            if cell.value is not None:\n                # 将值转为字符串并去除前后空白（可选）\n                val_str = str(cell.value).strip()\n                if val_str == target_string.strip():\n                    addr = f\"{get_column_letter(cell.column)}{cell.row}\"                \n            if addr:\n                break\n        if addr:\n            break\n    \n    wb.close()\n    return addr",
+    "sort_order": 10,
+    "is_active": true,
+    "created_at": "2025-11-12T10:31:30.622412",
+    "updated_at": "2025-11-12T10:53:33.278625",
+    "params": [
+      {
+        "name": "file_path",
+        "label": "文件路径",
+        "description": "",
+        "type": "string",
+        "required": true,
+        "defaultValue": "",
+        "direction": 0,
+        "apiUrl": ""
+      },
+      {
+        "name": "sheet_name",
+        "label": "sheet名称",
+        "description": "",
+        "type": "string",
+        "required": true,
+        "defaultValue": "",
+        "direction": 0,
+        "apiUrl": ""
+      },
+      {
+        "name": "target_string",
+        "label": "查找字符串",
+        "description": "",
+        "type": "string",
+        "required": true,
+        "defaultValue": "",
+        "direction": 0,
+        "apiUrl": ""
+      },
+      {
+        "name": "cell_address",
+        "label": "单元格位置",
+        "description": "如A3",
+        "type": "string",
+        "required": true,
+        "defaultValue": "cell_address",
+        "direction": 1,
+        "apiUrl": ""
+      }
+    ]
+  },
+  {
+    "id": "1e425d92-a796-4abd-8067-2c2488d89beb",
+    "name": "获取独立表格区域",
+    "icon": "code",
+    "description": "从excel文件指定sheet中获取所有独立表格区域集合",
+    "category_id": "data_operation",
+    "python_script": "from openpyxl import load_workbook\nfrom openpyxl.utils import get_column_letter\nfrom collections import deque\n\ndef get_independent_table_regions(file_path, sheet_name):\n    \"\"\"\n    使用四连通（上下左右）检测所有独立表格区域。\n    即使两个区域在同一行范围，只要被空列隔开，就视为独立。\n    \n    返回: [(min_row, min_col, max_row, max_col), ...]\n    \"\"\"\n    wb = load_workbook(file_path, read_only=False)\n    ws = wb[sheet_name]\n\n    # 构建非空单元格集合\n    non_empty = set()\n    for row in ws.iter_rows():\n        for cell in row:\n            if cell.value is not None:\n                non_empty.add((cell.row, cell.column))\n\n    visited = set()\n    regions = []\n\n    # 四个方向：上、下、左、右\n    directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]\n\n    for start in non_empty:\n        if start in visited:\n            continue\n\n        # BFS 开始\n        queue = deque([start])\n        component = set()\n        component.add(start)\n        visited.add(start)\n\n        while queue:\n            r, c = queue.popleft()\n            for dr, dc in directions:\n                nr, nc = r + dr, c + dc\n                neighbor = (nr, nc)\n                if neighbor in non_empty and neighbor not in visited:\n                    visited.add(neighbor)\n                    component.add(neighbor)\n                    queue.append(neighbor)\n\n        # 计算该连通区域的边界\n        rows = [p[0] for p in component]\n        cols = [p[1] for p in component]\n        min_r, max_r = min(rows), max(rows)\n        min_c, max_c = min(cols), max(cols)\n\n        regions.append(f\"{get_column_letter(min_c)}{min_r}:{get_column_letter(max_c)}{max_r}\")\n\n    wb.close()\n    # 可选：按区域左上角排序（从上到下、从左到右）\n    regions.sort(key=lambda x: (x[0], x[1]))\n    return regions",
+    "sort_order": 11,
+    "is_active": true,
+    "created_at": "2025-11-12T14:22:15.542710",
+    "updated_at": "2025-11-12T14:22:15.542710",
+    "params": [
+      {
+        "name": "file_path",
+        "label": "文件路径",
+        "description": "",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "direction": 0,
+        "apiUrl": ""
+      },
+      {
+        "name": "sheet_name",
+        "label": "sheet名称",
+        "description": "",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "direction": 0,
+        "apiUrl": ""
+      },
+      {
+        "name": "regions",
+        "label": "表格区域集合",
+        "description": "",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "direction": 1,
+        "apiUrl": ""
+      }
+    ]
+  },
+  {
+    "id": "6ce5e09a-2ad1-4dca-9f07-fbfa7f89faed",
+    "name": "获取集合长度",
+    "icon": "code",
+    "description": "获取集合变量长度",
+    "category_id": "flow_control",
+    "python_script": "import ast\ndef execute(data_list):  \n    # 安全地将字符串转为列表\n    region_list = ast.literal_eval(data_list)\n    return len(region_list)",
+    "sort_order": 3,
+    "is_active": true,
+    "created_at": "2025-11-12T14:25:29.514329",
+    "updated_at": "2025-11-12T15:44:20.675059",
+    "params": [
+      {
+        "name": "data_list",
+        "label": "数据集合",
+        "description": "",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "direction": 0,
+        "apiUrl": ""
+      },
+      {
+        "name": "data_len",
+        "label": "数据长度",
+        "description": "",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "direction": 1,
+        "apiUrl": ""
+      }
+    ]
+  },
+  {
+    "id": "d906386f-83d4-4ee5-a6ac-df8cdfaa5078",
+    "name": "集合取第n个值",
+    "icon": "code",
+    "description": "从集合中取第n个值",
+    "category_id": "flow_control",
+    "python_script": "import ast\ndef execute(data_list,n):\n    # 安全地将字符串转为列表\n    region_list = ast.literal_eval(data_list)\n    return region_list[int(n)]",
+    "sort_order": 2,
+    "is_active": true,
+    "created_at": "2025-11-12T14:32:46.136719",
+    "updated_at": "2025-11-12T15:45:56.968763",
+    "params": [
+      {
+        "name": "data_list",
+        "label": "数据集合",
+        "description": "",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "direction": 0,
+        "apiUrl": ""
+      },
+      {
+        "name": "n",
+        "label": "取第几个值",
+        "description": "",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "direction": 0,
+        "apiUrl": ""
+      },
+      {
+        "name": "value",
+        "label": "值",
+        "description": "",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "direction": 1,
+        "apiUrl": ""
+      }
+    ]
+  },
+  {
+    "id": "35a6cb18-fc40-4999-9e19-d6b119ea4736",
+    "name": "数据范围提取",
+    "icon": "code",
+    "description": "从excel文件指定区域中提取数据",
+    "category_id": "data_operation",
+    "python_script": "import openpyxl\nfrom openpyxl.styles import Font, Border, PatternFill, Alignment\nfrom openpyxl.utils import column_index_from_string, get_column_letter\nfrom openpyxl.worksheet.worksheet import Worksheet\nimport os\nimport re\nfrom openpyxl.styles.colors import COLOR_INDEX\n\n# ========== 辅助函数：颜色解析 ==========\ndef _theme_and_tint_to_rgb(theme, tint, workbook):\n    \"\"\"将 Excel 主题色 + 色调转换为 ARGB 字符串（如 'FF00FF00'）\"\"\"\n    try:\n        clr_scheme = workbook.theme.themeElements.clrScheme\n        # 映射 theme 索引到 clrScheme 属性\n        theme_colors = [\n            clr_scheme.lt1.val,   # 0: Light 1 (usually white)\n            clr_scheme.dk1.val,   # 1: Dark 1 (usually black)\n            clr_scheme.lt2.val,   # 2: Light 2\n            clr_scheme.dk2.val,   # 3: Dark 2\n            clr_scheme.accent1.val,\n            clr_scheme.accent2.val,\n            clr_scheme.accent3.val,\n            clr_scheme.accent4.val,\n            clr_scheme.accent5.val,\n            clr_scheme.accent6.val,\n        ]\n        if theme < len(theme_colors):\n            base_rgb = theme_colors[theme]\n        else:\n            return None\n\n        # 验证 base_rgb 是 6 位十六进制\n        if not base_rgb or not re.match(r'^[0-9A-Fa-f]{6}$', base_rgb):\n            return None\n\n        # 应用 tint（色调调整）\n        def apply_tint(rgb_hex, tint_value):\n            r = int(rgb_hex[0:2], 16)\n            g = int(rgb_hex[2:4], 16)\n            b = int(rgb_hex[4:6], 16)\n\n            if tint_value < 0:\n                # Darken\n                r = int(r * (1 + tint_value))\n                g = int(g * (1 + tint_value))\n                b = int(b * (1 + tint_value))\n            else:\n                # Lighten\n                r = int(r * (1 - tint_value) + 255 * tint_value)\n                g = int(g * (1 - tint_value) + 255 * tint_value)\n                b = int(b * (1 - tint_value) + 255 * tint_value)\n\n            r = max(0, min(255, r))\n            g = max(0, min(255, g))\n            b = max(0, min(255, b))\n            return f\"{r:02X}{g:02X}{b:02X}\"\n\n        rgb = apply_tint(base_rgb, tint)\n        return f\"FF{rgb}\".upper()  # Alpha=FF (不透明)\n    except Exception:\n        return None\n\n\ndef _get_rgb_color(color_obj, workbook=None):\n    \"\"\"安全获取颜色的 ARGB 字符串表示\"\"\"\n    if color_obj is None:\n        return None\n\n    if hasattr(color_obj, 'type'):\n        if color_obj.type == 'rgb' and color_obj.rgb:\n            return color_obj.rgb  # already like 'FF0000FF'\n        elif color_obj.type == 'theme' and workbook is not None:\n            tint = getattr(color_obj, 'tint', 0.0)\n            return _theme_and_tint_to_rgb(color_obj.theme, tint, workbook)\n        elif color_obj.type == 'indexed':\n            idx = color_obj.indexed\n            if isinstance(idx, int) and 0 <= idx < len(COLOR_INDEX):\n                val = COLOR_INDEX[idx]\n                if val and isinstance(val, str) and len(val) == 6:\n                    return f\"FF{val}\".upper()\n    return None\nfrom openpyxl.utils import column_index_from_string, coordinate_to_tuple\ndef _parse_range(range_str):\n    \"\"\"\n    将 Excel 区域字符串（如 'A3:B5'）解析为字典：\n    {\n        \"startRow\": 3,\n        \"endRow\": 5,\n        \"startColumn\": \"A\",\n        \"endColumn\": \"B\"\n    }\n    \"\"\"\n    if ':' not in range_str:\n        # 单个单元格，如 'C7'\n        cell = range_str.strip()\n        row, col = coordinate_to_tuple(cell)\n        col_letter = cell[:len(cell) - len(str(row))]\n        return {\n            \"startRow\": row,\n            \"endRow\": row,\n            \"startColumn\": col_letter.upper(),\n            \"endColumn\": col_letter.upper()\n        }\n    \n    start_cell, end_cell = range_str.split(':')\n    start_cell = start_cell.strip()\n    end_cell = end_cell.strip()\n\n    # 解析起始和结束单元格\n    start_row, start_col_idx = coordinate_to_tuple(start_cell)\n    end_row, end_col_idx = coordinate_to_tuple(end_cell)\n\n    # 获取列字母（保持原始大小写或统一转大写）\n    start_col_letter = start_cell[:len(start_cell) - len(str(start_row))].upper()\n    end_col_letter = end_cell[:len(end_cell) - len(str(end_row))].upper()\n\n    return start_row,end_row,start_col_letter,end_col_letter\n\n# ========== 主函数 ==========\ndef read_excel_range(\n    datasPath: str = None,\n    sheetName: str = None,\n    range_str: str = None\n):\n    \"\"\"\n    读取 Excel 指定区域单元格的数据和样式（含正确解析的背景色）。\n\n    参数:\n        datasPath (str, optional): Excel 文件路径。默认为 None。\n        sheetName (str, optional): 工作表名称。默认为 None (读取活动工作表或第一个工作表)。\n        range_str (str, optional): 区域字符串，如 'A3:B5'。默认为 None (读取整个工作表)。\n\n    返回:\n        list: 包含单元格信息的列表，每个单元格信息是一个字典，\n              包含 'value', 'font', 'border', 'fill', 'alignment' 等键。\n              如果发生错误，则返回 None。\n    \"\"\"\n    if not datasPath:\n        print(\"错误: 必须提供 datasPath 参数。\")\n        return None\n\n    if not os.path.exists(datasPath):\n        print(f\"错误: 文件路径 '{datasPath}' 不存在。\")\n        return None\n\n    try:\n        workbook = openpyxl.load_workbook(datasPath, data_only=True)\n    except Exception as e:\n        print(f\"错误: 无法加载工作簿 '{datasPath}'。原因: {e}\")\n        return None\n\n    # 获取工作表\n    worksheet = None\n    if sheetName:\n        if sheetName in workbook.sheetnames:\n            worksheet = workbook[sheetName]\n        else:\n            print(f\"警告: 工作表 '{sheetName}' 未找到，将使用活动工作表或第一个工作表。\")\n\n    if worksheet is None:\n        worksheet = workbook.active if workbook.active else (workbook.worksheets[0] if workbook.worksheets else None)\n        if worksheet is None:\n            print(\"错误: 工作簿中没有可用的工作表。\")\n            return None\n        else:\n            print(f\"信息: 使用工作表 '{worksheet.title}'.\")\n    startRow,endRow,startColumn,endColumn = _parse_range(range_str)\n    # 获取实际维度\n    max_row = worksheet.max_row\n    max_column = worksheet.max_column\n\n    # 处理默认值\n    startRow = max(1, startRow or 1)\n    endRow = min(max_row, endRow or max_row)\n\n    def safe_col_index(col_str):\n        if col_str is None:\n            return 1\n        try:\n            return column_index_from_string(col_str.upper())\n        except:\n            print(f\"警告: 列号 '{col_str}' 无效，将使用默认列。\")\n            return 1\n\n    startColIndex = max(1, safe_col_index(startColumn))\n    endColIndex = min(max_column, safe_col_index(endColumn) if endColumn else max_column)\n\n    if startRow > endRow or startColIndex > endColIndex:\n        print(\"警告: 指定的范围无效 (起始位置大于结束位置)，将返回空列表。\")\n        return []\n\n    print(f\"信息: 正在读取范围 {get_column_letter(startColIndex)}{startRow}:{get_column_letter(endColIndex)}{endRow}...\")\n\n    result_data = []\n\n    for row in range(startRow, endRow + 1):\n        row_data = []\n        for col in range(startColIndex, endColIndex + 1):\n            cell = worksheet.cell(row=row, column=col)\n\n            # 提取字体颜色（可选扩展）\n            font_color_rgb = _get_rgb_color(cell.font.color, workbook) if cell.font else None\n\n            cell_info = {\n                \"coordinate\": cell.coordinate,\n                \"value\": cell.value,\n                \"font\": {\n                    \"name\": cell.font.name if cell.font else None,\n                    \"sz\": cell.font.sz if cell.font else None,\n                    \"colorRGB\": font_color_rgb,\n                    \"b\": cell.font.b if cell.font else None,\n                    \"i\": cell.font.i if cell.font else None,  # italic\n                    \"u\": cell.font.u if cell.font else None,  # underline\n                },\n                \"border\": {\n                    \"left\": {\n                        \"style\": cell.border.left.style if cell.border and cell.border.left else None,\n                        \"colorRGB\": _get_rgb_color(cell.border.left.color, workbook) if cell.border and cell.border.left else None,\n                    },\n                    \"right\": {\n                        \"style\": cell.border.right.style if cell.border and cell.border.right else None,\n                        \"colorRGB\": _get_rgb_color(cell.border.right.color, workbook) if cell.border and cell.border.right else None,\n                    },\n                    \"top\": {\n                        \"style\": cell.border.top.style if cell.border and cell.border.top else None,\n                        \"colorRGB\": _get_rgb_color(cell.border.top.color, workbook) if cell.border and cell.border.top else None,\n                    },\n                    \"bottom\": {\n                        \"style\": cell.border.bottom.style if cell.border and cell.border.bottom else None,\n                        \"colorRGB\": _get_rgb_color(cell.border.bottom.color, workbook) if cell.border and cell.border.bottom else None,\n                    },\n                },\n                \"fill\": {\n                    \"patternType\": cell.fill.patternType if cell.fill else None,\n                    \"fgColorRGB\": _get_rgb_color(cell.fill.fgColor, workbook) if cell.fill else None,\n                    \"bgColorRGB\": _get_rgb_color(cell.fill.bgColor, workbook) if cell.fill else None,\n                },\n                \"alignment\": {\n                    \"horizontal\": cell.alignment.horizontal if cell.alignment else None,\n                    \"vertical\": cell.alignment.vertical if cell.alignment else None,\n                    \"wrap_text\": cell.alignment.wrapText if cell.alignment else None,\n                    \"text_rotation\": cell.alignment.textRotation if cell.alignment else None,\n                }\n            }\n            row_data.append(cell_info)\n        result_data.append(row_data)\n\n    return result_data",
+    "sort_order": 1,
+    "is_active": true,
+    "created_at": "2025-11-12T15:01:36.226130",
+    "updated_at": "2025-11-13T11:03:44.710655",
+    "params": [
+      {
+        "name": "datasPath",
+        "label": "文件路径",
+        "description": "",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "direction": 0,
+        "apiUrl": ""
+      },
+      {
+        "name": "sheetName",
+        "label": "sheet名称",
+        "description": "",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "direction": 0,
+        "apiUrl": ""
+      },
+      {
+        "name": "range_str",
+        "label": "数据区域",
+        "description": "",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "direction": 0,
+        "apiUrl": ""
+      },
+      {
+        "name": "result_data",
+        "label": "数据结果",
+        "description": "",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "direction": 1,
+        "apiUrl": ""
+      }
+    ]
+  },
+  {
+    "id": "4c7284d8-f782-4fc9-aaf8-7f642f1f69a7",
+    "name": "设置变量",
+    "icon": "code",
+    "description": "新建或更新变量",
+    "category_id": "flow_control",
+    "python_script": "def execute(value):    \n    return value",
+    "sort_order": 1,
+    "is_active": true,
+    "created_at": "2025-11-12T15:09:11.527239",
+    "updated_at": "2025-11-12T17:12:12.554883",
+    "params": [
+      {
+        "name": "value",
+        "label": "变量值",
+        "description": "",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "direction": 0,
+        "apiUrl": ""
+      },
+      {
+        "name": "name",
+        "label": "变量名",
+        "description": "",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "direction": 2,
+        "apiUrl": ""
+      }
+    ]
+  },
+  {
+    "id": "1425726d-630e-41e2-b9c9-8666f676a1a0",
+    "name": "添加sheet页",
+    "icon": "code",
+    "description": "向excel中添加sheet页",
+    "category_id": "data_operation",
+    "python_script": "import os\nimport re\nfrom openpyxl import load_workbook\n\ndef _sanitize_sheet_name(name: str, existing_names) -> str:\n    name = str(name).strip() if name else \"\"\n    name = re.sub(r'[^\\u4e00-\\u9fa5a-zA-Z0-9]', '_', name)\n    name = name[:31].rstrip('_') or \"Sheet\"\n    candidate = name\n    counter = 1\n    while candidate in existing_names:\n        suffix = f\" ({counter})\"\n        base = name[:31 - len(suffix)]\n        candidate = base + suffix\n        counter += 1\n    print(f\"最终工作表名: {candidate}\")\n    return candidate\n\ndef add_sheet_to_existing_excel(file_path: str, sheet_name: str):\n    if not os.path.isfile(file_path):\n        raise FileNotFoundError(f\"文件不存在: {file_path}\")\n    \n    wb = load_workbook(file_path)\n    existing = wb.sheetnames\n\n    clean_name = _sanitize_sheet_name(sheet_name, existing)\n    if sheet_name not in existing:\n        wb.create_sheet(title=clean_name)\n        wb.save(file_path)\n    wb.close()",
+    "sort_order": 1,
+    "is_active": true,
+    "created_at": "2025-11-12T15:38:34.329489",
+    "updated_at": "2025-11-12T17:39:05.491356",
+    "params": [
+      {
+        "name": "file_path",
+        "label": "文件路径",
+        "description": "",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "direction": 0,
+        "apiUrl": ""
+      },
+      {
+        "name": "sheet_name",
+        "label": "sheet名称",
+        "description": "",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "direction": 0,
+        "apiUrl": ""
+      }
+    ]
+  }
+]

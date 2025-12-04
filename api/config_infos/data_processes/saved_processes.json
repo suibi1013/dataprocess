@@ -1,0 +1,620 @@
+[
+  {
+    "id": "flow_9dddd21c-947d-41f1-a231-cd47921690ac",
+    "name": "测试流程1",
+    "description": "测试分支流程",
+    "nodes": [
+      {
+        "id": "node_1760925046998_24dbkrsn0",
+        "instructionId": "fef6f8de-46df-4f6a-8da8-548aa861f610",
+        "name": null,
+        "x": -770.0,
+        "y": -650.0,
+        "params": {
+          "startRow": 3,
+          "endRow": 5,
+          "startColumn": "C",
+          "endColumn": "D",
+          "result_variable_name": "data_result",
+          "datasPath": "config_infos/data_sources\\excel_files\\20251016_110821_89a62407_data_-_.xlsx",
+          "sheetName": "数据表"
+        }
+      },
+      {
+        "id": "node_1761040947645_ynoka8te1",
+        "instructionId": "d0c8d15c-b0b7-4b36-9f03-8c16edbbdb62",
+        "name": null,
+        "x": -870.0,
+        "y": -530.0,
+        "params": {
+          "filename": "newfile",
+          "filepath": "filepath"
+        }
+      },
+      {
+        "id": "node_1761040949586_ctwlsvcbf",
+        "instructionId": "d22d6d99-b929-4cb4-8112-6fa8ca61f9c7",
+        "name": null,
+        "x": -870.0,
+        "y": -430.0,
+        "params": {
+          "data": "{{node_1760925046998_24dbkrsn0.result_variable_name}}",
+          "target_path": "{{node_1761040947645_ynoka8te1.filepath}}",
+          "sheet_name": "newsheet"
+        }
+      },
+      {
+        "id": "node_1761804780961_44xfl3513",
+        "instructionId": "fef6f8de-46df-4f6a-8da8-548aa861f610",
+        "name": null,
+        "x": -690.0,
+        "y": -530.0,
+        "params": {
+          "datasPath": "config_infos/data_sources\\excel_files\\20251016_110821_89a62407_data_-_.xlsx",
+          "sheetName": "数据表",
+          "startRow": 4,
+          "endRow": 5,
+          "startColumn": "B",
+          "endColumn": "C",
+          "result_variable_name": "data_result"
+        }
+      },
+      {
+        "id": "node_1762407796633_ez6317z4t",
+        "instructionId": "8262be12-683a-45c9-b6d2-381f9bf2984b",
+        "name": null,
+        "x": -870.0,
+        "y": -350.0,
+        "params": {
+          "filepath": "{{node_1761040947645_ynoka8te1.filepath}}",
+          "weburl": "weburl"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "fc17ba8c-51e4-4bb2-8ae1-3b071c7a793a",
+        "source": "node_1760925046998_24dbkrsn0",
+        "target": "node_1761040947645_ynoka8te1",
+        "label": "1==1"
+      },
+      {
+        "id": "a89a6ace-7ba1-432c-8ceb-7c754c753633",
+        "source": "node_1761040947645_ynoka8te1",
+        "target": "node_1761040949586_ctwlsvcbf",
+        "label": ""
+      },
+      {
+        "id": "d19cbc57-a647-4a60-a263-9e748724c18e",
+        "source": "node_1760925046998_24dbkrsn0",
+        "target": "node_1761804780961_44xfl3513",
+        "label": "1==2"
+      },
+      {
+        "id": "70d74259-e3c8-488d-9d92-8a98f994b967",
+        "source": "node_1761040949586_ctwlsvcbf",
+        "target": "node_1762407796633_ez6317z4t",
+        "label": ""
+      }
+    ],
+    "createdAt": "2025-11-06T16:00:40.922991",
+    "updatedAt": "2025-11-06T16:18:51.311639"
+  },
+  {
+    "id": "flow_98e84aaa-522f-4c96-9a9c-913da93f2aa8",
+    "name": "光明月报_液奶市场全国数据2",
+    "description": "实际业务场景实操",
+    "nodes": [
+      {
+        "id": "node_1762419385898_jembslstx",
+        "instructionId": "d22d6d99-b929-4cb4-8112-6fa8ca61f9c7",
+        "name": null,
+        "description": "",
+        "x": -650.0,
+        "y": -320.0,
+        "params": {
+          "data": "{{node_1763002331113_iq4dsfb9b.result_data}}",
+          "target_path": "{{node_1763002396496_ula0ajgy8.select_source_file}}",
+          "sheet_name": "产品定义",
+          "startrow": "4",
+          "startcol": "L",
+          "with_style": true
+        }
+      },
+      {
+        "id": "node_1762420253311_89w6kpzax",
+        "instructionId": "d15812ec-59bc-437d-9dc2-98dee59404b8",
+        "name": null,
+        "description": "",
+        "x": -830.0,
+        "y": -500.0,
+        "params": {
+          "select_source_file": "config_infos/data_sources/excel_files/MzI1LeaKpOiCpOWTgTIwMjUwNDAy.xlsx"
+        }
+      },
+      {
+        "id": "node_1763002331113_iq4dsfb9b",
+        "instructionId": "35a6cb18-fc40-4999-9e19-d6b119ea4736",
+        "name": null,
+        "description": "",
+        "x": -831.352294921875,
+        "y": -426.2727355957031,
+        "params": {
+          "datasPath": "{{node_1762420253311_89w6kpzax.select_source_file}}",
+          "sheetName": "产品定义",
+          "range_str": "B1:C3",
+          "result_data": "result_data"
+        }
+      },
+      {
+        "id": "node_1763002396496_ula0ajgy8",
+        "instructionId": "d15812ec-59bc-437d-9dc2-98dee59404b8",
+        "name": null,
+        "description": "",
+        "x": -640.0,
+        "y": -430.0,
+        "params": {
+          "select_source_file": "config_infos/data_sources/excel_files/MzI1LeaKpOiCpOWTgTIwMjUwNDAy.xlsx"
+        }
+      },
+      {
+        "id": "node_1763002464350_4xir3ylo4",
+        "instructionId": "85a57948-ee58-4bb0-8fd8-62931339a061",
+        "name": null,
+        "description": "",
+        "x": -650.0,
+        "y": -240.0,
+        "params": {
+          "filepath": "{{node_1762419385898_jembslstx.target_path}}"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "8e27c797-d16a-48c0-b1cd-a20280200385",
+        "source": "node_1762420253311_89w6kpzax",
+        "target": "node_1763002331113_iq4dsfb9b",
+        "label": ""
+      },
+      {
+        "id": "2bcaa0fa-73e9-4a9f-a0a4-e833d36a86a9",
+        "source": "node_1763002396496_ula0ajgy8",
+        "target": "node_1762419385898_jembslstx",
+        "label": ""
+      },
+      {
+        "id": "7561b54d-ea28-4a2e-ab5a-5feaa06b6f0e",
+        "source": "node_1762419385898_jembslstx",
+        "target": "node_1763002464350_4xir3ylo4",
+        "label": ""
+      },
+      {
+        "id": "2f429f6a-ae95-4cd2-8d72-bbdac60e2803",
+        "source": "node_1763002331113_iq4dsfb9b",
+        "target": "node_1763002396496_ula0ajgy8",
+        "label": ""
+      }
+    ],
+    "createdAt": "2025-11-13T12:01:52.217847",
+    "updatedAt": "2025-11-13T12:01:52.217847"
+  },
+  {
+    "id": "flow_98e84aaa-522f-4c96-9a9c-913da93f2aa9",
+    "name": "光明月报_液奶市场全国数据",
+    "description": "实际业务场景实操",
+    "nodes": [
+      {
+        "id": "node_1761286734041_pcbg4vnoy",
+        "instructionId": "fef6f8de-46df-4f6a-8da8-548aa861f610",
+        "name": null,
+        "description": "从源数据中取数",
+        "x": -1000.0,
+        "y": -640.0,
+        "params": {
+          "datasPath": "{{node_1762762490176_l1w68bphw.select_source_file}}",
+          "sheetName": "{{node_1762762562189_iu8nkl6dh.sheetname}}",
+          "startRow": "3",
+          "endRow": "{{node_1762762514147_84ltequkw.max_row}}",
+          "startColumn": "A",
+          "endColumn": "{{node_1762762562189_iu8nkl6dh.max_col}}",
+          "result_variable_name": "data_result"
+        }
+      },
+      {
+        "id": "node_1762419385898_jembslstx",
+        "instructionId": "d22d6d99-b929-4cb4-8112-6fa8ca61f9c7",
+        "name": null,
+        "description": "写入计算公式",
+        "x": -1000.0,
+        "y": -460.0,
+        "params": {
+          "data": "{{node_1761286734041_pcbg4vnoy.result_variable_name}}",
+          "target_path": "{{node_1762420253311_89w6kpzax.select_source_file}}",
+          "sheet_name": "四品类品牌份额%",
+          "startrow": "4",
+          "startcol": "A",
+          "with_style": true
+        }
+      },
+      {
+        "id": "node_1762420253311_89w6kpzax",
+        "instructionId": "d15812ec-59bc-437d-9dc2-98dee59404b8",
+        "name": null,
+        "description": "计算公式文件",
+        "x": -1000.0,
+        "y": -550.0,
+        "params": {
+          "select_source_file": "config_infos/data_sources/excel_files/6K6h566X5YWs5byP5ray5aW2LVYxLjI1MDkwOQ.xlsx"
+        }
+      },
+      {
+        "id": "node_1762420900176_08roiuhwe",
+        "instructionId": "fef6f8de-46df-4f6a-8da8-548aa861f610",
+        "name": null,
+        "description": "从计算公式中获取数据",
+        "x": -800.0,
+        "y": -460.0,
+        "params": {
+          "datasPath": "{{node_1762419385898_jembslstx.target_path}}",
+          "sheetName": "{{node_1762419385898_jembslstx.sheet_name}}",
+          "startRow": "1",
+          "endRow": "15",
+          "startColumn": "K",
+          "endColumn": "Q",
+          "result_variable_name": "data_result"
+        }
+      },
+      {
+        "id": "node_1762422857756_cck1irppr",
+        "instructionId": "d15812ec-59bc-437d-9dc2-98dee59404b8",
+        "name": null,
+        "description": "输出模板文件",
+        "x": -800.0,
+        "y": -370.0,
+        "params": {
+          "select_source_file": "config_infos/data_sources/excel_files/6L6T5Ye65qih5p2_.xlsx"
+        }
+      },
+      {
+        "id": "node_1762422879252_4e04q1z74",
+        "instructionId": "d22d6d99-b929-4cb4-8112-6fa8ca61f9c7",
+        "name": null,
+        "description": "写入输出模板",
+        "x": -800.0,
+        "y": -290.0,
+        "params": {
+          "data": "{{node_1761286734041_pcbg4vnoy.result_variable_name}}",
+          "target_path": "{{node_1762762490176_l1w68bphw.select_source_file}}",
+          "sheet_name": "四品类品牌份额%",
+          "startrow": "1",
+          "startcol": "A",
+          "with_style": true
+        }
+      },
+      {
+        "id": "node_1762422973108_appa1yjm9",
+        "instructionId": "8262be12-683a-45c9-b6d2-381f9bf2984b",
+        "name": null,
+        "description": "",
+        "x": -610.0,
+        "y": -290.0,
+        "params": {
+          "filepath": "{{node_1762419385898_jembslstx.target_path}}",
+          "weburl": "webUrl"
+        }
+      },
+      {
+        "id": "node_1762762490176_l1w68bphw",
+        "instructionId": "d15812ec-59bc-437d-9dc2-98dee59404b8",
+        "name": null,
+        "description": "auto1文件",
+        "x": -1370.0,
+        "y": -720.0,
+        "params": {
+          "select_source_file": "config_infos/data_sources/excel_files/YXV0bzE.xlsx"
+        }
+      },
+      {
+        "id": "node_1762762514147_84ltequkw",
+        "instructionId": "15d889a9-0147-4605-9b53-517434ea3ad5",
+        "name": null,
+        "description": "",
+        "x": -1200.0,
+        "y": -720.0,
+        "params": {
+          "filepath": "{{node_1762762490176_l1w68bphw.select_source_file}}",
+          "sheetname": "1",
+          "start_cell": "A3",
+          "max_row": "maxrow"
+        }
+      },
+      {
+        "id": "node_1762762562189_iu8nkl6dh",
+        "instructionId": "15d889a9-0147-4605-9b53-517434ea3ad7",
+        "name": null,
+        "description": "",
+        "x": -1200.0,
+        "y": -640.0,
+        "params": {
+          "filepath": "{{node_1762762490176_l1w68bphw.select_source_file}}",
+          "sheetname": "{{node_1762762514147_84ltequkw.sheetname}}",
+          "start_cell": "{{node_1762762514147_84ltequkw.start_cell}}",
+          "max_col": "maxcol"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "be00db8e-4b2c-41cc-9859-cf4a92d2ac3a",
+        "source": "node_1761286734041_pcbg4vnoy",
+        "target": "node_1762420253311_89w6kpzax",
+        "label": ""
+      },
+      {
+        "id": "ead28522-e645-4992-82f8-4c0f537810d8",
+        "source": "node_1762420253311_89w6kpzax",
+        "target": "node_1762419385898_jembslstx",
+        "label": ""
+      },
+      {
+        "id": "ad0a04d8-f294-4614-92bc-c699aa94ed7e",
+        "source": "node_1762419385898_jembslstx",
+        "target": "node_1762420900176_08roiuhwe",
+        "label": ""
+      },
+      {
+        "id": "e6117d1a-52d1-436f-8cbf-6a9ef782a9d1",
+        "source": "node_1762420900176_08roiuhwe",
+        "target": "node_1762422857756_cck1irppr",
+        "label": ""
+      },
+      {
+        "id": "bcb8b218-f0d0-481a-b8e9-71fd4110aa89",
+        "source": "node_1762422857756_cck1irppr",
+        "target": "node_1762422879252_4e04q1z74",
+        "label": ""
+      },
+      {
+        "id": "e1f5c6c0-d9e4-4342-ac32-9faab40f0aa4",
+        "source": "node_1762422879252_4e04q1z74",
+        "target": "node_1762422973108_appa1yjm9",
+        "label": ""
+      },
+      {
+        "id": "affdfedd-25a2-41de-8034-85451f2b1fd8",
+        "source": "node_1762762490176_l1w68bphw",
+        "target": "node_1762762514147_84ltequkw",
+        "label": ""
+      },
+      {
+        "id": "7ecf854d-77f5-4976-b154-85265aff97f1",
+        "source": "node_1762762514147_84ltequkw",
+        "target": "node_1762762562189_iu8nkl6dh",
+        "label": ""
+      },
+      {
+        "id": "01eb48bc-50d6-4aa2-b7d9-6b16d40724dc",
+        "source": "node_1762762562189_iu8nkl6dh",
+        "target": "node_1761286734041_pcbg4vnoy",
+        "label": ""
+      }
+    ],
+    "createdAt": "2025-11-13T10:46:18.360276",
+    "updatedAt": "2025-11-13T10:46:18.360276"
+  },
+  {
+    "id": "bd452760-b8fd-49c9-8a3c-ca56c8baaf54",
+    "name": "325-护肤品20250402",
+    "description": "提取数据",
+    "nodes": [
+      {
+        "id": "node_1762914777383_eyhjg1r40",
+        "instructionId": "d15812ec-59bc-437d-9dc2-98dee59404b8",
+        "name": null,
+        "description": "",
+        "x": -960.0,
+        "y": -490.0,
+        "params": {
+          "select_source_file": "config_infos/data_sources/excel_files/MzI1LeaKpOiCpOWTgTIwMjUwNDAy.xlsx"
+        }
+      },
+      {
+        "id": "node_1762916588889_f1srql4mc",
+        "instructionId": "d0c8d15c-b0b7-4b36-9f03-8c16edbbdb62",
+        "name": null,
+        "description": "",
+        "x": -960.0,
+        "y": -570.0,
+        "params": {
+          "filename": "result",
+          "filepath": "web_url"
+        }
+      },
+      {
+        "id": "node_1762916627953_b63jow25i",
+        "instructionId": "d22d6d99-b929-4cb4-8112-6fa8ca61f9c7",
+        "name": null,
+        "description": "",
+        "x": -410.0,
+        "y": -140.0,
+        "params": {
+          "data": "{{node_1762931024871_vi8kxck0b.result_data}}",
+          "target_path": "{{node_1762916588889_f1srql4mc.filepath}}",
+          "sheet_name": "{{node_1762933136812_w772kppxn.sheet_name}}",
+          "startrow": "1",
+          "startcol": "A",
+          "with_style": "true"
+        }
+      },
+      {
+        "id": "node_1762916721985_7k2ek1ao3",
+        "instructionId": "85a57948-ee58-4bb0-8fd8-62931339a061",
+        "name": null,
+        "description": "",
+        "x": -780.0,
+        "y": -40.0,
+        "params": {
+          "filepath": "{{node_1762916627953_b63jow25i.target_path}}"
+        }
+      },
+      {
+        "id": "node_1762929552649_u78wbc4vj",
+        "instructionId": "1e425d92-a796-4abd-8067-2c2488d89beb",
+        "name": null,
+        "description": "",
+        "x": -960.0,
+        "y": -400.0,
+        "params": {
+          "file_path": "{{node_1762914777383_eyhjg1r40.select_source_file}}",
+          "sheet_name": "产品定义",
+          "regions": "region_list"
+        }
+      },
+      {
+        "id": "node_1762929648465_k94xfernz",
+        "instructionId": "6ce5e09a-2ad1-4dca-9f07-fbfa7f89faed",
+        "name": null,
+        "description": "",
+        "x": -960.0,
+        "y": -310.0,
+        "params": {
+          "data_list": "{{node_1762929552649_u78wbc4vj.regions}}",
+          "data_len": "data_len"
+        }
+      },
+      {
+        "id": "node_1762929852625_k7ysr62sa",
+        "instructionId": "d906386f-83d4-4ee5-a6ac-df8cdfaa5078",
+        "name": null,
+        "description": "",
+        "x": -780.0,
+        "y": -220.0,
+        "params": {
+          "data_list": "{{node_1762929648465_k94xfernz.data_list}}",
+          "n": "{{node_1762931419467_s4y0v31v3.value}}",
+          "value": "value"
+        }
+      },
+      {
+        "id": "node_1762931024871_vi8kxck0b",
+        "instructionId": "35a6cb18-fc40-4999-9e19-d6b119ea4736",
+        "name": null,
+        "description": "",
+        "x": -590.0,
+        "y": -220.0,
+        "params": {
+          "datasPath": "{{node_1762914777383_eyhjg1r40.select_source_file}}",
+          "sheetName": "{{node_1762929552649_u78wbc4vj.sheet_name}}",
+          "range_str": "{{node_1762929852625_k7ysr62sa.value}}",
+          "result_data": "data_result"
+        }
+      },
+      {
+        "id": "node_1762931419467_s4y0v31v3",
+        "instructionId": "4c7284d8-f782-4fc9-aaf8-7f642f1f69a7",
+        "name": null,
+        "description": "",
+        "x": -960.0,
+        "y": -220.0,
+        "params": {
+          "value": "1",
+          "name": "index"
+        }
+      },
+      {
+        "id": "node_1762931771433_2gjezuceo",
+        "instructionId": "4c7284d8-f782-4fc9-aaf8-7f642f1f69a7",
+        "name": null,
+        "description": "",
+        "x": -780.0,
+        "y": -140.0,
+        "params": {
+          "value": "{{node_1762931419467_s4y0v31v3.value}}+1",
+          "name": "{{node_1762931419467_s4y0v31v3.value}}"
+        }
+      },
+      {
+        "id": "node_1762933136812_w772kppxn",
+        "instructionId": "1425726d-630e-41e2-b9c9-8666f676a1a0",
+        "name": null,
+        "description": "",
+        "x": -410.0,
+        "y": -220.0,
+        "params": {
+          "file_path": "{{node_1762916588889_f1srql4mc.filepath}}",
+          "sheet_name": "{{node_1762931024871_vi8kxck0b.range_str}}"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "9cf93cb6-3f72-4426-97ac-ec9d85989fb0",
+        "source": "node_1762914777383_eyhjg1r40",
+        "target": "node_1762929552649_u78wbc4vj",
+        "label": ""
+      },
+      {
+        "id": "5791fd2c-9508-43d6-a456-100ec12ddd9c",
+        "source": "node_1762929852625_k7ysr62sa",
+        "target": "node_1762931024871_vi8kxck0b",
+        "label": ""
+      },
+      {
+        "id": "a6c299ba-e82c-462e-8ddb-e3b14360c8d0",
+        "source": "node_1762916588889_f1srql4mc",
+        "target": "node_1762914777383_eyhjg1r40",
+        "label": ""
+      },
+      {
+        "id": "431d0761-fc93-4eda-b91a-7255abe2a8ad",
+        "source": "node_1762929552649_u78wbc4vj",
+        "target": "node_1762929648465_k94xfernz",
+        "label": ""
+      },
+      {
+        "id": "6d9078ec-fa97-4169-b175-04c906be886e",
+        "source": "node_1762929648465_k94xfernz",
+        "target": "node_1762931419467_s4y0v31v3",
+        "label": "{{node_1762929648465_k94xfernz.data_len}}>0"
+      },
+      {
+        "id": "57c1e298-c554-4a44-961b-dcc46c88ad44",
+        "source": "node_1762931419467_s4y0v31v3",
+        "target": "node_1762929852625_k7ysr62sa",
+        "label": ""
+      },
+      {
+        "id": "997f690b-b7fa-474f-a5d3-b92c3fe1d6c5",
+        "source": "node_1762916627953_b63jow25i",
+        "target": "node_1762931771433_2gjezuceo",
+        "label": ""
+      },
+      {
+        "id": "d6579833-cad5-4d92-ab5a-8fe4d647c6d8",
+        "source": "node_1762931771433_2gjezuceo",
+        "target": "node_1762916721985_7k2ek1ao3",
+        "label": ""
+      },
+      {
+        "id": "5a594a92-d41d-49a6-af1b-3df51c0fd88c",
+        "source": "node_1762931024871_vi8kxck0b",
+        "target": "node_1762933136812_w772kppxn",
+        "label": ""
+      },
+      {
+        "id": "5e9de982-360b-4991-b160-72e5a26a9393",
+        "source": "node_1762933136812_w772kppxn",
+        "target": "node_1762916627953_b63jow25i",
+        "label": ""
+      },
+      {
+        "id": "cc56bf16-b5bd-4d35-8e6c-09ce3e648d65",
+        "source": "node_1762931771433_2gjezuceo",
+        "target": "node_1762929852625_k7ysr62sa",
+        "label": "{{node_1762931771433_2gjezuceo.value}}<{{node_1762929648465_k94xfernz.data_len}}"
+      }
+    ],
+    "createdAt": "2025-11-13T10:45:37.377514",
+    "updatedAt": "2025-11-13T10:45:37.377514"
+  }
+]

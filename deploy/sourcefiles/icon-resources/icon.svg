@@ -1,0 +1,27 @@
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <!-- 背景圆形 -->
+  <circle cx="128" cy="128" r="120" fill="#2196F3"/>
+  
+  <!-- 数据可视化元素 - 柱状图 -->
+  <rect x="60" y="180" width="20" height="-70" fill="#FFFFFF" opacity="0.9"/>
+  <rect x="90" y="180" width="20" height="-40" fill="#FFFFFF" opacity="0.9"/>
+  <rect x="120" y="180" width="20" height="-90" fill="#FFFFFF" opacity="0.9"/>
+  <rect x="150" y="180" width="20" height="-55" fill="#FFFFFF" opacity="0.9"/>
+  <rect x="180" y="180" width="20" height="-30" fill="#FFFFFF" opacity="0.9"/>
+  
+  <!-- 数据可视化元素 - 折线图 -->
+  <path d="M70,180 L80,150 L90,160 L100,140 L110,170 L120,120 L130,140 L140,100 L150,130 L160,150 L170,160" 
+        stroke="#FFD700" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <!-- 数据点 -->
+  <circle cx="70" cy="180" r="5" fill="#FFD700"/>
+  <circle cx="90" cy="160" r="5" fill="#FFD700"/>
+  <circle cx="110" cy="170" r="5" fill="#FFD700"/>
+  <circle cx="130" cy="140" r="5" fill="#FFD700"/>
+  <circle cx="150" cy="130" r="5" fill="#FFD700"/>
+  <circle cx="170" cy="160" r="5" fill="#FFD700"/>
+  
+  <!-- 装饰元素 - 数据流动感 -->
+  <path d="M128,70 Q150,80 140,100 Q130,120 140,140 Q150,160 130,170" 
+        stroke="#FFFFFF" stroke-width="3" fill="none" stroke-opacity="0.6"/>
+</svg>
