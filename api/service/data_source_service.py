@@ -7,11 +7,9 @@
 """
 
 import os
-import json
 import uuid
 import traceback
 import requests
-import pandas as pd
 from datetime import datetime
 from typing import Optional, List, Tuple, Dict, Any
 from utils.excel_helper import ExcelHelper
@@ -19,138 +17,16 @@ from utils.excel_helper import ExcelHelper
 from config import config
 
 # 移除抽象类导入，直接使用实现类
-from dto.datasource_dto import (DataSourceConfigUnion,ExcelDataSourceConfig,
+from dto.datasource_dto import (
+    DataSourceConfigUnion, 
+    ExcelDataSourceConfig,
     create_data_source_from_dict
 )
 from dto.common_dto import ApiResponse
+from repository.data_source_repository import DataSourceRepository
+from entity.data_source import DataSource
 
-class DataSourceStorage:
-    """数据源存储管理"""
-    
-    def __init__(self):
-        self.storage_folder = config.DATA_SOURCES_FOLDER
-        self.data_sources_file = os.path.join(self.storage_folder, 'data_sources.json')
-        self.excel_files_folder = os.path.join(self.storage_folder, 'excel_files')
-        
-        # 确保目录存在
-        os.makedirs(self.storage_folder, exist_ok=True)
-        os.makedirs(self.excel_files_folder, exist_ok=True)
-        
-        # 初始化数据源文件
-        if not os.path.exists(self.data_sources_file):
-            self._save_data_sources({})
-    
-    def dict_to_dto(self, data_source_dict: Dict[str, Any]) -> DataSourceConfigUnion:
-        """将字典转换为DTO对象"""
-        return create_data_source_from_dict(data_source_dict)
-    
-    def dto_to_dict(self, data_source_dto: DataSourceConfigUnion) -> Dict[str, Any]:
-        """将DTO对象转换为字典"""
-        return {
-            'id': data_source_dto.id,
-            'user_id': data_source_dto.user_id,
-            'name': data_source_dto.name,
-            'description': data_source_dto.description,
-            'type': data_source_dto.type,
-            'config': data_source_dto.config.to_dict() if hasattr(data_source_dto.config, 'to_dict') else data_source_dto.config.__dict__,
-            'created_time': data_source_dto.created_time,
-            'updated_time': data_source_dto.updated_time,
-            'is_active': data_source_dto.is_active
-        }
-    
-    def get_data_source_dto(self, data_source_id: str) -> Optional[DataSourceConfigUnion]:
-        """获取单个数据源并返回DTO对象"""
-        data_source_dict = self.get_data_source(data_source_id)
-        if data_source_dict:
-            return self.dict_to_dto(data_source_dict)
-        return None
-    
-    def save_data_source_dto(self, data_source_dto: DataSourceConfigUnion) -> bool:
-        """保存DTO对象格式的数据源"""
-        data_source_dict = self.dto_to_dict(data_source_dto)
-        return self.save_data_source(data_source_dict)
-    
-    def get_user_data_sources_dto(self, page: int = 1, page_size: int = 20) -> Tuple[List[DataSourceConfigUnion], int]:
-        """获取用户的数据源列表并返回DTO对象列表"""
-        data_sources_dict, total = self.get_user_data_sources(page, page_size)
-        data_sources_dto = [self.dict_to_dto(ds) for ds in data_sources_dict]
-        return data_sources_dto, total
-    
-    def _load_data_sources(self) -> Dict[str, Dict[str, Any]]:
-        """加载所有数据源"""
-        try:
-            with open(self.data_sources_file, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except Exception as e:
-            print(f"❌ 加载数据源失败: {str(e)}")
-            return {}
-    
-    def _save_data_sources(self, data_sources: Dict[str, Dict[str, Any]]) -> bool:
-        """保存所有数据源"""
-        try:
-            with open(self.data_sources_file, 'w', encoding='utf-8') as f:
-                json.dump(data_sources, f, ensure_ascii=False, indent=2)
-            return True
-        except Exception as e:
-            print(f"❌ 保存数据源失败: {str(e)}")
-            return False
-    
-    def save_data_source(self, data_source: Dict[str, Any]) -> bool:
-        """保存单个数据源"""
-        data_sources = self._load_data_sources()
-        data_sources[data_source['id']] = data_source
-        return self._save_data_sources(data_sources)
-    
-    def get_data_source(self, data_source_id: str) -> Optional[Dict[str, Any]]:
-        """获取单个数据源"""
-        data_sources = self._load_data_sources()
-        if data_source_id not in data_sources:
-            return None
-        
-        return data_sources[data_source_id]
-    
-    def get_user_data_sources(self, page: int = 1, page_size: int = 20) -> Tuple[List[Dict[str, Any]], int]:
-        """获取用户的数据源列表"""
-        data_sources = self._load_data_sources()
-        user_sources = []
-        
-        for data in data_sources.values():
-            user_sources.append(data)
-            # if data.get('user_id') == user_id:
-            #     user_sources.append(data)
-        
-        # 分页
-        total = len(user_sources)
-        start = (page - 1) * page_size
-        end = start + page_size
-        return user_sources[start:end], total
-    
-    def delete_data_source(self, data_source_id: str) -> bool:
-        """删除数据源"""
-        data_sources = self._load_data_sources()
-        if data_source_id not in data_sources:
-            return False
-        
-        # 获取要删除的数据源信息
-        data_source = data_sources[data_source_id]
-        
-        # 如果是Excel类型数据源，先删除关联的文件
-        if data_source.get('type') == 'excel':
-            config = data_source.get('config', {})
-            file_list=config.get('files',[])
-            for file_info in file_list:
-                file_path = file_info.get('file_path')
-                if file_path and os.path.exists(file_path):
-                    try:
-                        os.remove(file_path)
-                        print(f"✅ Excel文件已删除: {file_path}")
-                    except Exception as e:
-                        print(f"⚠️ 删除Excel文件时出错: {str(e)}")
-                        # 即使文件删除失败，也继续删除数据源记录
-        
-        # 删除数据源记录
-        del data_sources[data_source_id]
-        return self._save_data_sources(data_sources)
+
 
 class DataSourceConnector:
     """数据源连接器"""
@@ -253,9 +129,16 @@ class DataSourceConnector:
 class DataSourceservice:
     """数据源服务 - 依赖注入版本"""
     
-    def __init__(self):
-        self.storage = DataSourceStorage()
+    def __init__(self, data_source_repo: DataSourceRepository = None):
+        """初始化数据源服务
+        
+        Args:
+            data_source_repo: 数据源仓储实例，将通过依赖注入获取
+        """
+        self.data_source_repo = data_source_repo
         self.connector = DataSourceConnector()
+        self.storage_folder = config.DATA_SOURCES_FOLDER
+        self.excel_files_folder = os.path.join(self.storage_folder, 'excel_files')
     
     async def create_data_source(self, data: Dict[str, Any]) -> ApiResponse[DataSourceConfigUnion]:
         """创建数据源"""
@@ -263,23 +146,23 @@ class DataSourceservice:
             # 生成唯一ID
             data_source_id = str(uuid.uuid4())
             
-            # 创建数据源字典
-            data_source_dict = {
-                'id': data_source_id,
-                'user_id': data.get('user_id', 'default'),
-                'name': data['name'],
-                'description': data.get('description'),
-                'type': data['type'],
-                'config': data.get('config', {}),
-                'created_time': datetime.now().isoformat(),
-                'updated_time': datetime.now().isoformat(),
-                'is_active': True
-            }
+            # 创建数据源实体
+            data_source = DataSource(
+                id=data_source_id,
+                user_id=data.get('user_id', 'default'),
+                name=data['name'],
+                description=data.get('description'),
+                type=data['type'],
+                config=data.get('config', {}),
+                created_time=datetime.now().isoformat(),
+                updated_time=datetime.now().isoformat(),
+                is_active=True
+            )
             # 创建DTO对象
-            data_source_dto = create_data_source_from_dict(data_source_dict)
+            data_source_dto = create_data_source_from_dict(data_source.model_dump())
             
-            # 保存数据源（存储层仍使用字典）
-            if self.storage.save_data_source(data_source_dict):
+            # 保存数据源
+            if self.data_source_repo.add(data_source):
                 return ApiResponse(
                     success=True,
                     message='数据源创建成功',
@@ -299,43 +182,43 @@ class DataSourceservice:
                 data=None
             )
     
-    async def get_data_source(self, data_source_id: str) -> DataSourceConfigUnion:
+    async def get_data_source(self, data_source_id: str) -> ApiResponse:
         """获取数据源"""
         try:
-            data_source_dict = self.storage.get_data_source(data_source_id)
-            if data_source_dict:
+            data_source = self.data_source_repo.find_by_id(data_source_id)
+            if data_source:
                 # 转换为DTO对象
-                data_source_dto = create_data_source_from_dict(data_source_dict)
-                return {
-                    'success':True,
-                    'message':'获取数据源成功',
-                    'data_source':data_source_dto
-                }
+                data_source_dto = create_data_source_from_dict(data_source.model_dump())
+                return ApiResponse(
+                    success=True,
+                    message='获取数据源成功',
+                    data=data_source_dto
+                )
             else:
-                return {
-                    'success':False,
-                    'message':'数据源不存在',
-                    'data_source':None
-                }
+                return ApiResponse(
+                    success=False,
+                    message='数据源不存在',
+                    data=None
+                )
         except Exception as e:
-            return {
-                    'success':False,
-                    'message':f'获取数据源失败: {str(e)}',
-                    'data_source':None
-                }
+            return ApiResponse(
+                success=False,
+                message=f'获取数据源失败: {str(e)}',
+                data=None
+            )
     
     async def get_user_data_sources(self) -> ApiResponse[List[DataSourceConfigUnion]]:
         """获取用户数据源列表"""
         try:
-            data_sources_dict, total = self.storage.get_user_data_sources()
+            data_sources = self.data_source_repo.find_all()
             # 转换为DTO对象列表
-            data_sources_dto = [create_data_source_from_dict(ds) for ds in data_sources_dict]
+            data_sources_dto = [create_data_source_from_dict(ds.model_dump()) for ds in data_sources]
             return ApiResponse(
                 success=True,
                 message='获取数据源列表成功',
                 data={
                     'data_sources': data_sources_dto,
-                    'total': total
+                    'total': len(data_sources)
                 }
             )
         except Exception as e:
@@ -345,55 +228,86 @@ class DataSourceservice:
                 data=None
             )
     
-    async def update_data_source(self, data_source_id: str, data: Dict[str, Any]) -> DataSourceConfigUnion:
+    async def update_data_source(self, data_source_id: str, data: Dict[str, Any]) -> ApiResponse:
         """更新数据源"""
         try:
-            data_source_dict = self.storage.get_data_source(data_source_id)
-            if not data_source_dict:
-                return {
-                    'success':False,
-                    'message':'数据源不存在',
-                    'data':None
-                }
+            data_source = self.data_source_repo.find_by_id(data_source_id)
+            if not data_source:
+                return ApiResponse(
+                    success=False,
+                    message='数据源不存在',
+                    data=None
+                )
             
             # 更新数据源属性
             if 'name' in data:
-                data_source_dict['name'] = data['name']
+                data_source.name = data['name']
             if 'description' in data:
-                data_source_dict['description'] = data['description']
+                data_source.description = data['description']
             if 'config' in data:
-                data_source_dict['config'] = data['config']
+                data_source.config = data['config']
             if 'is_active' in data:
-                data_source_dict['is_active'] = data['is_active']
+                data_source.is_active = data['is_active']
             
-            data_source_dict['updated_time'] = datetime.now().isoformat()
+            data_source.updated_time = datetime.now().isoformat()
             
-            if self.storage.save_data_source(data_source_dict):
+            if self.data_source_repo.update(data_source):
                 # 转换为DTO对象
-                data_source_dto = create_data_source_from_dict(data_source_dict)
-                return {
-                    'success':True,
-                    'message':'数据源更新成功',
-                    'data':data_source_dto
-                }
+                data_source_dto = create_data_source_from_dict(data_source.model_dump())
+                return ApiResponse(
+                    success=True,
+                    message='数据源更新成功',
+                    data=data_source_dto
+                )
             else:
-                return {
-                    'success':False,
-                    'message':'数据源保存失败',
-                    'data':None
-                }
+                return ApiResponse(
+                    success=False,
+                    message='数据源保存失败',
+                    data=None
+                )
                 
         except Exception as e:
-            return {
-                    'success':False,
-                    'message':f'更新数据源失败: {str(e)}',
-                    'data':None
-                }
+            return ApiResponse(
+                success=False,
+                message=f'更新数据源失败: {str(e)}',
+                data=None
+            )
     
     async def delete_data_source(self, data_source_id: str) -> ApiResponse[bool]:
         """删除数据源"""
         try:
-            if self.storage.delete_data_source(data_source_id):
+            # 获取要删除的数据源信息
+            data_source = self.data_source_repo.find_by_id(data_source_id)
+            if not data_source:
+                return ApiResponse(
+                    success=False,
+                    message='数据源不存在',
+                    data=False
+                )
+            
+            # 如果是Excel类型数据源，先删除关联的文件
+            if data_source.type == 'excel':
+                config = data_source.config
+                file_list = []
+                
+                # 处理配置结构
+                if isinstance(config, dict) and 'files' in config:
+                    file_list = config['files']
+                elif isinstance(config, list):
+                    file_list = config
+                
+                for file_info in file_list:
+                    file_path = file_info.get('file_path')
+                    if file_path and os.path.exists(file_path):
+                        try:
+                            os.remove(file_path)
+                            print(f"✅ Excel文件已删除: {file_path}")
+                        except Exception as e:
+                            print(f"⚠️ 删除Excel文件时出错: {str(e)}")
+                            # 即使文件删除失败，也继续删除数据源记录
+            
+            # 删除数据源记录
+            if self.data_source_repo.delete(data_source_id):
                 return ApiResponse(
                     success=True,
                     message='数据源删除成功',
@@ -402,7 +316,7 @@ class DataSourceservice:
             else:
                 return ApiResponse(
                     success=False,
-                    message='数据源删除失败或不存在',
+                    message='数据源删除失败',
                     data=False
                 )
         except Exception as e:
@@ -416,13 +330,16 @@ class DataSourceservice:
         """获取数据源数据"""
         try:
             # 获取数据源信息
-            data_source_dict = self.storage.get_data_source(data_source_id)
-            if not data_source_dict:
+            data_source = self.data_source_repo.find_by_id(data_source_id)
+            if not data_source:
                 return ApiResponse(
                     success=False,
                     message='数据源不存在',
                     data=None
                 )
+            
+            # 转换为字典
+            data_source_dict = data_source.model_dump()
             
             # 转换为DTO对象
             data_source_dto = create_data_source_from_dict(data_source_dict)
@@ -460,13 +377,16 @@ class DataSourceservice:
         """获取数据源指定范围的数据"""
         try:
             # 获取数据源信息
-            data_source_dict = self.storage.get_data_source(data_source_id)
-            if not data_source_dict:
+            data_source = self.data_source_repo.find_by_id(data_source_id)
+            if not data_source:
                 return ApiResponse(
                     success=False,
                     message='数据源不存在',
                     data=None
                 )
+            
+            # 转换为字典
+            data_source_dict = data_source.model_dump()
             
             if data_source_dict['type'] == 'excel':
                 result = await self._get_excel_range_data(data_source_dict, sheet_name, cell_range)
@@ -580,7 +500,7 @@ class DataSourceservice:
                 if os.path.isabs(config.file_path) or '\\' in config.file_path or '/' in config.file_path:
                     file_path = config.file_path
                 else:
-                    file_path = os.path.join(self.storage.excel_files_folder, config.file_path)
+                    file_path = os.path.join(self.excel_files_folder, config.file_path)
                 
                 print(f"🔍 尝试读取Excel文件: {config.file_path} -> {file_path}")
                 

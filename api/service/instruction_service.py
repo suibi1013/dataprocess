@@ -3,11 +3,10 @@
 """
 指令管理服务
 负责指令项目的创建、更新、删除、查询等核心业务逻辑
-指令数据以JSON文件形式存储
+指令数据以SQLite数据库形式存储
 """
 
 import os
-import json
 import uuid
 import time
 from datetime import datetime
@@ -16,6 +15,12 @@ import inspect
 import ast
 
 from config import config
+from repository.instruction_category_repository import InstructionCategoryRepository
+from repository.instruction_item_repository import InstructionItemRepository
+from entity.instruction_category import InstructionCategory as InstructionCategoryEntity
+from entity.instruction_item import InstructionItem as InstructionItemEntity
+from entity.instruction_parameter import InstructionParameter as InstructionParameterEntity
+
 from dto.instruction_dto import (
     InstructionItem, InstructionCategory, InstructionListResponse,
     CreateInstructionCategoryRequest, CreateInstructionItemRequest,
@@ -24,158 +29,18 @@ from dto.instruction_dto import (
 )
 from dto.common_dto import ApiResponse
 
-class InstructionStorage:
-    """指令数据存储管理"""
-    
-    def __init__(self):
-        self.storage_folder = config.INSTRUCTIONS_FOLDER
-        self.categories_file = os.path.join(self.storage_folder, 'categories.json')
-        self.items_file = os.path.join(self.storage_folder, 'items.json')
-        
-        # 确保目录存在
-        os.makedirs(self.storage_folder, exist_ok=True)
-        
-        # 初始化数据文件
-        self._initialize_data_files()
-    
-    def _initialize_data_files(self):
-        """初始化数据文件"""
-        # if not os.path.exists(self.categories_file):
-        #     self._save_categories([])
-        # 如果不存在则设置为空列表
-        # if not os.path.exists(self.items_file):
-        #     self._save_items([])    
-        pass
-    def _load_categories(self) -> List[Dict[str, Any]]:
-        """加载指令分类数据"""
-        try:
-            with open(self.categories_file, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except Exception as e:
-            print(f"加载分类数据失败: {e}")
-            return []
-    
-    def _save_categories(self, categories: List[Dict[str, Any]]) -> bool:
-        """保存指令分类数据"""
-        try:
-            with open(self.categories_file, 'w', encoding='utf-8') as f:
-                json.dump(categories, f, ensure_ascii=False, indent=2)
-            return True
-        except Exception as e:
-            print(f"保存分类数据失败: {e}")
-            return False
-    
-    def _load_items(self) -> List[Dict[str, Any]]:
-        """加载指令项目数据"""
-        try:
-            with open(self.items_file, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except Exception as e:
-            print(f"加载项目数据失败: {e}")
-            return []
-    
-    def _save_items(self, items: List[Dict[str, Any]]) -> bool:
-        """保存指令项目数据"""
-        try:
-            with open(self.items_file, 'w', encoding='utf-8') as f:
-                json.dump(items, f, ensure_ascii=False, indent=2)
-            return True
-        except Exception as e:
-            print(f"保存项目数据失败: {e}")
-            return False
-    
-    def get_all_categories(self) -> List[Dict[str, Any]]:
-        """获取所有分类"""
-        categories = self._load_categories()
-        return sorted([cat for cat in categories if cat.get('is_active', True)], 
-                     key=lambda x: x.get('sort_order', 0))
-    
-    def get_all_items(self) -> List[Dict[str, Any]]:
-        """获取所有项目"""
-        items = self._load_items()
-        return sorted(items, key=lambda x: x.get('sort_order', 0))
-    
-    def get_category_by_id(self, category_id: str) -> Optional[Dict[str, Any]]:
-        """根据ID获取分类"""
-        categories = self._load_categories()
-        for category in categories:
-            if category['id'] == category_id:
-                return category
-        return None
-    
-    def get_item_by_id(self, item_id: str) -> Optional[Dict[str, Any]]:
-        """根据ID获取项目"""
-        items = self._load_items()
-        for item in items:
-            if item['id'] == item_id:
-                return item
-        return None
-    
-    def save_category(self, category: Dict[str, Any]) -> bool:
-        """保存分类"""
-        categories = self._load_categories()
-        
-        # 查找是否存在相同ID的分类
-        for i, cat in enumerate(categories):
-            if cat['id'] == category['id']:
-                categories[i] = category
-                return self._save_categories(categories)
-        
-        # 新增分类
-        categories.append(category)
-        return self._save_categories(categories)
-    
-    def save_item(self, item: Dict[str, Any]) -> bool:
-        """保存项目"""
-        items = self._load_items()
-        
-        # 查找是否存在相同ID的项目
-        for i, itm in enumerate(items):
-            if itm['id'] == item['id']:
-                items[i] = item
-                return self._save_items(items)
-        
-        # 新增项目
-        items.append(item)
-        return self._save_items(items)
-    
-    def delete_category(self, category_id: str) -> bool:
-        """删除分类（物理删除）"""
-        categories = self._load_categories()
-        # 过滤掉要删除的分类
-        new_categories = [cat for cat in categories if cat['id'] != category_id]
-        
-        # 如果分类数量没变，说明没有找到要删除的分类
-        if len(new_categories) == len(categories):
-            return False
-        
-        # 保存删除后的分类列表
-        if self._save_categories(new_categories):
-            # 级联删除该分类下的所有项目
-            items = self._load_items()
-            new_items = [item for item in items if item['category_id'] != category_id]
-            self._save_items(new_items)
-            return True
-        return False
-    
-    def delete_item(self, item_id: str) -> bool:
-        """删除项目（物理删除）"""
-        items = self._load_items()
-        # 过滤掉要删除的项目
-        new_items = [item for item in items if item['id'] != item_id]
-        
-        # 如果项目数量没变，说明没有找到要删除的项目
-        if len(new_items) == len(items):
-            return False
-        
-        # 保存删除后的项目列表
-        return self._save_items(new_items)
-
 class InstructionService:
     """指令管理服务"""
     
-    def __init__(self):
-        self.storage = InstructionStorage()
+    def __init__(self, category_repo: InstructionCategoryRepository, item_repo: InstructionItemRepository):
+        """初始化指令管理服务
+        
+        Args:
+            category_repo: 指令分类仓储实例
+            item_repo: 指令项目仓储实例
+        """
+        self.category_repo = category_repo
+        self.item_repo = item_repo
     
     async def get_instruction_by_id(self, instruction_id: str) -> Optional[Dict[str, Any]]:
         """根据指令ID获取指令信息
@@ -187,7 +52,13 @@ class InstructionService:
             Optional[Dict[str, Any]]: 指令信息，如果不存在则返回None
         """
         try:
-            return self.storage.get_item_by_id(instruction_id)
+            # 使用仓储类获取指令项目实体
+            item_entity = self.item_repo.find_by_id(instruction_id)
+            if not item_entity:
+                return None
+            
+            # 使用pydantic的model_dump()方法将实体转换为字典
+            return item_entity.model_dump()
         except Exception as e:
             print(f"获取指令信息失败: {str(e)}")
             return None
@@ -195,29 +66,51 @@ class InstructionService:
     async def get_instruction_list(self) -> ApiResponse[InstructionListResponse]:
         """获取指令列表"""
         try:
-            categories_data = self.storage.get_all_categories()
-            items_data = self.storage.get_all_items()
+            # 使用仓储类获取所有激活的分类
+            category_entities = self.category_repo.find_active()
+            # 使用仓储类获取所有指令项目
+            item_entities = self.item_repo.find_all()
             
             # 构建分类和项目的关联关系
             categories = []
-            for cat_data in categories_data:
+            for cat_entity in category_entities:
                 # 获取该分类下的所有项目
-                category_items = [
-                    InstructionItem(**item_data) 
-                    for item_data in items_data 
-                    if item_data['category_id'] == cat_data['id']
-                ]
+                category_items = []
+                for item_entity in item_entities:
+                    if item_entity.category_id == cat_entity.id:
+                        # 将实体类转换为DTO
+                        item_dto = InstructionItem(
+                            id=item_entity.id,
+                            name=item_entity.name,
+                            icon=item_entity.icon,
+                            description=item_entity.description,
+                            category_id=item_entity.category_id,
+                            python_script=item_entity.python_script,
+                            sort_order=item_entity.sort_order,
+                            is_active=item_entity.is_active,
+                            created_at=item_entity.created_at,
+                            updated_at=item_entity.updated_at,
+                            params=item_entity.params
+                        )
+                        category_items.append(item_dto)
                 
-                category = InstructionCategory(
-                    **cat_data,
+                # 将实体类转换为DTO
+                category_dto = InstructionCategory(
+                    id=cat_entity.id,
+                    name=cat_entity.name,
+                    description=cat_entity.description,
+                    sort_order=cat_entity.sort_order,
+                    is_active=cat_entity.is_active,
+                    created_at=cat_entity.created_at,
+                    updated_at=cat_entity.updated_at,
                     items=category_items
                 )
-                categories.append(category)
+                categories.append(category_dto)
             
             response_data = InstructionListResponse(
                 categories=categories,
                 total_categories=len(categories),
-                total_items=len(items_data)
+                total_items=len(item_entities)
             )
             
             return ApiResponse(
@@ -236,22 +129,31 @@ class InstructionService:
     async def create_category(self, request: CreateInstructionCategoryRequest) -> ApiResponse[InstructionCategory]:
         """创建指令分类"""
         try:
-            now = datetime.now()
-            category_data = {
-                "id": str(uuid.uuid4()),
-                "name": request.name,
-                "description": request.description,
-                "sort_order": request.sort_order,
-                "is_active": True,
-                "created_at": now.isoformat(),
-                "updated_at": now.isoformat()
-            }
+            # 创建指令分类实体
+            category_entity = InstructionCategoryEntity(
+                id=str(uuid.uuid4()),
+                name=request.name,
+                description=request.description,
+                sort_order=request.sort_order,
+                is_active=True
+            )
             
-            if self.storage.save_category(category_data):
-                category = InstructionCategory(**category_data, items=[])
+            # 使用仓储类保存分类
+            if self.category_repo.add(category_entity):
+                # 将实体类转换为DTO
+                category_dto = InstructionCategory(
+                    id=category_entity.id,
+                    name=category_entity.name,
+                    description=category_entity.description,
+                    sort_order=category_entity.sort_order,
+                    is_active=category_entity.is_active,
+                    created_at=category_entity.created_at,
+                    updated_at=category_entity.updated_at,
+                    items=[]
+                )
                 return ApiResponse(
                     success=True,
-                    data=category,
+                    data=category_dto,
                     message="创建分类成功"
                 )
             else:
@@ -272,7 +174,7 @@ class InstructionService:
         """创建指令项目"""
         try:
             # 验证分类是否存在
-            category = self.storage.get_category_by_id(request.category_id)
+            category = self.category_repo.find_by_id(request.category_id)
             if not category:
                 return ApiResponse(
                     success=False,
@@ -280,29 +182,54 @@ class InstructionService:
                     message="指定的分类不存在"
                 )
             
-            now = datetime.now()
-            # 将InstructionParameter对象转换为字典
-            params_dict = [param.dict() for param in request.params] if request.params else []
+            # 转换指令参数DTO为实体类
+            param_entities = []
+            if request.params:
+                for param_dto in request.params:
+                    param_entity = InstructionParameterEntity(
+                        name=param_dto.name,
+                        label=param_dto.label,
+                        description=param_dto.description,
+                        type=param_dto.type,
+                        required=param_dto.required,
+                        default_value=param_dto.default_value,
+                        direction=param_dto.direction,
+                        api_url=param_dto.api_url
+                    )
+                    param_entities.append(param_entity)
             
-            item_data = {
-                "id": str(uuid.uuid4()),
-                "name": request.name,
-                "icon": request.icon,
-                "description": request.description,
-                "category_id": request.category_id,
-                "python_script": request.python_script,
-                "sort_order": request.sort_order,
-                "is_active": True,
-                "created_at": now.isoformat(),
-                "updated_at": now.isoformat(),
-                "params": params_dict
-            }
+            # 创建指令项目实体
+            item_entity = InstructionItemEntity(
+                id=str(uuid.uuid4()),
+                name=request.name,
+                icon=request.icon,
+                description=request.description,
+                category_id=request.category_id,
+                python_script=request.python_script,
+                sort_order=request.sort_order,
+                is_active=True,
+                params=param_entities
+            )
             
-            if self.storage.save_item(item_data):
-                item = InstructionItem(**item_data)
+            # 使用仓储类保存指令项目
+            if self.item_repo.add(item_entity):
+                # 将实体类转换为DTO
+                item_dto = InstructionItem(
+                    id=item_entity.id,
+                    name=item_entity.name,
+                    icon=item_entity.icon,
+                    description=item_entity.description,
+                    category_id=item_entity.category_id,
+                    python_script=item_entity.python_script,
+                    sort_order=item_entity.sort_order,
+                    is_active=item_entity.is_active,
+                    created_at=item_entity.created_at,
+                    updated_at=item_entity.updated_at,
+                    params=item_entity.params
+                )
                 return ApiResponse(
                     success=True,
-                    data=item,
+                    data=item_dto,
                     message="创建指令项目成功"
                 )
             else:
@@ -322,8 +249,9 @@ class InstructionService:
     async def update_category(self, category_id: str, request: UpdateInstructionCategoryRequest) -> ApiResponse[InstructionCategory]:
         """更新指令分类"""
         try:
-            category_data = self.storage.get_category_by_id(category_id)
-            if not category_data:
+            # 使用仓储类获取分类实体
+            category_entity = self.category_repo.find_by_id(category_id)
+            if not category_entity:
                 return ApiResponse(
                     success=False,
                     data=None,
@@ -332,21 +260,33 @@ class InstructionService:
             
             # 更新字段
             if request.name is not None:
-                category_data['name'] = request.name
+                category_entity.name = request.name
             if request.description is not None:
-                category_data['description'] = request.description
+                category_entity.description = request.description
             if request.sort_order is not None:
-                category_data['sort_order'] = request.sort_order
+                category_entity.sort_order = request.sort_order
             if request.is_active is not None:
-                category_data['is_active'] = request.is_active
+                category_entity.is_active = request.is_active
             
-            category_data['updated_at'] = datetime.now().isoformat()
+            # 更新时间
+            category_entity.updated_at = datetime.now().isoformat()
             
-            if self.storage.save_category(category_data):
-                category = InstructionCategory(**category_data, items=[])
+            # 使用仓储类保存更新
+            if self.category_repo.update(category_entity):
+                # 将实体类转换为DTO
+                category_dto = InstructionCategory(
+                    id=category_entity.id,
+                    name=category_entity.name,
+                    description=category_entity.description,
+                    sort_order=category_entity.sort_order,
+                    is_active=category_entity.is_active,
+                    created_at=category_entity.created_at,
+                    updated_at=category_entity.updated_at,
+                    items=[]
+                )
                 return ApiResponse(
                     success=True,
-                    data=category,
+                    data=category_dto,
                     message="更新分类成功"
                 )
             else:
@@ -366,8 +306,9 @@ class InstructionService:
     async def update_item(self, item_id: str, request: UpdateInstructionItemRequest) -> ApiResponse[InstructionItem]:
         """更新指令项目"""
         try:
-            item_data = self.storage.get_item_by_id(item_id)
-            if not item_data:
+            # 使用仓储类获取指令项目实体
+            item_entity = self.item_repo.find_by_id(item_id)
+            if not item_entity:
                 return ApiResponse(
                     success=False,
                     data=None,
@@ -376,7 +317,7 @@ class InstructionService:
             
             # 如果要更新分类，验证新分类是否存在
             if request.category_id is not None:
-                category = self.storage.get_category_by_id(request.category_id)
+                category = self.category_repo.find_by_id(request.category_id)
                 if not category:
                     return ApiResponse(
                         success=False,
@@ -386,30 +327,58 @@ class InstructionService:
             
             # 更新字段
             if request.name is not None:
-                item_data['name'] = request.name
+                item_entity.name = request.name
             if request.icon is not None:
-                item_data['icon'] = request.icon
+                item_entity.icon = request.icon
             if request.description is not None:
-                item_data['description'] = request.description
+                item_entity.description = request.description
             if request.category_id is not None:
-                item_data['category_id'] = request.category_id
+                item_entity.category_id = request.category_id
             if request.sort_order is not None:
-                item_data['sort_order'] = request.sort_order
+                item_entity.sort_order = request.sort_order
             if request.is_active is not None:
-                item_data['is_active'] = request.is_active
+                item_entity.is_active = request.is_active
             if request.python_script is not None:
-                item_data['python_script'] = request.python_script
+                item_entity.python_script = request.python_script
             if request.params is not None:
-                # 将InstructionParameter对象转换为字典
-                item_data['params'] = [param.dict() for param in request.params]
+                # 将InstructionParameter对象转换为实体类
+                param_entities = []
+                for param_dto in request.params:
+                    param_entity = InstructionParameterEntity(
+                        name=param_dto.name,
+                        label=param_dto.label,
+                        description=param_dto.description,
+                        type=param_dto.type,
+                        required=param_dto.required,
+                        default_value=param_dto.default_value,
+                        direction=param_dto.direction,
+                        api_url=param_dto.api_url
+                    )
+                    param_entities.append(param_entity)
+                item_entity.params = param_entities
             
-            item_data['updated_at'] = datetime.now().isoformat()
+            # 更新时间
+            item_entity.updated_at = datetime.now().isoformat()
             
-            if self.storage.save_item(item_data):
-                item = InstructionItem(**item_data)
+            # 使用仓储类保存更新
+            if self.item_repo.update(item_entity):
+                # 将实体类转换为DTO
+                item_dto = InstructionItem(
+                    id=item_entity.id,
+                    name=item_entity.name,
+                    icon=item_entity.icon,
+                    description=item_entity.description,
+                    category_id=item_entity.category_id,
+                    python_script=item_entity.python_script,
+                    sort_order=item_entity.sort_order,
+                    is_active=item_entity.is_active,
+                    created_at=item_entity.created_at,
+                    updated_at=item_entity.updated_at,
+                    params=item_entity.params
+                )
                 return ApiResponse(
                     success=True,
-                    data=item,
+                    data=item_dto,
                     message="更新指令项目成功"
                 )
             else:
@@ -429,7 +398,14 @@ class InstructionService:
     async def delete_category(self, category_id: str) -> ApiResponse[bool]:
         """删除指令分类"""
         try:
-            if self.storage.delete_category(category_id):
+            # 使用仓储类删除分类
+            if self.category_repo.delete(category_id):
+                # 级联删除该分类下的所有指令项目
+                # 先获取该分类下的所有指令项目
+                items = self.item_repo.find_by_category(category_id)
+                for item in items:
+                    self.item_repo.delete(item.id)
+                
                 return ApiResponse(
                     success=True,
                     data=True,
@@ -452,7 +428,8 @@ class InstructionService:
     async def delete_item(self, item_id: str) -> ApiResponse[bool]:
         """删除指令项目"""
         try:
-            if self.storage.delete_item(item_id):
+            # 使用仓储类删除指令项目
+            if self.item_repo.delete(item_id):
                 return ApiResponse(
                     success=True,
                     data=True,
@@ -476,8 +453,8 @@ class InstructionService:
         """执行指令"""
         try:
             # 获取指令信息
-            item = self.storage.get_item_by_id(request.instruction_id)
-            if not item:
+            item_entity = self.item_repo.find_by_id(request.instruction_id)
+            if not item_entity:
                 return ApiResponse(
                     success=False,
                     data=None,
@@ -485,7 +462,7 @@ class InstructionService:
                 )
             
             # 检查指令是否启用
-            if not item.get('is_active', True):
+            if not item_entity.is_active:
                 return ApiResponse(
                     success=False,
                     data=None,
@@ -493,7 +470,7 @@ class InstructionService:
                 )
             
             # 获取Python脚本
-            python_script = item.get('python_script')
+            python_script = item_entity.python_script
             if not python_script:
                 return ApiResponse(
                     success=False,
@@ -503,10 +480,10 @@ class InstructionService:
             
             # 查找direction为1的输出参数
             result_variable_name = ''
-            params = item.get('params', [])
+            params = item_entity.params
             for param in params:
-                if param.get('direction') == 1:
-                    result_variable_name = param.get('name', '')
+                if param.direction == 1:
+                    result_variable_name = param.name
                     break
             
             # 从script_params中移除result_variable_name参数（如果存在）
@@ -528,12 +505,12 @@ class InstructionService:
             # 获取指令信息以确定result_variable_name（如果需要）
             result_variable_name = ''
             try:
-                item = self.storage.get_item_by_id(request.instruction_id)
-                if item:
-                    params = item.get('params', [])
+                item_entity = self.item_repo.find_by_id(request.instruction_id)
+                if item_entity:
+                    params = item_entity.params
                     for param in params:
-                        if param.get('direction') == 1:
-                            result_variable_name = param.get('name', '')
+                        if param.direction == 1:
+                            result_variable_name = param.name
                             break
             except:
                 pass

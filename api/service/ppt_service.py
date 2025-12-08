@@ -73,21 +73,3 @@ class PPTservice:
                 "file_info": None,
                 "conversion_result": None
             }    
-    async def health_check(self) -> Dict[str, Any]:
-        """健康检查"""
-        return {
-            "status": "healthy",
-            "message": "PPT转HTML服务运行正常",
-            "timestamp": datetime.now().isoformat()
-        }
-    
-    async def get_server_info(self) -> Dict[str, Any]:
-        """获取服务器信息"""
-        return {
-            "service_name": "PPT转HTML转换服务",
-            "version": "2.0.0 (FastAPI + DI)",
-            "supported_formats": ["ppt", "pptx"],
-            "max_file_size": "50MB",
-            "upload_folder": self.file_service.upload_folder,
-            "status": "running"
-        }

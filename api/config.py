@@ -8,6 +8,9 @@ import os
 from dataclasses import dataclass
 from typing import Set
 
+# 获取当前文件所在目录的绝对路径
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 
 @dataclass
 class AppConfig:
@@ -20,15 +23,17 @@ class AppConfig:
     DEBUG: bool = True
     THREADED: bool = True
     
-    # 文件上传配置
-    UPLOAD_FOLDER: str = 'config_infos/uploads'
-    TEMPLATES_FOLDER: str = 'config_infos/templates'  # 模板管理模块配置信息
-    DATA_SOURCES_FOLDER: str = 'config_infos/data_sources'  # 数据源模块配置信息
-    INSTRUCTIONS_FOLDER: str = 'config_infos/instructions'  # 指令管理模块配置信息
-    DATA_PROCESSES_FOLDER: str = 'config_infos/data_processes'  # 数据处理流程模块配置信息
+    # 文件上传配置 - 使用绝对路径
+    UPLOAD_FOLDER: str = os.path.join(BASE_DIR, 'config_infos/uploads')
+    DATA_SOURCES_FOLDER: str = os.path.join(BASE_DIR, 'config_infos/data_sources')  # 数据源模块配置信息
+    INSTRUCTIONS_FOLDER: str = os.path.join(BASE_DIR, 'config_infos/instructions')  # 指令管理模块配置信息
+    DATA_PROCESSES_FOLDER: str = os.path.join(BASE_DIR, 'config_infos/data_processes')  # 数据处理流程模块配置信息
     MAX_FILE_SIZE: int = 50 * 1024 * 1024  # 50MB
     ALLOWED_EXTENSIONS: Set[str] = None
     
+    # 数据库信息
+    DB_PATH: str = os.path.join(BASE_DIR, 'database.db')
+
     # 应用信息
     SERVICE_NAME: str = 'PPT Upload Server'
     VERSION: str = '2.0.0'
@@ -39,7 +44,6 @@ class AppConfig:
         
         # 确保目录存在
         os.makedirs(self.UPLOAD_FOLDER, exist_ok=True)
-        os.makedirs(self.TEMPLATES_FOLDER, exist_ok=True)
         os.makedirs(self.DATA_SOURCES_FOLDER, exist_ok=True)
         os.makedirs(self.INSTRUCTIONS_FOLDER, exist_ok=True)
         os.makedirs(self.DATA_PROCESSES_FOLDER, exist_ok=True)

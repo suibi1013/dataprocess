@@ -11,7 +11,6 @@ class Fileservice:
     
     def __init__(self):
         self.upload_folder = config.UPLOAD_FOLDER
-        self.config_folder = config.TEMPLATES_FOLDER
         self.data_source_folder = config.DATA_SOURCES_FOLDER
         self.allowed_extensions = {'.ppt', '.pptx'}
         self.excel_extensions = {'.xlsx', '.xls'}
@@ -19,7 +18,6 @@ class Fileservice:
         
         # 确保目录存在
         os.makedirs(self.upload_folder, exist_ok=True)
-        os.makedirs(self.config_folder, exist_ok=True)
         os.makedirs(self.data_source_folder, exist_ok=True)
     
     def validate_file(self, filename: str, allowed_extensions: List[str]) -> bool:

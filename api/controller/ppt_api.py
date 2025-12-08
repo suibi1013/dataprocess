@@ -1,12 +1,9 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 PPT控制器 - FastAPI + 依赖注入版本
 处理PPT相关的HTTP请求
 """
 
 from fastapi import APIRouter, UploadFile, File, Form, Query, Depends, HTTPException
-from fastapi.responses import FileResponse
 from typing import Dict, Any
 import os
 from dataclasses import dataclass
@@ -127,20 +124,6 @@ async def load_config(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"加载配置失败: {str(e)}")
 
-
-@api_router.get("/health")
-async def health_check(
-    ppt_service: PPTservice = Depends(lambda: inject(PPTservice))
-):
-    """健康检查接口"""
-    try:
-        # 调用服务层方法进行健康检查
-        result = await ppt_service.health_check()
-        return result
-    except Exception as e:
-        await handle_internal_error(e)
-
-
 @api_router.get("/info")
 async def get_server_info(
     ppt_service: PPTservice = Depends(lambda: inject(PPTservice))
@@ -157,40 +140,34 @@ async def get_server_info(
 
 @api_router.get("/templates")
 async def get_templates(
-    ppt_service: PPTservice = Depends(lambda: inject(PPTservice))
+    config_service: Configservice = Depends(lambda: inject(Configservice))
 ):
     """获取模板列表"""
     try:
+        from repository.base_repository import SQLiteConnectionPool
+        from repository.template_info_repository import TemplateInfoRepository
+        
+        # 创建连接池
+        db_path = config.DB_PATH
+        db_pool = SQLiteConnectionPool(db_path)
+        
+        # 创建模板信息仓储实例
+        template_info_repo = TemplateInfoRepository(db_pool)
+        
+        # 获取所有模板信息
+        template_infos = template_info_repo.find_all()
+        
+        # 构建响应数据
         templates = []
-        configs_dir = config.TEMPLATES_FOLDER
-        
-        if not os.path.exists(configs_dir):
-            os.makedirs(configs_dir)
-            return {"success": True, "templates": templates}
-        
-        for file_name in os.listdir(configs_dir):
-            if file_name.endswith('.json'):
-                try:
-                    config_path = os.path.join(configs_dir, file_name)
-                    config_data={}
-                    with open(config_path, 'r', encoding='utf-8') as f:
-                        config_data = json.load(f)
-                    # 获取文件修改时间
-                    mtime = os.path.getmtime(config_path)
-                    create_time = datetime.fromtimestamp(mtime).isoformat()    
-                    id=config_data.get('id','')
-                    data=config_data.get('data',{})
-                    if id and data:                                    
-                        template = {
-                            'id': id,
-                            'name': data.get('config',{}).get('templateName', ''),
-                            'filename': data.get('config',{}).get('filename', file_name.replace('.json', '')),
-                            'createTime': create_time,
-                            'status': 'ready'
-                        }
-                        templates.append(template)
-                except Exception as e:
-                    continue
+        for template_info in template_infos:
+            template = {
+                'id': template_info.id,
+                'name': template_info.template_name,
+                'filename': template_info.filename,
+                'createTime': template_info.created_at,
+                'status': 'ready'
+            }
+            templates.append(template)
         
         return {
             'success': True,
@@ -202,19 +179,32 @@ async def get_templates(
 
 @api_router.delete("/templates/{template_id}")
 async def delete_template(
-    template_id: str,
-    ppt_service: PPTservice = Depends(lambda: inject(PPTservice))
+    template_id: str
 ):
     """删除指定模板"""
     try:
-        configs_dir = config.TEMPLATES_FOLDER
-        config_path = os.path.join(configs_dir, template_id+'.json')
+        from repository.base_repository import SQLiteConnectionPool
+        from repository.template_info_repository import TemplateInfoRepository
+        from repository.template_slide_repository import TemplateSlideRepository
         
-        if not os.path.exists(config_path):
+        # 创建连接池
+        db_path = config.DB_PATH
+        db_pool = SQLiteConnectionPool(db_path)
+        
+        # 创建仓储实例
+        template_info_repo = TemplateInfoRepository(db_pool)
+        template_slide_repo = TemplateSlideRepository(db_pool)
+        
+        # 检查模板是否存在
+        template_info = template_info_repo.find_by_id(template_id)
+        if not template_info:
             raise HTTPException(status_code=404, detail='模板不存在')
         
-        # 删除配置文件
-        os.remove(config_path)
+        # 删除模板幻灯片配置
+        template_slide_repo.delete_by_template_id(template_id)
+        
+        # 删除模板信息
+        template_info_repo.delete(template_id)
         
         return {
             'success': True,
@@ -228,30 +218,35 @@ async def delete_template(
 
 @api_router.get("/check_config_update")
 async def check_config_update(
-    filename: str = Query(..., description="文件名"),
-    ppt_service: PPTservice = Depends(lambda: inject(PPTservice))
+    filename: str = Query(..., description="文件名")
 ):
     """检查配置更新"""
     try:
-        # 在configs目录中查找匹配的配置文件
-        configs_dir = config.TEMPLATES_FOLDER
-        if not os.path.exists(configs_dir):
-            return {
-                'success': False,
-                'hasUpdate': False,
-                'message': '配置目录不存在'
-            }
+        from repository.base_repository import SQLiteConnectionPool
+        from repository.template_info_repository import TemplateInfoRepository
         
-        # 遍历configs目录查找匹配的配置文件
-        for config_file in os.listdir(configs_dir):
-            if config_file.endswith('.json') and filename in config_file:
-                config_path = os.path.join(configs_dir, config_file)
-                # 获取文件修改时间
-                mtime = os.path.getmtime(config_path)
+        # 创建连接池
+        db_path = config.DB_PATH
+        db_pool = SQLiteConnectionPool(db_path)
+        
+        # 创建模板信息仓储实例
+        template_info_repo = TemplateInfoRepository(db_pool)
+        
+        # 获取所有模板信息
+        template_infos = template_info_repo.find_all()
+        
+        # 查找匹配的模板
+        for template_info in template_infos:
+            if filename in template_info.filename:
+                # 获取最后更新时间戳
+                import time
+                updated_time = datetime.fromisoformat(template_info.updated_at)
+                mtime = time.mktime(updated_time.timetuple())
+                
                 return {
                     'success': True,
                     'hasUpdate': True,
-                    'configFile': config_file,
+                    'configFile': template_info.id + '.json',  # 保持与原接口兼容
                     'lastModified': mtime,
                     'message': '找到匹配的配置文件'
                 }

@@ -9,76 +9,172 @@ import os
 import json
 import uuid
 import base64
+import ast
 from io import BytesIO
 from datetime import datetime
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple, Set
 from collections import deque
 
-from pydantic_core.core_schema import nullable_schema
 from config import config
 from dto.instruction_dto import DataProcessFlow, SaveDataProcessFlowRequest, SaveDataProcessFlowResponse
 from service.base_service import BaseService
 from service.result import Result
-from service.instruction_service import InstructionService
+from repository.instruction_item_repository import InstructionItemRepository
+from repository.data_process_repository import DataProcessRepository
+from repository.execution_record_repository import ExecutionRecordRepository
+import inspect
 
 
 class DataProcessService(BaseService):
     """数据处理流程服务类"""
     
-    def __init__(self, instruction_service: InstructionService = None):
+    def __init__(self, instruction_item_repo: InstructionItemRepository = None, data_process_repo: DataProcessRepository = None, execution_record_repo: ExecutionRecordRepository = None):
         """初始化数据处理流程服务
         
         Args:
-            instruction_service: 指令服务实例，将通过依赖注入获取
+            instruction_item_repo: 指令项目仓储实例，将通过依赖注入获取
+            data_process_repo: 数据流程仓储实例，将通过依赖注入获取
+            execution_record_repo: 执行记录仓储实例，将通过依赖注入获取
         """
-        self.processes_folder = config.DATA_PROCESSES_FOLDER
-        self.processes_file = os.path.join(self.processes_folder, 'saved_processes.json')
+        # 注入仓储实例
+        self.instruction_item_repo = instruction_item_repo
+        self.data_process_repo = data_process_repo
+        self.execution_record_repo = execution_record_repo
+    
+
+    
+    def _extract_user_functions_from_ast(self, script: str) -> List[str]:
+        """通过AST解析提取脚本中所有def定义的函数名称"""
+        tree = ast.parse(script)
+        func_names = []
+        for node in ast.walk(tree):
+            # 识别函数定义节点（def）
+            if isinstance(node, ast.FunctionDef):
+                func_names.append(node.name)
+            # 识别异步函数定义节点（async def）
+            elif isinstance(node, ast.AsyncFunctionDef):
+                func_names.append(node.name)
+        return func_names
+    
+    def _filter_functions_by_params(
+        self, 
+        globals_env: Dict[str, Any], 
+        func_names: List[str], 
+        target_params: Dict[str, Any]
+    ) -> List[tuple[str, Any]]:
+        """筛选参数与target_params完全匹配的函数"""
+        target_param_keys = set(target_params.keys())
+        matched_functions = []
         
-        # 确保目录存在
-        os.makedirs(self.processes_folder, exist_ok=True)
-        
-        # 初始化流程文件
-        if not os.path.exists(self.processes_file):
-            self._initialize_processes_file()
+        for func_name in func_names:
+            obj = globals_env.get(func_name)
+            if not obj or not callable(obj):
+                continue
             
-        # 注入指令服务实例
-        self.instruction_service = instruction_service
-        
-        # 如果未通过参数注入，尝试从容器获取
-        if not self.instruction_service:
+            # 解析函数参数签名
             try:
-                from di.container import inject
-                self.instruction_service = inject(InstructionService)
-            except ImportError:
-                # 作为降级方案，直接创建实例
-                self.instruction_service = InstructionService()
+                sig = inspect.signature(obj)
+                func_param_keys = set(sig.parameters.keys())
+                
+                # 筛选条件：函数参数与目标参数完全一致（数量和名称都匹配）
+                if func_param_keys == target_param_keys:
+                    matched_functions.append((func_name, obj))
+            except ValueError:
+                # 忽略无法解析签名的对象（如内置函数）
+                continue
+        
+        return matched_functions
     
-    def _initialize_processes_file(self):
-        """初始化流程文件"""
-        try:
-            with open(self.processes_file, 'w', encoding='utf-8') as f:
-                json.dump([], f, ensure_ascii=False, indent=2)
-        except Exception as e:
-            print(f"❌ 初始化流程文件失败: {str(e)}")
+    def _convert_params_by_type_annotations(
+        self, 
+        signature: inspect.Signature, 
+        params: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """根据函数参数的类型注解转换参数类型"""
+        converted_params = {}
+        
+        for param_name, param in signature.parameters.items():
+            # 检查参数是否存在且有类型注解
+            if param_name in params and param.annotation != inspect.Parameter.empty:
+                param_value = params[param_name]
+                # 如果参数值已经是目标类型，则不需要转换
+                if isinstance(param_value, param.annotation):
+                    converted_params[param_name] = param_value
+                    continue
+                
+                # 尝试根据类型注解进行转换
+                try:
+                    # 处理常见类型的转换
+                    if param.annotation == int:
+                        # 尝试将字符串或浮点数转换为整数
+                        converted_params[param_name] = int(param_value)
+                    elif param.annotation == float:
+                        # 尝试将字符串或整数转换为浮点数
+                        converted_params[param_name] = float(param_value)
+                    elif param.annotation == bool:
+                        # 处理布尔值转换，支持字符串"true"/"false"或数字等
+                        if isinstance(param_value, str):
+                            converted_params[param_name] = param_value.lower() in ('true', 'yes', '1', 't', 'y')
+                        else:
+                            converted_params[param_name] = bool(param_value)
+                    elif param.annotation == str:
+                        # 转换为字符串
+                        converted_params[param_name] = str(param_value)
+                    # 可以根据需要添加更多类型转换逻辑
+                    else:
+                        # 对于其他类型，尝试直接转换
+                        converted_params[param_name] = param.annotation(param_value)
+                except (ValueError, TypeError):
+                    # 如果转换失败，保留原始值
+                    converted_params[param_name] = param_value
+            else:
+                # 如果参数没有类型注解或不存在于params中，保留原始值（如果存在）
+                if param_name in params:
+                    converted_params[param_name] = params[param_name]
+        
+        return converted_params
     
-    def _load_processes(self) -> List[Dict[str, Any]]:
-        """加载所有保存的流程"""
+    async def _execute_python_script(self, script: str, params: Dict[str, Any]) -> Any:
+        """执行Python脚本（通过AST解析+参数完全匹配定位用户自定义函数）"""
         try:
-            with open(self.processes_file, 'r', encoding='utf-8') as f:
-                return json.load(f)
+            # 步骤1：解析脚本AST，提取所有def定义的用户函数名称
+            user_func_names = self._extract_user_functions_from_ast(script)
+            if not user_func_names:
+                raise Exception("未在脚本中找到def定义的用户函数")
+            
+            # 步骤2：执行脚本，获取全局环境
+            globals_env = {
+                '__builtins__': __builtins__,
+                'inspect': inspect
+            }
+            exec(script, globals_env)
+            
+            # 步骤3：筛选参数与params完全匹配的函数
+            target_functions = self._filter_functions_by_params(
+                globals_env=globals_env,
+                func_names=user_func_names,
+                target_params=params
+            )
+            if not target_functions:
+                param_keys = list(params.keys())
+                raise Exception(f"未找到参数与 {param_keys} 完全匹配的用户函数")
+            
+            # 步骤4：尝试调用目标函数（默认取第一个匹配的函数）
+            name, obj = target_functions[0]
+            try:
+                # 获取函数参数的类型注解
+                sig = inspect.signature(obj)
+                # 根据类型注解转换参数类型
+                converted_params = self._convert_params_by_type_annotations(sig, params)
+                # 使用转换后的参数调用函数
+                result = obj(**converted_params)
+            except Exception as e:
+                raise Exception(f"函数 {name} 调用失败: {str(e)}")
+            
+            return result
+            
         except Exception as e:
-            print(f"❌ 加载流程文件失败: {str(e)}")
-            return []
-    
-    def _save_processes(self, processes: List[Dict[str, Any]]) -> bool:
-        """保存所有流程"""
-        try:
-            with open(self.processes_file, 'w', encoding='utf-8') as f:
-                json.dump(processes, f, ensure_ascii=False, indent=2)
-            return True
-        except Exception as e:
-            print(f"❌ 保存流程文件失败: {str(e)}")
-            return False
+            raise Exception(f"脚本执行错误: {str(e)}")
     
     async def save_data_process_flow(self, flow: DataProcessFlow) -> Result[SaveDataProcessFlowResponse]:
         """
@@ -89,8 +185,10 @@ class DataProcessService(BaseService):
             Result[SaveDataProcessFlowResponse]: 保存结果
         """
         try:
-            # 加载现有流程
-            processes = self._load_processes()            
+            from entity.data_process import DataProcess
+            from entity.process_node import ProcessNode
+            from entity.process_edge import ProcessEdge
+            
             # 生成或使用现有ID
             flow_id = flow.id or str(uuid.uuid4())
             
@@ -100,34 +198,65 @@ class DataProcessService(BaseService):
                 flow.createdAt = now
             flow.updatedAt = now
             
-            # 转换为字典并保存
-            flow_dict = flow.dict()
-            # 处理时间格式
-            if flow_dict.get('createdAt'):
-                flow_dict['createdAt'] = flow_dict['createdAt'].isoformat() if isinstance(flow_dict['createdAt'], datetime) else flow_dict['createdAt']
-            if flow_dict.get('updatedAt'):
-                flow_dict['updatedAt'] = flow_dict['updatedAt'].isoformat() if isinstance(flow_dict['updatedAt'], datetime) else flow_dict['updatedAt']
+            # 转换为Pydantic实体对象
+            nodes = []
+            for node in flow.nodes:
+                nodes.append(ProcessNode(
+                    id=node.id,
+                    flow_id=flow_id,  # 添加flow_id字段
+                    instruction_id=node.instructionId,
+                    name=node.name,
+                    description=node.description,
+                    x=node.x,
+                    y=node.y,
+                    params=node.params
+                ))
             
-            # 设置流程ID
-            flow_dict['id'] = flow_id
+            edges = []
+            for edge in flow.edges:
+                edges.append(ProcessEdge(
+                    id=edge.id,
+                    flow_id=flow_id,  # 添加flow_id字段
+                    source=edge.source,
+                    target=edge.target,
+                    label=edge.label
+                ))
             
-            # 检查是否已经存在相同ID的流程，如果存在则更新，否则添加
-            existing_index = next((i for i, p in enumerate(processes) if p.get('id') == flow_id), -1)
-            if existing_index >= 0:
-                processes[existing_index] = flow_dict
+            data_process = DataProcess(
+                id=flow_id,
+                name=flow.name,
+                description=flow.description,
+                nodes=nodes,
+                edges=edges,
+                created_at=flow.createdAt.isoformat() if isinstance(flow.createdAt, datetime) else flow.createdAt,
+                updated_at=flow.updatedAt.isoformat() if isinstance(flow.updatedAt, datetime) else flow.updatedAt
+            )
+            
+            # 使用仓储保存流程
+            # 检查流程是否已存在
+            existing_process = self.data_process_repo.find_by_id(flow_id)
+            if existing_process:
+                # 流程已存在，使用update方法
+                if self.data_process_repo.update(data_process):
+                    response = SaveDataProcessFlowResponse(
+                        id=flow_id,
+                        message=f"流程 '{flow.name}' 更新成功",
+                        success=True
+                    )
+                    return Result.success(response)
+                else:
+                    return Result.fail("更新流程失败，请稍后重试")
             else:
-                processes.append(flow_dict)
-            
-            # 保存到文件
-            if self._save_processes(processes):
-                response = SaveDataProcessFlowResponse(
-                    id=flow_id,
-                    message=f"流程 '{flow.name}' 保存成功",
-                    success=True
-                )
-                return Result.success(response)
-            else:
-                return Result.fail("保存流程失败，请稍后重试")
+                # 流程不存在，使用add方法
+                if self.data_process_repo.add(data_process):
+                    response = SaveDataProcessFlowResponse(
+                        id=flow_id,
+                        message=f"流程 '{flow.name}' 保存成功",
+                        success=True
+                    )
+                    return Result.success(response)
+                else:
+                    return Result.fail("保存流程失败，请稍后重试")
                 
         except Exception as e:
             print(f"❌ 保存数据处理流程失败: {str(e)}")
@@ -144,18 +273,34 @@ class DataProcessService(BaseService):
             Result[DataProcessFlow]: 流程对象
         """
         try:
-            processes = self._load_processes()
-            
-            # 在数组中查找指定ID的流程
-            flow_dict = next((p for p in processes if p.get('id') == flow_id), None)
-            if flow_dict is None:
+            # 使用仓储获取流程
+            process = self.data_process_repo.find_by_id(flow_id)
+            if not process:
                 return Result.fail(f"流程ID '{flow_id}' 不存在")
             
-            # 处理时间格式
-            if 'createdAt' in flow_dict and flow_dict['createdAt']:
-                flow_dict['createdAt'] = datetime.fromisoformat(flow_dict['createdAt'])
-            if 'updatedAt' in flow_dict and flow_dict['updatedAt']:
-                flow_dict['updatedAt'] = datetime.fromisoformat(flow_dict['updatedAt'])
+            # 转换为DataProcessFlow对象
+            flow_dict = {
+                "id": process.id,
+                "name": process.name,
+                "description": process.description,
+                "nodes": [{
+                    "id": node.id,
+                    "instructionId": node.instruction_id,
+                    "name": node.name,
+                    "description": node.description,
+                    "x": node.x,
+                    "y": node.y,
+                    "params": node.params
+                } for node in process.nodes],
+                "edges": [{
+                    "id": edge.id,
+                    "source": edge.source,
+                    "target": edge.target,
+                    "label": edge.label
+                } for edge in process.edges],
+                "createdAt": datetime.fromisoformat(process.created_at),
+                "updatedAt": datetime.fromisoformat(process.updated_at)
+            }
             
             flow = DataProcessFlow(**flow_dict)
             return Result.success(flow)
@@ -174,15 +319,34 @@ class DataProcessService(BaseService):
             Result[List[DataProcessFlow]]: 流程列表
         """
         try:
-            processes = self._load_processes()
+            # 使用仓储获取所有流程
+            processes = self.data_process_repo.find_all()
             flow_list = []
             
-            for flow_dict in processes:
-                # 处理时间格式
-                if 'createdAt' in flow_dict and flow_dict['createdAt']:
-                    flow_dict['createdAt'] = datetime.fromisoformat(flow_dict['createdAt'])
-                if 'updatedAt' in flow_dict and flow_dict['updatedAt']:
-                    flow_dict['updatedAt'] = datetime.fromisoformat(flow_dict['updatedAt'])
+            for process in processes:
+                # 转换为DataProcessFlow对象
+                flow_dict = {
+                    "id": process.id,
+                    "name": process.name,
+                    "description": process.description,
+                    "nodes": [{
+                        "id": node.id,
+                        "instructionId": node.instruction_id,
+                        "name": node.name,
+                        "description": node.description,
+                        "x": node.x,
+                        "y": node.y,
+                        "params": node.params
+                    } for node in process.nodes],
+                    "edges": [{
+                        "id": edge.id,
+                        "source": edge.source,
+                        "target": edge.target,
+                        "label": edge.label
+                    } for edge in process.edges],
+                    "createdAt": datetime.fromisoformat(process.created_at),
+                    "updatedAt": datetime.fromisoformat(process.updated_at)
+                }
                 
                 flow = DataProcessFlow(**flow_dict)
                 flow_list.append(flow)
@@ -207,16 +371,13 @@ class DataProcessService(BaseService):
             Result[bool]: 删除结果
         """
         try:
-            processes = self._load_processes()
-            
-            # 过滤掉要删除的流程
-            filtered_processes = [p for p in processes if p.get('id') != flow_id]
-            
-            if len(filtered_processes) == len(processes):
+            # 检查流程是否存在
+            existing_process = self.data_process_repo.find_by_id(flow_id)
+            if not existing_process:
                 return Result.fail(f"流程ID '{flow_id}' 不存在")
             
-            # 保存更新后的流程列表
-            if self._save_processes(filtered_processes):
+            # 使用仓储删除流程
+            if self.data_process_repo.delete(flow_id):
                 return Result.success(True)
             else:
                 return Result.fail("删除流程失败，请稍后重试")
@@ -377,50 +538,7 @@ class DataProcessService(BaseService):
             print(f"❌ 获取前置节点信息失败: {str(e)}")
             return Result.fail(f"获取前置节点信息失败: {str(e)}")
     
-    def _get_execution_history_file(self) -> str:
-        """
-        获取执行历史记录文件路径
-        
-        Returns:
-            str: 执行历史记录文件路径
-        """
-        return os.path.join(self.processes_folder, 'execution_history.json')
-    
-    def _load_execution_history(self) -> List[Dict[str, Any]]:
-        """
-        加载执行历史记录
-        
-        Returns:
-            List[Dict[str, Any]]: 执行历史记录列表
-        """
-        history_file = self._get_execution_history_file()
-        try:
-            if not os.path.exists(history_file):
-                return []
-            with open(history_file, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except Exception as e:
-            print(f"❌ 加载执行历史记录失败: {str(e)}")
-            return []
-    
-    def _save_execution_history(self, history: List[Dict[str, Any]]) -> bool:
-        """
-        保存执行历史记录
-        
-        Args:
-            history: 执行历史记录列表
-            
-        Returns:
-            bool: 保存是否成功
-        """
-        history_file = self._get_execution_history_file()
-        try:
-            with open(history_file, 'w', encoding='utf-8') as f:
-                json.dump(history, f, ensure_ascii=False, indent=2)
-            return True
-        except Exception as e:
-            print(f"❌ 保存执行历史记录失败: {str(e)}")
-            return False
+
     
     def record_execution_result(self, flow_id: str, flow_name: str, execution_result: Dict[str, Any], success: bool, error_message: str = None, execution_time: float = 0) -> bool:
         """
@@ -438,28 +556,31 @@ class DataProcessService(BaseService):
             bool: 记录是否成功
         """
         try:
-            # 创建执行记录
-            execution_record = {
-                "id": str(uuid.uuid4()),
-                "flow_id": flow_id,
-                "flow_name": flow_name,
-                "success": success,
-                "error_message": error_message,
-                "execution_time": execution_time,
-                "executed_at": datetime.now().isoformat(),
-                "result_data": execution_result
-            }
+            from entity.execution_record import ExecutionRecord
+            from entity.execution_result import ExecutionResult as ExecutionResultData
             
-            # 加载现有历史记录
-            history = self._load_execution_history()
+            # 创建执行结果数据对象
+            result_data = ExecutionResultData(
+                flow_id=execution_result.get('flow_id', flow_id),
+                flow_name=execution_result.get('flow_name', flow_name),
+                final_result=execution_result.get('final_result'),
+                process_results=execution_result.get('process_results', {})
+            )
             
-            # 添加新记录（限制保存最近100条记录）
-            history.insert(0, execution_record)
-            if len(history) > 100:
-                history = history[:100]
+            # 创建执行记录对象
+            exec_record = ExecutionRecord(
+                id=str(uuid.uuid4()),
+                flow_id=flow_id,
+                flow_name=flow_name,
+                success=success,
+                error_message=error_message,
+                execution_time=execution_time,
+                executed_at=datetime.now().isoformat(),
+                result_data=result_data
+            )
             
-            # 保存更新后的历史记录
-            return self._save_execution_history(history)
+            # 使用仓储保存执行记录
+            return self.execution_record_repo.add(exec_record)
         except Exception as e:
             print(f"❌ 记录执行结果失败: {str(e)}")
             return False
@@ -856,11 +977,36 @@ class DataProcessService(BaseService):
             Result[List[Dict[str, Any]]]: 执行历史记录列表
         """
         try:
-            history = self._load_execution_history()
-            
-            # 如果指定了流程ID，则过滤历史记录
+            # 使用仓储获取执行历史记录
             if flow_id:
-                history = [record for record in history if record.get('flow_id') == flow_id]
+                records = self.execution_record_repo.find_by_flow_id(flow_id)
+            else:
+                records = self.execution_record_repo.find_all()
+            
+            # 转换为字典列表
+            history = []
+            for record in records:
+                record_dict = {
+                    "id": record.id,
+                    "flow_id": record.flow_id,
+                    "flow_name": record.flow_name,
+                    "success": record.success,
+                    "error_message": record.error_message,
+                    "execution_time": record.execution_time,
+                    "executed_at": record.executed_at,
+                    "result_data": None
+                }
+                
+                # 转换结果数据
+                if record.result_data:
+                    record_dict["result_data"] = {
+                        "flow_id": record.result_data.flow_id,
+                        "flow_name": record.result_data.flow_name,
+                        "final_result": record.result_data.final_result,
+                        "process_results": record.result_data.process_results
+                    }
+                
+                history.append(record_dict)
             
             return Result.success(history)
         except Exception as e:

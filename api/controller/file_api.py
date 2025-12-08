@@ -34,7 +34,6 @@ async def get_file_info(
         # 安全设置：允许访问的本地目录白名单
         allowed_local_dirs = [
             config.UPLOAD_FOLDER,
-            config.TEMPLATES_FOLDER,
             config.DATA_SOURCES_FOLDER
         ]
         
@@ -154,7 +153,6 @@ async def download_file(filepath: str):
             # 安全设置：允许访问的本地目录白名单
             allowed_local_dirs = [
                 config.UPLOAD_FOLDER,
-                config.TEMPLATES_FOLDER,
                 config.DATA_SOURCES_FOLDER
             ]
             
