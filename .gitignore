@@ -2,11 +2,7 @@
 /api/config_infos/uploads
 /api/config_infos/templates
 /api/config_infos/data_sources
-/node_modules
-node_modules
-/deploy/api
-/deploy/build
+/api/config_infos/data_processes
+/vue/node_modules
+/vue/dist
 /deploy/build-ready
-/deploy/dist
-/deploy/electron-dist-final
-/deploy/build_ready

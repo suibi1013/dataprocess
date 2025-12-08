@@ -10,6 +10,8 @@ from pydantic import BaseModel, Field
 
 class InstructionParameter(BaseModel):
     """指令参数实体类"""
+    id: Optional[str] = Field(None, description="参数ID")  # 参数ID
+    instruction_id: Optional[str] = Field(None, description="指令ID")  # 指令ID
     name: str = Field(..., description="参数名称")  # 参数名称
     label: str = Field(..., description="参数标签")  # 参数标签
     description: Optional[str] = Field(None, description="参数描述")  # 参数描述

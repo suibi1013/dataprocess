@@ -22,7 +22,6 @@ class InstructionItem(BaseModel):
     is_active: bool = Field(True, description="是否激活")  # 是否激活
     created_at: Optional[str] = Field(None, description="创建时间")  # 创建时间
     updated_at: Optional[str] = Field(None, description="更新时间")  # 更新时间
-    params: Optional[List[InstructionParameter]] = Field(default_factory=list, description="指令参数列表")  # 指令参数列表
     
     @model_validator(mode='after')
     def set_timestamps(self):
@@ -31,9 +30,6 @@ class InstructionItem(BaseModel):
             self.created_at = datetime.now().isoformat()
         if self.updated_at is None:
             self.updated_at = datetime.now().isoformat()
-        # 确保params是列表
-        if self.params is None:
-            self.params = []
         return self
     
     model_config = {

@@ -17,12 +17,13 @@ import ast
 from config import config
 from repository.instruction_category_repository import InstructionCategoryRepository
 from repository.instruction_item_repository import InstructionItemRepository
+from repository.instruction_parameter_repository import InstructionParameterRepository
 from entity.instruction_category import InstructionCategory as InstructionCategoryEntity
 from entity.instruction_item import InstructionItem as InstructionItemEntity
 from entity.instruction_parameter import InstructionParameter as InstructionParameterEntity
 
 from dto.instruction_dto import (
-    InstructionItem, InstructionCategory, InstructionListResponse,
+    InstructionItem, InstructionCategory, InstructionListResponse, InstructionParameter,
     CreateInstructionCategoryRequest, CreateInstructionItemRequest,
     UpdateInstructionCategoryRequest, UpdateInstructionItemRequest,
     ExecuteInstructionRequest, ExecuteInstructionResponse
@@ -32,15 +33,17 @@ from dto.common_dto import ApiResponse
 class InstructionService:
     """指令管理服务"""
     
-    def __init__(self, category_repo: InstructionCategoryRepository, item_repo: InstructionItemRepository):
+    def __init__(self, category_repo: InstructionCategoryRepository, item_repo: InstructionItemRepository, param_repo: InstructionParameterRepository):
         """初始化指令管理服务
         
         Args:
             category_repo: 指令分类仓储实例
             item_repo: 指令项目仓储实例
+            param_repo: 指令参数仓储实例
         """
         self.category_repo = category_repo
         self.item_repo = item_repo
+        self.param_repo = param_repo
     
     async def get_instruction_by_id(self, instruction_id: str) -> Optional[Dict[str, Any]]:
         """根据指令ID获取指令信息
@@ -58,7 +61,13 @@ class InstructionService:
                 return None
             
             # 使用pydantic的model_dump()方法将实体转换为字典
-            return item_entity.model_dump()
+            item_dict = item_entity.model_dump()
+            
+            # 获取指令参数
+            param_entities = self.param_repo.find_by_instruction_id(instruction_id)
+            item_dict["params"] = [param.model_dump() for param in param_entities]
+            
+            return item_dict
         except Exception as e:
             print(f"获取指令信息失败: {str(e)}")
             return None
@@ -78,6 +87,24 @@ class InstructionService:
                 category_items = []
                 for item_entity in item_entities:
                     if item_entity.category_id == cat_entity.id:
+                        # 获取指令参数
+                        param_entities = self.param_repo.find_by_instruction_id(item_entity.id)
+                        
+                        # 将实体类参数转换为DTO参数
+                        param_dtos = []
+                        for param_entity in param_entities:
+                            param_dto = InstructionParameter(
+                                name=param_entity.name,
+                                label=param_entity.label,
+                                description=param_entity.description,
+                                type=param_entity.type,
+                                required=param_entity.required,
+                                defaultValue=param_entity.default_value,
+                                direction=param_entity.direction,
+                                apiUrl=param_entity.api_url
+                            )
+                            param_dtos.append(param_dto)
+                        
                         # 将实体类转换为DTO
                         item_dto = InstructionItem(
                             id=item_entity.id,
@@ -90,7 +117,7 @@ class InstructionService:
                             is_active=item_entity.is_active,
                             created_at=item_entity.created_at,
                             updated_at=item_entity.updated_at,
-                            params=item_entity.params
+                            params=param_dtos
                         )
                         category_items.append(item_dto)
                 
@@ -198,7 +225,7 @@ class InstructionService:
                     )
                     param_entities.append(param_entity)
             
-            # 创建指令项目实体
+            # 创建指令项目实体（不包含params属性）
             item_entity = InstructionItemEntity(
                 id=str(uuid.uuid4()),
                 name=request.name,
@@ -207,13 +234,32 @@ class InstructionService:
                 category_id=request.category_id,
                 python_script=request.python_script,
                 sort_order=request.sort_order,
-                is_active=True,
-                params=param_entities
+                is_active=True
             )
             
             # 使用仓储类保存指令项目
             if self.item_repo.add(item_entity):
-                # 将实体类转换为DTO
+                # 保存指令参数
+                if param_entities:
+                    self.param_repo.add_batch(item_entity.id, param_entities)
+                
+                # 将实体类参数转换为DTO参数
+                param_dtos = []
+                if param_entities:
+                    for param_entity in param_entities:
+                        param_dto = InstructionParameter(
+                            name=param_entity.name,
+                            label=param_entity.label,
+                            description=param_entity.description,
+                            type=param_entity.type,
+                            required=param_entity.required,
+                            defaultValue=param_entity.default_value,
+                            direction=param_entity.direction,
+                            apiUrl=param_entity.api_url
+                        )
+                        param_dtos.append(param_dto)
+                
+                # 将实体类转换为DTO，并添加参数
                 item_dto = InstructionItem(
                     id=item_entity.id,
                     name=item_entity.name,
@@ -225,7 +271,7 @@ class InstructionService:
                     is_active=item_entity.is_active,
                     created_at=item_entity.created_at,
                     updated_at=item_entity.updated_at,
-                    params=item_entity.params
+                    params=param_dtos
                 )
                 return ApiResponse(
                     success=True,
@@ -340,28 +386,55 @@ class InstructionService:
                 item_entity.is_active = request.is_active
             if request.python_script is not None:
                 item_entity.python_script = request.python_script
-            if request.params is not None:
-                # 将InstructionParameter对象转换为实体类
-                param_entities = []
-                for param_dto in request.params:
-                    param_entity = InstructionParameterEntity(
-                        name=param_dto.name,
-                        label=param_dto.label,
-                        description=param_dto.description,
-                        type=param_dto.type,
-                        required=param_dto.required,
-                        default_value=param_dto.default_value,
-                        direction=param_dto.direction,
-                        api_url=param_dto.api_url
-                    )
-                    param_entities.append(param_entity)
-                item_entity.params = param_entities
             
             # 更新时间
             item_entity.updated_at = datetime.now().isoformat()
             
             # 使用仓储类保存更新
             if self.item_repo.update(item_entity):
+                # 处理参数更新
+                param_entities = []
+                if request.params is not None:
+                    # 删除原有的所有参数
+                    self.param_repo.delete_by_instruction_id(item_id)
+                    
+                    # 将InstructionParameter对象转换为实体类并保存
+                    param_entities = []
+                    for param_dto in request.params:
+                        param_entity = InstructionParameterEntity(
+                            name=param_dto.name,
+                            label=param_dto.label,
+                            description=param_dto.description,
+                            type=param_dto.type,
+                            required=param_dto.required,
+                            default_value=param_dto.default_value,
+                            direction=param_dto.direction,
+                            api_url=param_dto.api_url
+                        )
+                        param_entities.append(param_entity)
+                    
+                    # 批量保存新参数
+                    self.param_repo.add_batch(item_id, param_entities)
+                else:
+                    # 获取现有参数
+                    param_entities = self.param_repo.find_by_instruction_id(item_id)
+                
+                # 将实体类参数转换为DTO参数
+                param_dtos = []
+                if param_entities:
+                    for param_entity in param_entities:
+                        param_dto = InstructionParameter(
+                            name=param_entity.name,
+                            label=param_entity.label,
+                            description=param_entity.description,
+                            type=param_entity.type,
+                            required=param_entity.required,
+                            defaultValue=param_entity.default_value,
+                            direction=param_entity.direction,
+                            apiUrl=param_entity.api_url
+                        )
+                        param_dtos.append(param_dto)
+                
                 # 将实体类转换为DTO
                 item_dto = InstructionItem(
                     id=item_entity.id,
@@ -374,7 +447,7 @@ class InstructionService:
                     is_active=item_entity.is_active,
                     created_at=item_entity.created_at,
                     updated_at=item_entity.updated_at,
-                    params=item_entity.params
+                    params=param_dtos
                 )
                 return ApiResponse(
                     success=True,
@@ -428,6 +501,9 @@ class InstructionService:
     async def delete_item(self, item_id: str) -> ApiResponse[bool]:
         """删除指令项目"""
         try:
+            # 先删除相关的指令参数
+            self.param_repo.delete_by_instruction_id(item_id)
+            
             # 使用仓储类删除指令项目
             if self.item_repo.delete(item_id):
                 return ApiResponse(

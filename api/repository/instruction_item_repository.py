@@ -41,26 +41,10 @@ class InstructionItemRepository(BaseRepository[InstructionItem]):
             is_active INTEGER DEFAULT 1,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
-            params TEXT DEFAULT '[]',
             FOREIGN KEY (category_id) REFERENCES instruction_categories(id)
         )
         """
         self.execute_non_query(create_table_sql)
-        
-        # 检查并添加params列（如果不存在）
-        self._add_params_column()
-    
-    def _add_params_column(self):
-        """添加params列（如果不存在）"""
-        # 尝试添加params列，如果已经存在则忽略错误
-        add_column_sql = f"""
-        ALTER TABLE {self.TABLE_NAME} ADD COLUMN params TEXT DEFAULT '[]'
-        """
-        try:
-            self.execute_non_query(add_column_sql)
-        except Exception:
-            # 如果列已经存在，忽略错误
-            pass
     
     def add(self, item: InstructionItem) -> bool:
         """添加指令信息
@@ -71,21 +55,6 @@ class InstructionItemRepository(BaseRepository[InstructionItem]):
         Returns:
             bool: 添加是否成功
         """
-        # 将参数列表转换为JSON字符串
-        params_json = json.dumps([
-            {
-                "name": param.name,
-                "label": param.label,
-                "description": param.description,
-                "type": param.type,
-                "required": param.required,
-                "default_value": param.default_value,
-                "direction": param.direction,
-                "api_url": param.api_url
-            }
-            for param in item.params
-        ])
-        
         data = {
             "id": item.id,
             "name": item.name,
@@ -96,8 +65,7 @@ class InstructionItemRepository(BaseRepository[InstructionItem]):
             "sort_order": item.sort_order,
             "is_active": 1 if item.is_active else 0,
             "created_at": item.created_at,
-            "updated_at": item.updated_at,
-            "params": params_json
+            "updated_at": item.updated_at
         }
         return self.insert(self.TABLE_NAME, data)
     
@@ -110,21 +78,6 @@ class InstructionItemRepository(BaseRepository[InstructionItem]):
         Returns:
             bool: 更新是否成功
         """
-        # 将参数列表转换为JSON字符串
-        params_json = json.dumps([
-            {
-                "name": param.name,
-                "label": param.label,
-                "description": param.description,
-                "type": param.type,
-                "required": param.required,
-                "default_value": param.default_value,
-                "direction": param.direction,
-                "api_url": param.api_url
-            }
-            for param in item.params
-        ])
-        
         data = {
             "name": item.name,
             "category_id": item.category_id,
@@ -133,8 +86,7 @@ class InstructionItemRepository(BaseRepository[InstructionItem]):
             "python_script": item.python_script,
             "sort_order": item.sort_order,
             "is_active": 1 if item.is_active else 0,
-            "updated_at": item.updated_at,
-            "params": params_json
+            "updated_at": item.updated_at
         }
         return super().update(self.TABLE_NAME, data, "id = ?", (item.id,))
     
@@ -212,11 +164,6 @@ class InstructionItemRepository(BaseRepository[InstructionItem]):
             InstructionItem: 指令信息实体
         """
         # 处理布尔值转换
-        result["is_active"] = bool(result["is_active"])
-        
-        # 解析参数JSON字符串
-        if result["params"]:
-            params_data = json.loads(result["params"])
-            result["params"] = [self.dict_to_model(param_data, InstructionParameter) for param_data in params_data]
-        
+        result["is_active"] = bool(result["is_active"])        
+                
         return self.dict_to_model(result, InstructionItem)
