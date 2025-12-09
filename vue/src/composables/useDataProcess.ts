@@ -1479,12 +1479,26 @@ function createDataProcessInstance() {
             // 返回原始参数对象的深拷贝，保留用户定义的参数名称
             return params ? JSON.parse(JSON.stringify(params)) : {};
           };
+          // 处理输入类型：将inputTypes对象转换为所需的格式
+          // {t: [paramName1, paramName2], e: [paramName3, paramName4]}
+          const inputTypes = nodeData.inputTypes || {};
+          const formattedInputTypes: { t: string[], e: string[] } = { t: [], e: [] };
+          
+          for (const [paramName, isExpression] of Object.entries(inputTypes)) {
+            if (isExpression) {
+              formattedInputTypes.e.push(paramName);
+            } else {
+              formattedInputTypes.t.push(paramName);
+            }
+          }
+          
           return {
             id: node.id,
             instructionId: nodeData.instructionId,
             x: position.x,
             y: position.y,
             params: convertParams(nodeData.params),
+            intput_types: formattedInputTypes, // 使用正确的属性名（注意是intput_types，不是input_types）
             description: nodeData.description // 保存节点描述信息
           };
         }),
@@ -1609,7 +1623,8 @@ function createDataProcessInstance() {
                 label: instruction.name,
                 instructionId: instruction.id,
                 params: nodeData.params || {},
-                description: nodeData.description || '' // 确保description属性存在
+                description: nodeData.description || '', // 确保description属性存在
+                intput_types: nodeData.intput_types || { t: [], e: [] } // 添加输入类型属性
               },
               attrs: {
                 body: {
@@ -1976,12 +1991,26 @@ function createDataProcessInstance() {
             return params ? JSON.parse(JSON.stringify(params)) : {};
           };
           
+          // 处理输入类型：将inputTypes对象转换为所需的格式
+          // {t: [paramName1, paramName2], e: [paramName3, paramName4]}
+          const inputTypes = nodeData.inputTypes || {};
+          const formattedInputTypes: { t: string[], e: string[] } = { t: [], e: [] };
+          
+          for (const [paramName, isExpression] of Object.entries(inputTypes)) {
+            if (isExpression) {
+              formattedInputTypes.e.push(paramName);
+            } else {
+              formattedInputTypes.t.push(paramName);
+            }
+          }
+          
           return {
             id: node.id,
             instructionId: nodeData.instructionId,
             x: position.x,
             y: position.y,
             params: convertParams(nodeData.params),
+            intput_types: formattedInputTypes, // 使用正确的属性名（注意是intput_types，不是input_types）
             description: nodeData.description // 保存节点描述信息
           };
         }),

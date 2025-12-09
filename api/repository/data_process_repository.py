@@ -53,6 +53,7 @@ class DataProcessRepository(BaseRepository[DataProcess]):
             x REAL NOT NULL,
             y REAL NOT NULL,
             params TEXT NOT NULL,
+            intput_types TEXT NOT NULL,
             FOREIGN KEY (flow_id) REFERENCES {self.TABLE_NAME}(id) ON DELETE CASCADE
         )
         """
@@ -100,8 +101,8 @@ class DataProcessRepository(BaseRepository[DataProcess]):
             
             # 插入流程节点
             node_sql = """
-            INSERT INTO process_nodes (id, flow_id, instruction_id, name, description, x, y, params)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO process_nodes (id, flow_id, instruction_id, name, description, x, y, params,intput_types)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """
             for node in process.nodes:
                 node_params = (
@@ -112,7 +113,8 @@ class DataProcessRepository(BaseRepository[DataProcess]):
                     node.description,
                     node.x,
                     node.y,
-                    json.dumps(node.params)
+                    json.dumps(node.params),
+                    json.dumps(node.intput_types)
                 )
                 cursor.execute(node_sql, node_params)
             
@@ -155,12 +157,10 @@ class DataProcessRepository(BaseRepository[DataProcess]):
             # 更新流程基本信息
             process_sql = f"""
             UPDATE {self.TABLE_NAME} 
-            SET name = ?, description = ?, updated_at = ?
+            SET updated_at = ?
             WHERE id = ?
             """
             process_params = (
-                process.name,
-                process.description,
                 process.updated_at,
                 process.id
             )
@@ -173,8 +173,8 @@ class DataProcessRepository(BaseRepository[DataProcess]):
             
             # 插入新的节点
             node_sql = """
-            INSERT INTO process_nodes (id, flow_id, instruction_id, name, description, x, y, params)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO process_nodes (id, flow_id, instruction_id, name, description, x, y, params,intput_types)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """
             for node in process.nodes:
                 node_params = (
@@ -185,7 +185,8 @@ class DataProcessRepository(BaseRepository[DataProcess]):
                     node.description,
                     node.x,
                     node.y,
-                    json.dumps(node.params)
+                    json.dumps(node.params),
+                    json.dumps(node.intput_types)
                 )
                 cursor.execute(node_sql, node_params)
             
@@ -249,6 +250,29 @@ class DataProcessRepository(BaseRepository[DataProcess]):
         # 构建节点列表
         nodes = []
         for node_result in nodes_results:
+            # 安全解析params
+            params = {}
+            if node_result["params"]:
+                try:
+                    params = json.loads(node_result["params"])
+                except (json.JSONDecodeError, TypeError):
+                    params = {}
+            
+            # 安全解析intput_types
+            intput_types = {"e": [], "t": []}
+            if node_result["intput_types"]:
+                try:
+                    intput_types = json.loads(node_result["intput_types"])
+                    # 确保格式正确
+                    if not isinstance(intput_types, dict):
+                        intput_types = {"e": [], "t": []}
+                    if not isinstance(intput_types.get("e"), list):
+                        intput_types["e"] = []
+                    if not isinstance(intput_types.get("t"), list):
+                        intput_types["t"] = []
+                except (json.JSONDecodeError, TypeError):
+                    intput_types = {"e": [], "t": []}
+            
             nodes.append(ProcessNode(
                 id=node_result["id"],
                 flow_id=node_result["flow_id"],
@@ -257,7 +281,8 @@ class DataProcessRepository(BaseRepository[DataProcess]):
                 description=node_result["description"],
                 x=node_result["x"],
                 y=node_result["y"],
-                params=json.loads(node_result["params"])
+                params=params,
+                intput_types=intput_types
             ))
         
         # 构建边列表

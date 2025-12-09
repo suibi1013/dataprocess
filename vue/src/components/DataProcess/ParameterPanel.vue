@@ -43,10 +43,10 @@
                   @input="updateEdgeLabel(($event.target as HTMLInputElement).value)" />
                 <button type="button" class="variable-select-btn"
                   @click="onToggleVariableSelector('label', 'string')" title="选择变量">
-                  fx
+                  x
                 </button>
               </div>
-              <div class="form-help">设置连线的标签文本，点击fx按钮可插入变量</div>
+              <div class="form-help">设置连线的标签文本，点击x按钮可插入变量</div>
             </div>
           </div>
         </div>
@@ -66,30 +66,58 @@
                   <span class="required" v-if="item.param?.required || item.required">*</span>
                 </label>
 
-                <!-- 数字输入框 -->
-                <div v-if="(item.param?.type === 'number' || item.type === 'number')" class="input-with-variable"
+                <!-- 数字输入框 - 复合型输入框 -->
+                <div v-if="(item.param?.type === 'number' || item.type === 'number')" class="input-with-variable composite-input"
                   style="position: relative; display: flex; align-items: center; margin-bottom: 2px;">
-                  <input type="number" class="form-input"
-                    :placeholder="item.param?.placeholder || item.placeholder || '请输入' + (item.param?.label || item.label)"
-                    :value="item.value"
-                    @input="updateParamValue(item.param?.name || item.name, ($event.target as HTMLInputElement).value)" />
+                  <el-input 
+                    type="number" 
+                    v-model="item.value" 
+                    :placeholder="item.param?.placeholder || item.placeholder || '请输入' + (item.param?.label || item.label)" 
+                    class="form-input"
+                    style="padding: 0px;"
+                    @input="updateParamValue(item.param?.name || item.name, ($event.target as HTMLInputElement).value)"
+                  >
+                    <template #prefix>
+                      <!-- 使用 img 标签显示本地图标 -->
+                      <img 
+                        :src="getInputTypeIconPath(item.param?.name || item.name)" 
+                        alt="切换输入类型" 
+                        class="input-type-toggle-icon" 
+                        @click="toggleInputType(item.param?.name || item.name)" 
+                        title="切换输入类型（表达式/文本）" 
+                      />
+                    </template>
+                  </el-input>
                   <button type="button" class="variable-select-btn"
                     @click="onToggleVariableSelector(item.param?.name || item.name, 'number')" title="选择变量">
-                    fx
+                    x
                   </button>
                 </div>
 
-
-                <!-- 文本输入框 -->
-                <div v-else-if="(item.param?.type === 'string' || item.type === 'string')" class="input-with-variable"
+                <!-- 文本输入框 - 复合型输入框 -->
+                <div v-else-if="(item.param?.type === 'string' || item.type === 'string')" class="input-with-variable composite-input"
                   style="position: relative; display: flex; align-items: center; margin-bottom: 2px;">
-                  <input type="text" class="form-input"
-                    :placeholder="item.param?.placeholder || item.placeholder || '请输入' + (item.param?.label || item.label)"
-                    :value="item.value"
-                    @input="updateParamValue(item.param?.name || item.name, ($event.target as HTMLInputElement).value)" />
+                  <el-input 
+                    type="text" 
+                    v-model="item.value" 
+                    :placeholder="item.param?.placeholder || item.placeholder || '请输入' + (item.param?.label || item.label)" 
+                    class="form-input"
+                    style="padding: 0px;"
+                    @input="updateParamValue(item.param?.name || item.name, ($event.target as HTMLInputElement).value)"
+                  >
+                    <template #prefix>
+                      <img 
+                        :src="getInputTypeIconPath(item.param?.name || item.name)" 
+                        alt="切换输入类型" 
+                        class="input-type-toggle-icon" 
+                        @click="toggleInputType(item.param?.name || item.name)" 
+                        title="切换输入类型（表达式/文本）" 
+                      />
+                    </template>
+                  </el-input>
                   <button type="button" class="variable-select-btn"
                     @click="onToggleVariableSelector(item.param?.name || item.name, 'string')" title="选择变量">
-                    fx
+                    x
                   </button>
                 </div>
                 
@@ -182,12 +210,22 @@
                 </div>
 
                 <!-- 文本域 -->
-                <textarea v-else-if="(item.param?.type === 'textarea' || item.type === 'textarea')"
-                  class="form-textarea"
-                  :placeholder="item.param?.placeholder || item.placeholder || '请输入' + (item.param?.label || item.label)"
-                  :value="item.value"
-                  @input="updateParamValue(item.param?.name || item.name, ($event.target as HTMLTextAreaElement).value)"
-                  rows="3"></textarea>
+                <div v-else-if="(item.param?.type === 'textarea' || item.type === 'textarea')" class="textarea-with-type-btn" style="position: relative; margin-bottom: 2px;">
+                  <!-- 使用 img 标签显示本地图标 -->
+                  <img 
+                        :src="getInputTypeIconPath(item.param?.name || item.name)" 
+                        alt="切换输入类型" 
+                        class="input-type-toggle-icon" 
+                        @click="toggleInputType(item.param?.name || item.name)" 
+                        title="切换输入类型（表达式/文本）" 
+                      />
+                  <textarea 
+                    class="form-textarea"
+                    :placeholder="item.param?.placeholder || item.placeholder || '请输入' + (item.param?.label || item.label)"
+                    :value="item.value"
+                    @input="updateParamValue(item.param?.name || item.name, ($event.target as HTMLTextAreaElement).value)"
+                    rows="3"></textarea>
+                </div>
 
                 <!-- 参数描述信息 -->
                 <div class="form-help" v-if="item.param?.description || item.description">
@@ -213,36 +251,65 @@
                   <span class="required" v-if="item.param?.required || item.required">*</span>
                 </label>
 
-                <!-- 数字输入框 -->
-                <div v-if="(item.param?.type === 'number' || item.type === 'number')" class="input-with-variable"
-                  style="position: relative; display: flex; align-items: center; margin-bottom: 5px;">
-                  <input type="number" class="form-input"
-                    :placeholder="item.param?.placeholder || item.placeholder || '请输入' + (item.param?.label || item.label)"
-                    :value="item.value"
-                    @input="updateParamValue(item.param?.name || item.name, ($event.target as HTMLInputElement).value)" />
+                <!-- 数字输入框 - Element Plus复合型输入框 -->
+                <div v-if="(item.param?.type === 'number' || item.type === 'number')" class="input-with-variable composite-input"
+                  style="position: relative; display: flex; align-items: center; margin-bottom: 2px;">
+                  <el-input 
+                    type="number" 
+                    v-model="item.value" 
+                    :placeholder="item.param?.placeholder || item.placeholder || '请输入' + (item.param?.label || item.label)" 
+                    class="form-input"
+                    style="padding: 0px;"
+                    @input="updateParamValue(item.param?.name || item.name, ($event.target as HTMLInputElement).value)"
+                  >
+                    <template #prefix>
+                      <!-- 使用 img 标签显示本地图标 -->
+                      <img 
+                        :src="getInputTypeIconPath(item.param?.name || item.name)" 
+                        alt="切换输入类型" 
+                        class="input-type-toggle-icon" 
+                        @click="toggleInputType(item.param?.name || item.name)" 
+                        title="切换输入类型（表达式/文本）" 
+                      />
+                    </template>
+                  </el-input>
                   <button type="button" class="variable-select-btn"
                     @click="onToggleVariableSelector(item.param?.name || item.name, 'number')" title="选择变量">
-                    fx
+                    x
                   </button>
                 </div>
 
 
-                <!-- 文本输入框 -->
-                <div v-else-if="(item.param?.type === 'string' || item.type === 'string')" class="input-with-variable"
-                  style="position: relative; display: flex; align-items: center; margin-bottom: 5px;">
-                  <input type="text" class="form-input"
-                    :placeholder="item.param?.placeholder || item.placeholder || '请输入' + (item.param?.label || item.label)"
-                    :value="item.value"
-                    @input="updateParamValue(item.param?.name || item.name, ($event.target as HTMLInputElement).value)" />
+                <!-- 文本输入框 - Element Plus复合型输入框 -->
+                <div v-else-if="(item.param?.type === 'string' || item.type === 'string')" class="input-with-variable composite-input"
+                  style="position: relative; display: flex; align-items: center; margin-bottom: 2px;">
+                  <el-input 
+                    type="text" 
+                    v-model="item.value" 
+                    :placeholder="item.param?.placeholder || item.placeholder || '请输入' + (item.param?.label || item.label)" 
+                    class="form-input"
+                    style="padding: 0px;"
+                    @input="updateParamValue(item.param?.name || item.name, ($event.target as HTMLInputElement).value)"
+                  >
+                    <template #prefix>
+                      <img 
+                        :src="getInputTypeIconPath(item.param?.name || item.name)" 
+                        alt="切换输入类型" 
+                        class="input-type-toggle-icon" 
+                        @click="toggleInputType(item.param?.name || item.name)" 
+                        title="切换输入类型（表达式/文本）" 
+                      />
+                    </template>
+                  </el-input>
                   <button type="button" class="variable-select-btn"
                     @click="onToggleVariableSelector(item.param?.name || item.name, 'string')" title="选择变量">
-                    fx
+                    x
                   </button>
                 </div>
 
                 <!-- excel文件路径选择器 (select_excelpath类型) - 使用级联选择器 -->
                 <div v-else-if="(item.param?.type === 'select_excelpath' || item.type === 'select_excelpath')"
-                  class="source-data-path-container" style="display: flex; align-items: center;" :key="`select_excelpath-output-${item.param?.name || item.name}`">
+                  class="input-with-variable" style="position: relative; display: flex; align-items: center; margin-bottom: 2px;" :key="`select_excelpath-output-${item.param?.name || item.name}`">
                   <!-- 获取要使用的options数据 -->
                   <el-cascader 
                     v-model="item.value"
@@ -262,7 +329,7 @@
                 </div>
 
                 <!-- 开关选择器 (boolean类型) -->
-                <div v-else-if="(item.param?.type === 'boolean' || item.type === 'boolean')" class="switch-container">
+                <div v-else-if="(item.param?.type === 'boolean' || item.type === 'boolean')" class="switch-container" style="margin-bottom: 2px;">
                   <label class="switch-label">
                     <input type="checkbox" class="switch-input" :checked="!!item.value"
                       @change="updateParamValue(item.param?.name || item.name, ($event.target as HTMLInputElement).checked)" />
@@ -271,7 +338,7 @@
                 </div>
 
                 <!-- 文件上传 (file类型) -->
-                <div v-else-if="(item.param?.type === 'file' || item.type === 'file')" class="upload-container">
+                <div v-else-if="(item.param?.type === 'file' || item.type === 'file')" class="upload-container" style="margin-bottom: 2px;">
                   <label :for="'file-upload-' + (item.param?.name || item.name)" class="upload-button">
                     {{ item.value ? '更换文件' : '选择文件' }}
                   </label>
@@ -285,7 +352,7 @@
                 </div>
 
                 <!-- 下拉选择框 -->
-                <div v-else-if="(item.param?.type === 'select' || item.type === 'select')" :key="`select-output-${item.param?.name || item.name}`">
+                <div v-else-if="(item.param?.type === 'select' || item.type === 'select')" style="margin-bottom: 2px;" :key="`select-output-${item.param?.name || item.name}`">
                   <el-select :model-value="item.value"
                     :placeholder="'请选择' + (item.param?.label || item.label)"
                     class="form-select"
@@ -308,7 +375,7 @@
                 </div>
 
                 <!-- 列选择器 -->
-                <div v-else-if="(item.param?.type === 'column' || item.type === 'column')" class="column-selector">
+                <div v-else-if="(item.param?.type === 'column' || item.type === 'column')" class="column-selector" style="margin-bottom: 2px;">
                   <select v-if="!item.param?.multiple && !item.multiple" class="form-select" :value="item.value"
                     @change="updateParamValue(item.param?.name || item.name, ($event.target as HTMLSelectElement).value)">
                     <option value="">请选择列</option>
@@ -329,12 +396,21 @@
                 </div>
 
                 <!-- 文本域 -->
-                <textarea v-else-if="(item.param?.type === 'textarea' || item.type === 'textarea')"
-                  class="form-textarea"
-                  :placeholder="item.param?.placeholder || item.placeholder || '请输入' + (item.param?.label || item.label)"
-                  :value="item.value"
-                  @input="updateParamValue(item.param?.name || item.name, ($event.target as HTMLTextAreaElement).value)"
-                  rows="3"></textarea>
+                <div v-else-if="(item.param?.type === 'textarea' || item.type === 'textarea')" class="textarea-with-type-btn" style="position: relative; margin-bottom: 2px;">
+                  <img 
+                        :src="getInputTypeIconPath(item.param?.name || item.name)" 
+                        alt="切换输入类型" 
+                        class="input-type-toggle-icon" 
+                        @click="toggleInputType(item.param?.name || item.name)" 
+                        title="切换输入类型（表达式/文本）" 
+                      />
+                  <textarea 
+                    class="form-textarea"
+                    :placeholder="item.param?.placeholder || item.placeholder || '请输入' + (item.param?.label || item.label)"
+                    :value="item.value"
+                    @input="updateParamValue(item.param?.name || item.name, ($event.target as HTMLTextAreaElement).value)"
+                    rows="3"></textarea>
+                </div>
 
                 <!-- 参数描述信息 -->
                 <div class="form-help" v-if="item.param?.description || item.description">
@@ -360,30 +436,58 @@
                   <span class="required" v-if="item.param?.required || item.required">*</span>
                 </label>
 
-                <!-- 数字输入框 -->
+                <!-- 数字输入框 - Element Plus复合型输入框 -->
                 <div v-if="(item.param?.type === 'number' || item.type === 'number')" class="input-with-variable"
                   style="position: relative; display: flex; align-items: center; margin-bottom: 5px;">
-                  <input type="number" class="form-input"
-                    :placeholder="item.param?.placeholder || item.placeholder || '请输入' + (item.param?.label || item.label)"
-                    :value="item.value"
-                    @input="updateParamValue(item.param?.name || item.name, ($event.target as HTMLInputElement).value)" />
+                  <el-input 
+                    type="number" 
+                    v-model="item.value" 
+                    :placeholder="item.param?.placeholder || item.placeholder || '请输入' + (item.param?.label || item.label)" 
+                    class="form-input"
+                    style="padding: 0px;"
+                    @input="updateParamValue(item.param?.name || item.name, ($event.target as HTMLInputElement).value)"
+                  >
+                    <template #prefix>
+                      <img 
+                        :src="getInputTypeIconPath(item.param?.name || item.name)" 
+                        alt="切换输入类型" 
+                        class="input-type-toggle-icon" 
+                        @click="toggleInputType(item.param?.name || item.name)" 
+                        title="切换输入类型（表达式/文本）" 
+                      />
+                    </template>
+                  </el-input>
                   <button type="button" class="variable-select-btn"
                     @click="onToggleVariableSelector(item.param?.name || item.name, 'number')" title="选择变量">
-                    fx
+                    x
                   </button>
                 </div>
 
 
-                <!-- 文本输入框 -->
+                <!-- 文本输入框 - Element Plus复合型输入框 -->
                 <div v-else-if="(item.param?.type === 'string' || item.type === 'string')" class="input-with-variable"
                   style="position: relative; display: flex; align-items: center; margin-bottom: 5px;">
-                  <input type="text" class="form-input"
-                    :placeholder="item.param?.placeholder || item.placeholder || '请输入' + (item.param?.label || item.label)"
-                    :value="item.value"
-                    @input="updateParamValue(item.param?.name || item.name, ($event.target as HTMLInputElement).value)" />
+                  <el-input 
+                    type="text" 
+                    v-model="item.value" 
+                    :placeholder="item.param?.placeholder || item.placeholder || '请输入' + (item.param?.label || item.label)" 
+                    class="form-input"
+                    style="padding: 0px;"
+                    @input="updateParamValue(item.param?.name || item.name, ($event.target as HTMLInputElement).value)"
+                  >
+                    <template #prefix>
+                      <img 
+                        :src="getInputTypeIconPath(item.param?.name || item.name)" 
+                        alt="切换输入类型" 
+                        class="input-type-toggle-icon" 
+                        @click="toggleInputType(item.param?.name || item.name)" 
+                        title="切换输入类型（表达式/文本）" 
+                      />
+                    </template>
+                  </el-input>
                   <button type="button" class="variable-select-btn"
                     @click="onToggleVariableSelector(item.param?.name || item.name, 'string')" title="选择变量">
-                    fx
+                    x
                   </button>
                 </div>
 
@@ -476,12 +580,21 @@
                 </div>
 
                 <!-- 文本域 -->
-                <textarea v-else-if="(item.param?.type === 'textarea' || item.type === 'textarea')"
-                  class="form-textarea"
-                  :placeholder="item.param?.placeholder || item.placeholder || '请输入' + (item.param?.label || item.label)"
-                  :value="item.value"
-                  @input="updateParamValue(item.param?.name || item.name, ($event.target as HTMLTextAreaElement).value)"
-                  rows="3"></textarea>
+                <div v-else-if="(item.param?.type === 'textarea' || item.type === 'textarea')" class="textarea-with-type-btn" style="position: relative; margin-bottom: 2px;">
+                  <img 
+                        :src="getInputTypeIconPath(item.param?.name || item.name)" 
+                        alt="切换输入类型" 
+                        class="input-type-toggle-icon" 
+                        @click="toggleInputType(item.param?.name || item.name)" 
+                        title="切换输入类型（表达式/文本）" 
+                      />
+                  <textarea 
+                    class="form-textarea"
+                    :placeholder="item.param?.placeholder || item.placeholder || '请输入' + (item.param?.label || item.label)"
+                    :value="item.value"
+                    @input="updateParamValue(item.param?.name || item.name, ($event.target as HTMLTextAreaElement).value)"
+                    rows="3"></textarea>
+                </div>
 
                 <!-- 参数描述信息 -->
                 <div class="form-help" v-if="item.param?.description || item.description">
@@ -543,6 +656,9 @@ const expandedNodes = ref<Record<string, boolean>>({}); // 用于跟踪节点的
 // 执行状态控制
 const isExecuting = ref(false);
 // 折叠功能已取消，不再需要isCollapsed状态
+
+// 输入类型状态：键为参数名，值为boolean（true表示表达式，false表示文本）
+const inputTypes = ref<Record<string, boolean>>({});
 
 // 获取流程中可用的变量
 const onGetProcessVariables = async (selectedNode: any) => {
@@ -802,6 +918,44 @@ const onGetFileNameFromPath = (path: string) => {
   return getFileNameFromPath(path);
 };
 
+// 切换输入类型（表达式e/文本t）
+const toggleInputType = (paramName: string) => {
+  inputTypes.value[paramName] = !inputTypes.value[paramName];
+  
+  // 将输入类型信息保存到节点数据中
+  if (props.paramsPanel.selectedNode) {
+    const nodeData = props.paramsPanel.selectedNode.getData();
+    
+    // 转换为新的intput_types格式
+    const intputTypes = {
+      e: [], // 表达式类型参数列表
+      t: []  // 文本类型参数列表
+    };
+    
+    // 遍历所有参数，根据inputTypes分类
+    Object.entries(inputTypes.value).forEach(([name, isExpr]) => {
+      if (isExpr) {
+        intputTypes.e.push(name);
+      } else {
+        intputTypes.t.push(name);
+      }
+    });
+    
+    // 保存到节点数据
+    nodeData.intput_types = intputTypes;
+    
+    // 兼容旧版本，保留inputTypes属性
+    if (!nodeData.inputTypes) {
+      nodeData.inputTypes = {};
+    }
+    // 更新对应参数的输入类型
+    nodeData.inputTypes[paramName] = inputTypes.value[paramName];
+    
+    // 保存更新后的节点数据
+    props.paramsPanel.selectedNode.setData(nodeData);
+  }
+};
+
 // 查找指令信息
 // const findInstructionById = (instructionId: string) => {
 //   for (const category of instructionCategories.value) {
@@ -943,6 +1097,104 @@ watch(() => [props.paramsPanel.selectedNode, props.paramsPanel.selectedEdge], ()
   // 当选中节点或边变化时，延迟初始化以确保表单已经渲染
   setTimeout(() => {
     initAllFormItemsOptions();
+    
+    // 初始化输入类型
+    if (props.paramsPanel.selectedNode) {
+      const nodeData = props.paramsPanel.selectedNode.getData();
+      console.log(nodeData)
+      
+      // 清空当前的inputTypes
+      inputTypes.value = {};
+      
+      let hasInputTypeData = false;
+      
+      // 检查是否有新格式的intput_types属性
+      if (nodeData.intput_types) {
+        try {
+          // 确保intput_types是对象
+          if (typeof nodeData.intput_types === 'object' && nodeData.intput_types !== null) {
+            // 处理表达式类型参数（key为e）
+            if (Array.isArray(nodeData.intput_types.e)) {
+              nodeData.intput_types.e.forEach((paramName: string) => {
+                inputTypes.value[paramName] = true; // true表示表达式类型
+                hasInputTypeData = true;
+              });
+            }
+            // 处理文本类型参数（key为t）
+            if (Array.isArray(nodeData.intput_types.t)) {
+              nodeData.intput_types.t.forEach((paramName: string) => {
+                inputTypes.value[paramName] = false; // false表示文本类型
+                hasInputTypeData = true;
+              });
+            }
+          }
+        } catch (error) {
+          console.error('解析intput_types失败:', error);
+        }
+      }
+      
+      // 如果没有新格式数据，检查旧版本的inputTypes格式
+      if (!hasInputTypeData && nodeData.inputTypes) {
+        try {
+          // 兼容旧版本的inputTypes格式
+          inputTypes.value = { ...nodeData.inputTypes };
+          hasInputTypeData = true;
+        } catch (error) {
+          console.error('解析inputTypes失败:', error);
+        }
+      }
+      
+      // 确保节点数据中存在intput_types属性
+      if (!nodeData.intput_types) {
+        nodeData.intput_types = {
+          e: [], // 表达式类型参数列表
+          t: []  // 文本类型参数列表
+        };
+      }
+      
+      // 确保intput_types格式正确
+      if (typeof nodeData.intput_types !== 'object' || nodeData.intput_types === null) {
+        nodeData.intput_types = {
+          e: [],
+          t: []
+        };
+      }
+      if (!Array.isArray(nodeData.intput_types.e)) {
+        nodeData.intput_types.e = [];
+      }
+      if (!Array.isArray(nodeData.intput_types.t)) {
+        nodeData.intput_types.t = [];
+      }
+      
+      // 如果没有任何输入类型数据，根据当前的inputTypes.value生成
+      if (!hasInputTypeData) {
+        // 清空intput_types
+        nodeData.intput_types.e = [];
+        nodeData.intput_types.t = [];
+        
+        // 遍历所有参数，根据inputTypes分类
+        Object.entries(inputTypes.value).forEach(([name, isExpr]) => {
+          if (isExpr) {
+            nodeData.intput_types.e.push(name);
+          } else {
+            nodeData.intput_types.t.push(name);
+          }
+        });
+      }
+      
+      // 兼容旧版本，确保存在inputTypes属性
+      if (!nodeData.inputTypes) {
+        nodeData.inputTypes = {};
+        // 初始化旧版本inputTypes
+        Object.entries(inputTypes.value).forEach(([name, isExpr]) => {
+          nodeData.inputTypes[name] = isExpr;
+        });
+      }
+      
+      // 保存更新后的节点数据
+      props.paramsPanel.selectedNode.setData(nodeData);
+      console.log('更新后的节点数据:', props.paramsPanel.selectedNode.getData())
+    }
   }, 0);
 }, { immediate: true, deep: true });
 
@@ -1006,6 +1258,15 @@ const getFileNameFromPath = (path: string): string => {
   if (!path) return '';
   const parts = path.split(/[/\\]/);
   return parts[parts.length - 1];
+};
+
+// 导入图标资源
+import pythonLightIcon from '@/assets/icons/python_light.svg';
+import pythonGrayIcon from '@/assets/icons/python_gray.svg';
+
+// 获取输入类型切换图标的路径
+const getInputTypeIconPath = (paramName: string): string => {
+  return inputTypes.value[paramName] ? pythonLightIcon : pythonGrayIcon;
 };
 
 // 直接使用getFileNameFromPath函数，移除重复定义
@@ -1204,6 +1465,85 @@ const onHandleRunInstruction = async () => {
 </script>
 
 <style scoped>
+/* 输入类型按钮样式 */
+.input-type-btn {
+  width: 30px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f5f7fa;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px 0 0 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: #909399;
+  transition: all 0.3s;
+  margin-right: -1px; /* 消除与输入框的边框间隙 */
+}
+
+/* 高亮状态 */
+.input-type-btn.active {
+  background-color: #409eff;
+  border-color: #409eff;
+  color: #ffffff;
+}
+
+/* 鼠标悬停效果 */
+.input-type-btn:hover {
+  background-color: #e6f2ff;
+  border-color: #c6e2ff;
+  color: #409eff;
+}
+
+/* 高亮状态下的悬停效果 */
+.input-type-btn.active:hover {
+  background-color: #66b1ff;
+  border-color: #66b1ff;
+}
+
+/* Element Plus按钮的高亮状态样式 */
+:deep(.el-button.active) {
+  background-color: #84b70c;
+  border-color: #cb8a07;
+  color: #ffffff;
+  /* margin:0 -13px; */
+}
+
+/* Element Plus按钮高亮状态下的悬停效果 */
+:deep(.el-button.active:hover) {
+  background-color: #84b70c;
+  border-color: #cb8a07;
+}
+
+:deep(.el-input-group__prepend) {
+  /* padding: 0 14px !important; */
+  background-color: transparent;
+  border-right: none;
+  border-radius: 4px 0 0 4px;
+}
+/* 输入框容器样式调整 */
+.input-with-variable {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+/* 文本域容器样式 */
+.textarea-with-type-btn {
+  display: flex;
+  align-items: flex-start;
+  position: relative;
+}
+
+/* 文本域样式调整 */
+.textarea-with-type-btn .form-textarea {
+  margin-left: -1px; /* 消除与按钮的边框间隙 */
+}
+</style>
+
+<style scoped>
 /* 右侧参数面板 */
 .params-panel {
   width: 300px;
@@ -1375,6 +1715,15 @@ const onHandleRunInstruction = async () => {
   border-radius: 4px;
   font-size: 12px;
   cursor: pointer;
+}
+
+/* 输入类型切换图标样式 */
+.input-type-toggle-icon {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  margin-right: 8px;
+  vertical-align: middle;
   transition: all 0.3s;
   display: flex;
   align-items: center;

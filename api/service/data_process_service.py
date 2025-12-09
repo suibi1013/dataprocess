@@ -209,7 +209,8 @@ class DataProcessService(BaseService):
                     description=node.description,
                     x=node.x,
                     y=node.y,
-                    params=node.params
+                    params=node.params,
+                    intput_types=getattr(node, 'intput_types', {})  # 添加输入类型字段，默认空字典
                 ))
             
             edges = []
@@ -290,7 +291,8 @@ class DataProcessService(BaseService):
                     "description": node.description,
                     "x": node.x,
                     "y": node.y,
-                    "params": node.params
+                    "params": node.params,
+                    "intput_types": node.intput_types
                 } for node in process.nodes],
                 "edges": [{
                     "id": edge.id,
@@ -336,7 +338,8 @@ class DataProcessService(BaseService):
                         "description": node.description,
                         "x": node.x,
                         "y": node.y,
-                        "params": node.params
+                        "params": node.params,
+                        "intput_types": node.intput_types
                     } for node in process.nodes],
                     "edges": [{
                         "id": edge.id,

@@ -119,6 +119,7 @@ class CanvasNode(BaseModel):
     x: float  # X坐标
     y: float  # Y坐标
     params: Dict[str, Any] = {}  # 节点参数
+    intput_types: Dict[str, List[str]] = {}  # 输入类型，t表示文本，e表示表达式
 
 
 class CanvasEdge(BaseModel):

@@ -58,6 +58,8 @@ export interface CanvasNode {
   params: Record<string, any>;
   label?: string;
   description?: string; // 节点描述信息
+  inputTypes?: Record<string, boolean>; // 输入类型配置，键为参数名，值为是否是表达式类型
+  intput_types?: { t: string[]; e: string[] }; // 格式化后的输入类型配置，用于后端接口
 }
 
 // 画布连线

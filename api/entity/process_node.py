@@ -4,7 +4,7 @@
 流程节点实体类
 """
 
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from pydantic import BaseModel, Field
 
 
@@ -18,6 +18,7 @@ class ProcessNode(BaseModel):
     x: float = Field(..., description="节点X坐标")
     y: float = Field(..., description="节点Y坐标")
     params: Dict[str, Any] = Field(..., description="节点参数")
+    intput_types: Dict[str, List[str]] = Field(default_factory=dict, description="输入类型，t表示文本，e表示表达式", alias="intput_types")
     
     model_config = {
         "from_attributes": True,  # 允许从ORM模型创建
