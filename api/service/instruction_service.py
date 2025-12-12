@@ -13,8 +13,11 @@ from datetime import datetime
 from typing import Optional, List, Dict, Any
 import inspect
 import ast
+import subprocess
+import os
+import sys            
+import sysconfig
 
-from config import config
 from repository.instruction_category_repository import InstructionCategoryRepository
 from repository.instruction_item_repository import InstructionItemRepository
 from repository.instruction_parameter_repository import InstructionParameterRepository
@@ -749,3 +752,59 @@ class InstructionService:
                 continue
         
         return matched_functions
+    
+    async def install_dependencies(self, dependencies: Optional[str] = None) -> ApiResponse[bool]:
+        """安装Python依赖包
+        
+        Args:
+            dependencies: 要安装的依赖包，支持多行输入，每行一个依赖包
+                支持格式：
+                - requests==2.28.1
+                - django>=4.2
+                - --force-reinstall package==1.0.0
+                如果为None，则从项目根目录的requirements.txt文件安装
+        """
+        try:
+            # 获取依赖包安装目录
+            install_target = sysconfig.get_path("purelib")
+            
+            # 确保安装目录存在
+            os.makedirs(install_target, exist_ok=True)
+            
+            # 解析依赖包，支持多行输入
+            dependency_list = [line.strip() for line in dependencies.split('\n') if line.strip()]
+            
+            if not dependency_list:
+                return ApiResponse(
+                    success=False,
+                    data=False,
+                    message="未提供有效的依赖包"
+                )
+            
+            # 使用pip安装指定的依赖包，并指定安装目录
+            result = subprocess.run(
+                [sys.executable, "-m", "pip", "install", "--target", install_target] + dependency_list,
+                capture_output=True,
+                text=True
+            )
+            
+            # 检查安装结果
+            if result.returncode == 0:
+                return ApiResponse(
+                    success=True,
+                    data=True,
+                    message=f"依赖包安装成功，已安装到目录: {install_target}"
+                )
+            else:
+                return ApiResponse(
+                    success=False,
+                    data=False,
+                    message=f"依赖包安装失败: {result.stderr}"
+                )
+                
+        except Exception as e:
+            return ApiResponse(
+                success=False,
+                data=False,
+                message=f"安装依赖包时发生错误: {str(e)}"
+            )

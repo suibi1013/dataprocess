@@ -9,6 +9,9 @@
         <el-button type="default" icon="Menu" @click="showCategoryManagement">
           分类管理
         </el-button>
+        <el-button type="warning" icon="Download" @click="installDependencies">
+          安装依赖包
+        </el-button>
       </div>
     </div>
     
@@ -120,6 +123,31 @@
       @close="handleCloseAddInstructionModal"
       @save="handleSaveInstruction"
     />
+    
+    <!-- 安装依赖包对话框 -->
+    <el-dialog
+      v-model="showInstallDependenciesDialog"
+      title="安装依赖包"
+      width="600px"
+      @close="handleCloseInstallDialog"
+    >
+      <el-form label-width="80px">
+        <el-form-item label="依赖包">
+          <el-input
+            v-model="dependenciesInput"
+            type="textarea"
+            :rows="8"
+            placeholder="请输入要安装的依赖包，每行一个。支持格式：\nrequests==2.28.1\ndjango>=4.2\n--force-reinstall package==1.0.0"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="handleCloseInstallDialog">取消</el-button>
+          <el-button type="primary" @click="handleConfirmInstall">确认安装</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -156,6 +184,8 @@ export default defineComponent({
     const showCategoryModal = ref(false);
     const showAddInstruction = ref(false);
     const editingInstruction = ref<Instruction | null>(null);
+    const showInstallDependenciesDialog = ref(false);
+    const dependenciesInput = ref('');
     
     // 搜索和筛选状态
     const searchKeyword = ref('');
@@ -343,11 +373,48 @@ export default defineComponent({
       return `有 ${params.length} 个参数`;
     };
     
+    // 安装依赖包
+    const installDependencies = async () => {
+      // 显示安装依赖包对话框
+      showInstallDependenciesDialog.value = true;
+    };
+    
+    // 关闭安装依赖包对话框
+    const handleCloseInstallDialog = () => {
+      showInstallDependenciesDialog.value = false;
+      dependenciesInput.value = '';
+    };
+    
+    // 确认安装依赖包
+    const handleConfirmInstall = async () => {
+      try {
+        localLoading.value = true;
+        localError.value = null;
+        
+        ElMessage.info('正在安装依赖包...');
+        
+        // 调用后端API安装依赖包
+        const response = await instructionService.installDependencies(dependenciesInput.value);
+        
+        if (response.success) {
+          ElMessage.success('依赖包安装成功');
+          handleCloseInstallDialog();
+        } else {
+          ElMessage.error(response.message || '依赖包安装失败');
+        }
+      } catch (err) {
+        ElMessage.error('依赖包安装失败');
+        console.error('安装依赖包失败:', err);
+      } finally {
+        localLoading.value = false;
+      }
+    };
+    
     // 显示分类管理
     const showCategoryManagement = () => {
       showCategoryModal.value = true;
     };
-    
+
     // 显示新增指令模态框
     const showAddInstructionModal = (categoryId?: string) => {
       editingInstruction.value = null;
@@ -519,7 +586,12 @@ export default defineComponent({
       handleSaveInstruction,
       handleCloseAddInstructionModal,
       handleFilterChange,
-      debouncedSearch
+      debouncedSearch,
+      installDependencies,
+      showInstallDependenciesDialog,
+      dependenciesInput,
+      handleCloseInstallDialog,
+      handleConfirmInstall
     };
   }
 });

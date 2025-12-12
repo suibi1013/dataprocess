@@ -10,10 +10,11 @@ from typing import Dict, Any
 
 from service.instruction_service import InstructionService
 from dto.instruction_dto import (
-    InstructionListResponse, InstructionCategory, InstructionItem,
+    InstructionItem, InstructionCategory, InstructionListResponse, InstructionParameter,
     CreateInstructionCategoryRequest, CreateInstructionItemRequest,
     UpdateInstructionCategoryRequest, UpdateInstructionItemRequest,
-    ExecuteInstructionRequest, ExecuteInstructionResponse
+    ExecuteInstructionRequest, ExecuteInstructionResponse,
+    InstallDependenciesRequest
 )
 from di.container import inject
 
@@ -240,4 +241,26 @@ async def execute_instruction(
             "success": False,
             "data": None,
             "message": f"执行指令失败: {str(e)}"
+        }
+
+@router.post("/instruction/install-dependencies")
+async def install_dependencies(
+    request: InstallDependenciesRequest,
+    instruction_service: InstructionService = Depends(lambda: inject(InstructionService))
+):
+    """安装Python依赖包"""
+    try:
+        response = await instruction_service.install_dependencies(request.dependencies)
+        
+        return {
+            "success": response.success,
+            "data": response.data,
+            "message": response.message
+        }
+            
+    except Exception as e:
+        return {
+            "success": False,
+            "data": None,
+            "message": f"安装依赖包失败: {str(e)}"
         }

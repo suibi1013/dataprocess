@@ -364,6 +364,21 @@ export class InstructionService implements InstructionApiService {
   }
 
   /**
+   * 安装依赖包
+   */
+  async installDependencies(dependencies?: string): Promise<ApiResponse<boolean>> {
+    try {
+      return await httpClient.post<boolean>(
+        `/instruction/install-dependencies`,
+        { dependencies } // 传递依赖包参数
+      );
+    } catch (error) {
+      console.error('安装依赖包失败:', error);
+      throw error;
+    }
+  }
+
+  /**
    * 创建新指令
    */
   async createInstruction(data: any): Promise<ApiResponse<Instruction>> {

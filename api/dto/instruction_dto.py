@@ -162,3 +162,8 @@ class SaveDataProcessFlowResponse(BaseModel):
     message: str  # 响应消息
     success: bool = True  # 是否成功
     error: Optional[str] = None  # 错误信息（如果有）
+
+
+class InstallDependenciesRequest(BaseModel):
+    """安装依赖包请求模型"""
+    dependencies: Optional[str] = None  # 要安装的依赖包，支持多行输入，每行一个依赖包
