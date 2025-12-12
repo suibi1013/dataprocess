@@ -332,7 +332,9 @@ const handleRunInstruction = async () => {
         end_column: params.endColumn,
         result_variable_name: params.resultVariableName
       };
-      const result = await dataSourceService.executeInstruction(nodeData.instructionId, convertedParams);
+      // 获取intput_types属性
+      const intputTypes = nodeData.input_types || { t: [], e: [] };
+      const result = await dataSourceService.executeInstruction(nodeData.instructionId, convertedParams, intputTypes);
     
     let details = '';
     if (result.data_shape) details += `数据形状: ${result.data_shape}\n`;

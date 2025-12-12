@@ -56,16 +56,19 @@ export class DataSourceService {
    * 执行指令
    * @param instructionId 指令ID
    * @param params 指令参数
+   * @param intputTypes 输入类型配置，t表示文本，e表示表达式
    * @returns 执行结果
    */
   async executeInstruction(
     instructionId: string, 
-    params: Record<string, any> = {}
+    params: Record<string, any> = {},
+    intputTypes: { t: string[]; e: string[] } = { t: [], e: [] }
   ): Promise<InstructionResult> {
     try {
       const result = await httpClient.post('/instruction/execute', {
         instruction_id: instructionId,
-        script_params: params
+        script_params: params,
+        input_types: intputTypes
       });
       
       return result;

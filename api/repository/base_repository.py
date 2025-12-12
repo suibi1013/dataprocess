@@ -269,3 +269,44 @@ class BaseRepository(Generic[T]):
             query += f" WHERE {condition}"
         
         return self.execute_query(query, params)
+    
+    def insert_batch(self, table: str, data_list: List[Dict[str, Any]]) -> bool:
+        """批量插入数据
+        
+        Args:
+            table: 表名
+            data_list: 要插入的数据列表
+            
+        Returns:
+            bool: 插入是否成功
+        """
+        if not data_list:
+            return True
+        
+        conn = None
+        try:
+            conn = self.db_pool.get_connection()
+            cursor = conn.cursor()
+            
+            # 获取数据字段名
+            keys = ', '.join(data_list[0].keys())
+            placeholders = ', '.join(['?' for _ in data_list[0].values()])
+            
+            # 构建批量插入SQL语句
+            query = f"INSERT INTO {table} ({keys}) VALUES ({placeholders})"
+            
+            # 准备参数列表
+            params_list = [tuple(data.values()) for data in data_list]
+            
+            # 执行批量插入
+            cursor.executemany(query, params_list)
+            conn.commit()
+            return True
+        except sqlite3.Error as e:
+            print(f"批量插入数据失败: {e}")
+            if conn:
+                conn.rollback()
+            return False
+        finally:
+            if conn:
+                self.db_pool.return_connection(conn)

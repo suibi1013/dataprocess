@@ -17,7 +17,7 @@ class InstructionParameter(BaseModel):
     type: str  # 参数类型，如：string, number, boolean等
     required: bool = False  # 是否必填
     defaultValue: Optional[Any] = None  # 默认值
-    direction: int = 0  # 参数方向：0-输入参数，1-输出参数，2-回写参数
+    direction: int = 0  # 参数方向：0-输入参数，1-输出参数，2-回写参数（常用于循环逻辑中的游标变量）
     apiUrl: Optional[str] = None  # 数据接口地址
 
 class InstructionItem(BaseModel):
@@ -99,6 +99,7 @@ class ExecuteInstructionRequest(BaseModel):
     """执行指令请求模型"""
     instruction_id: str  # 指令ID
     script_params: Optional[Dict[str, Any]] = {}  # Python脚本参数
+    input_types: Optional[Dict[str, List[str]]] = {}  # 输入类型，t表示文本，e表示表达式
 
 class ExecuteInstructionResponse(BaseModel):
     """执行指令响应模型"""
@@ -119,7 +120,7 @@ class CanvasNode(BaseModel):
     x: float  # X坐标
     y: float  # Y坐标
     params: Dict[str, Any] = {}  # 节点参数
-    intput_types: Dict[str, List[str]] = {}  # 输入类型，t表示文本，e表示表达式
+    input_types: Dict[str, List[str]] = {}  # 输入类型，t表示文本，e表示表达式
 
 
 class CanvasEdge(BaseModel):
@@ -127,7 +128,8 @@ class CanvasEdge(BaseModel):
     id: str  # 边ID
     source: str  # 源节点ID
     target: str  # 目标节点ID
-    label: Optional[str] = None  # 边标签文本，用作执行条件
+    label: Optional[str] = None  # 边标签文本，用作流程连线标签显示
+    logic_express: Optional[str] = None  # 逻辑表达式，用于条件判断
 
 
 class DataProcessFlow(BaseModel):

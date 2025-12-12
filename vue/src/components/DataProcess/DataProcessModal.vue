@@ -1,13 +1,19 @@
 <template>
   <div v-if="visible" class="modal-overlay" @click="handleOverlayClick">
-    <div class="modal-container" @click.stop>
+    <div class="modal-container" :class="{ 'maximized': isMaximized }" @click.stop>
       <div class="modal-header">
         <div class="header-left">
           <h3 class="modal-title">流程配置设计器</h3>
         </div>
-        <button class="close-btn" @click="handleClose">
-          <i class="icon-close"></i>
-        </button>
+        <div class="header-right">
+          <button class="maximize-btn" @click="toggleMaximize">
+            <el-icon v-if="!isMaximized"><FullScreen /></el-icon>
+            <el-icon v-else><Refresh /></el-icon>
+          </button>
+          <button class="close-btn" @click="handleClose">
+            <el-icon><Close /></el-icon>
+          </button>
+        </div>
       </div>
       
       <!-- 数据预览模态框 -->
@@ -52,12 +58,17 @@
           </div>
           
           <!-- 左侧指令面板 -->
-          <InstructionPanel 
-            :instruction-categories="displayInstructionCategories"
-            :instruction-loading="instructionLoading"
-            @instruction-drag-start="handleInstructionDragStart"
-          />
-          
+          <div class="panel-wrapper instruction-panel-wrapper" :class="{ 'collapsed': isInstructionPanelCollapsed }">
+            <InstructionPanel 
+              :instruction-categories="displayInstructionCategories"
+              :instruction-loading="instructionLoading"
+              @instruction-drag-start="handleInstructionDragStart"
+            />
+            <!-- 折叠/展开按钮 -->
+            <div class="panel-collapse-btn" @click="toggleInstructionPanel" :title="isInstructionPanelCollapsed ? '展开指令面板' : '折叠指令面板'">
+              <el-icon>{{ isInstructionPanelCollapsed ? '>' : '<' }}</el-icon>
+            </div>
+          </div>
           
           <!-- 中间画布区域 -->
           <ProcessCanvas 
@@ -70,15 +81,21 @@
           />
           
           <!-- 右侧参数面板 -->
-          <ParameterPanel 
-            :paramsPanel="paramsPanelState"
-            :instructionCategories="displayInstructionCategories"
-            :canvas-graph="canvasGraph"
-            @update-node="handleNodeUpdate"
-            @update-edge="handleEdgeUpdate"
-            @instruction-executed="handleInstructionExecuted"
-            @show-data-preview="handleShowDataPreview"
-          />
+          <div class="panel-wrapper parameter-panel-wrapper" :class="{ 'collapsed': isParameterPanelCollapsed }">
+            <ParameterPanel 
+              :paramsPanel="paramsPanelState"
+              :instructionCategories="displayInstructionCategories"
+              :canvas-graph="canvasGraph"
+              @update-node="handleNodeUpdate"
+              @update-edge="handleEdgeUpdate"
+              @instruction-executed="handleInstructionExecuted"
+              @show-data-preview="handleShowDataPreview"
+            />
+            <!-- 折叠/展开按钮 -->
+            <div class="panel-collapse-btn" @click="toggleParameterPanel" :title="isParameterPanelCollapsed ? '展开参数面板' : '折叠参数面板'">
+              <el-icon>{{ isParameterPanelCollapsed ? '<' : '>' }}</el-icon>
+            </div>
+          </div>
         </div>
       </div>
       
@@ -191,6 +208,11 @@ const showPreviewModal = ref(false);
 const previewSheetData = ref<SheetData | null>(null);
 const previewSheetName = ref('');
 const previewLoading = ref(false);
+// 窗口最大化状态
+const isMaximized = ref(false);
+// 面板折叠状态
+const isInstructionPanelCollapsed = ref(false);
+const isParameterPanelCollapsed = ref(false);
 
 // 监听showPreviewModal变化，优化数据加载策略
 watch(
@@ -484,14 +506,15 @@ const handleInstructionDragStart = (event: DragEvent, instruction: any) => {
 };
 
 // 处理边更新
-const handleEdgeUpdate = (eventData: { edge: any; label: string; paramsPanel: any }) => {
-  const { edge, label, paramsPanel } = eventData;
+const handleEdgeUpdate = (eventData: { edge: any; label: string; logic_express: string; paramsPanel: any }) => {
+  const { edge, label, logic_express, paramsPanel } = eventData;
   
   if (edge) {
     try {
       // 更新边的数据
       const edgeData = edge.getData() || {};
       edgeData.label = label;
+      edgeData.logic_express = logic_express;
       edge.setData(edgeData);
       
       // 使用X6的API直接更新边的标签显示
@@ -502,10 +525,9 @@ const handleEdgeUpdate = (eventData: { edge: any; label: string; paramsPanel: an
             text: {
               text: label,
               fill: '#333',
-              fontSize: 14,
+              fontSize: 10,
               textAnchor: 'middle',
-              textVerticalAnchor: 'middle',
-              fontWeight: 'bold'
+              textVerticalAnchor: 'middle'
             },
             rect: {
               fill: 'white',
@@ -584,10 +606,11 @@ const handleEdgeSelected = (edge: any) => {
   // 直接更新paramsPanelState以确保响应性
   const edgeData = edge.getData() || {};
   const currentLabel = edgeData.label || '';
+  const currentLogicExpress = edgeData.logic_express || '';
   
   paramsPanelState.selectedNode = null;
   paramsPanelState.selectedEdge = edge;
-  paramsPanelState.params = { label: currentLabel };
+  paramsPanelState.params = { label: currentLabel, logic_express: currentLogicExpress };
   paramsPanelState.visible = true;
 };
 
@@ -898,9 +921,21 @@ const handleOverlayClick = (event: Event) => {
   }
 };
 
-// 缩放控制方法已移至ProcessCanvas组件
+// 切换窗口最大化状态
+const toggleMaximize = () => {
+  isMaximized.value = !isMaximized.value;
+};
 
-// 监听模态框显示状态（移除重复的初始化逻辑）
+// 切换指令面板折叠状态
+const toggleInstructionPanel = () => {
+  isInstructionPanelCollapsed.value = !isInstructionPanelCollapsed.value;
+};
+
+// 切换参数面板折叠状态
+const toggleParameterPanel = () => {
+  isParameterPanelCollapsed.value = !isParameterPanelCollapsed.value;
+};
+
 // 查找指令信息
 const findInstructionById = (instructionId: string) => {
   for (const category of displayInstructionCategories.value) {
@@ -943,7 +978,7 @@ onMounted(() => {
   window.parentDataProcessModal = {
     showPreviewModal,
     handleShowDataPreview
-  };
+  };  
 });
 
 onUnmounted(() => {
@@ -987,6 +1022,20 @@ onUnmounted(() => {
   max-height: 90vh;
   display: flex;
   flex-direction: column;
+  transition: all 0.3s ease;
+}
+
+.modal-container.maximized {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  max-height: 100vh;
+  border-radius: 0;
+  z-index: 1001;
 }
 
 .modal-header {
@@ -995,6 +1044,31 @@ onUnmounted(() => {
   justify-content: space-between;
   padding: 20px 24px;
   border-bottom: 1px solid #f0f0f0;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.maximize-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: none;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #8c8c8c;
+  transition: all 0.2s ease;
+}
+
+.maximize-btn:hover {
+  background: #f5f5f5;
+  color: #595959;
 }
 
 .header-left {
@@ -1108,6 +1182,92 @@ onUnmounted(() => {
   position: relative;
   overflow: hidden;
   flex-shrink: 1; /* 确保可以适当缩小以适应父容器 */
+}
+
+/* 面板容器 */
+.panel-wrapper {
+  position: relative;
+  transition: width 0.3s ease;
+  overflow: hidden;
+}
+
+/* 指令面板容器 */
+.instruction-panel-wrapper {
+  width: 280px;
+  flex-shrink: 0;
+  background: #fafafa;
+}
+
+/* 指令面板折叠状态 */
+.instruction-panel-wrapper.collapsed {
+  width: 32px;
+}
+
+/* 参数面板容器 */
+.parameter-panel-wrapper {
+  width: 320px;
+  flex-shrink: 0;
+  background: #fafafa;
+}
+
+/* 参数面板折叠状态 */
+.parameter-panel-wrapper.collapsed {
+  width: 32px;
+}
+
+/* 画布容器样式 */
+.canvas-wrapper {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* 确保ProcessCanvas组件能够占据整个容器空间 */
+.canvas-wrapper > * {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+}
+
+/* 折叠/展开按钮 */
+.panel-collapse-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 48px;
+  background: #e8e8e8;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0 4px 4px 0;
+  color: #595959;
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+/* 指令面板的折叠按钮 */
+.instruction-panel-wrapper .panel-collapse-btn {
+  right: 0;
+}
+
+/* 参数面板的折叠按钮 */
+.parameter-panel-wrapper .panel-collapse-btn {
+  left: 0;
+  border-radius: 4px 0 0 4px;
+}
+
+/* 折叠按钮悬停效果 */
+.panel-collapse-btn:hover {
+  background: #d9d9d9;
+  color: #1890ff;
+}
+
+/* 折叠状态下的面板内容隐藏 */
+.panel-wrapper.collapsed > *:not(.panel-collapse-btn) {
+  display: none;
 }
 
 /* 指令面板样式已移至InstructionPanel组件 */

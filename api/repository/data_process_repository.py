@@ -53,7 +53,7 @@ class DataProcessRepository(BaseRepository[DataProcess]):
             x REAL NOT NULL,
             y REAL NOT NULL,
             params TEXT NOT NULL,
-            intput_types TEXT NOT NULL,
+            input_types TEXT NOT NULL,
             FOREIGN KEY (flow_id) REFERENCES {self.TABLE_NAME}(id) ON DELETE CASCADE
         )
         """
@@ -67,6 +67,7 @@ class DataProcessRepository(BaseRepository[DataProcess]):
             source TEXT NOT NULL,
             target TEXT NOT NULL,
             label TEXT,
+            logic_express TEXT,
             FOREIGN KEY (flow_id) REFERENCES {self.TABLE_NAME}(id) ON DELETE CASCADE
         )
         """
@@ -101,7 +102,7 @@ class DataProcessRepository(BaseRepository[DataProcess]):
             
             # 插入流程节点
             node_sql = """
-            INSERT INTO process_nodes (id, flow_id, instruction_id, name, description, x, y, params,intput_types)
+            INSERT INTO process_nodes (id, flow_id, instruction_id, name, description, x, y, params,input_types)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """
             for node in process.nodes:
@@ -114,14 +115,14 @@ class DataProcessRepository(BaseRepository[DataProcess]):
                     node.x,
                     node.y,
                     json.dumps(node.params),
-                    json.dumps(node.intput_types)
+                    json.dumps(node.input_types)
                 )
                 cursor.execute(node_sql, node_params)
             
             # 插入流程边
             edge_sql = """
-            INSERT INTO process_edges (id, flow_id, source, target, label)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO process_edges (id, flow_id, source, target, label, logic_express)
+            VALUES (?, ?, ?, ?, ?, ?)   
             """
             for edge in process.edges:
                 edge_params = (
@@ -129,7 +130,8 @@ class DataProcessRepository(BaseRepository[DataProcess]):
                     process.id,
                     edge.source,
                     edge.target,
-                    edge.label
+                    edge.label,
+                    edge.logic_express
                 )
                 cursor.execute(edge_sql, edge_params)
             
@@ -173,7 +175,7 @@ class DataProcessRepository(BaseRepository[DataProcess]):
             
             # 插入新的节点
             node_sql = """
-            INSERT INTO process_nodes (id, flow_id, instruction_id, name, description, x, y, params,intput_types)
+            INSERT INTO process_nodes (id, flow_id, instruction_id, name, description, x, y, params,input_types)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """
             for node in process.nodes:
@@ -186,14 +188,14 @@ class DataProcessRepository(BaseRepository[DataProcess]):
                     node.x,
                     node.y,
                     json.dumps(node.params),
-                    json.dumps(node.intput_types)
+                    json.dumps(node.input_types)
                 )
                 cursor.execute(node_sql, node_params)
             
             # 插入新的边
             edge_sql = """
-            INSERT INTO process_edges (id, flow_id, source, target, label)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO process_edges (id, flow_id, source, target, label, logic_express)
+            VALUES (?, ?, ?, ?, ?, ?)   
             """
             for edge in process.edges:
                 edge_params = (
@@ -201,7 +203,8 @@ class DataProcessRepository(BaseRepository[DataProcess]):
                     process.id,
                     edge.source,
                     edge.target,
-                    edge.label
+                    edge.label,
+                    edge.logic_express
                 )
                 cursor.execute(edge_sql, edge_params)
             
@@ -259,19 +262,19 @@ class DataProcessRepository(BaseRepository[DataProcess]):
                     params = {}
             
             # 安全解析intput_types
-            intput_types = {"e": [], "t": []}
-            if node_result["intput_types"]:
+            input_types = {"e": [], "t": []}
+            if node_result["input_types"]:
                 try:
-                    intput_types = json.loads(node_result["intput_types"])
+                    input_types = json.loads(node_result["input_types"])
                     # 确保格式正确
-                    if not isinstance(intput_types, dict):
-                        intput_types = {"e": [], "t": []}
-                    if not isinstance(intput_types.get("e"), list):
-                        intput_types["e"] = []
-                    if not isinstance(intput_types.get("t"), list):
-                        intput_types["t"] = []
+                    if not isinstance(input_types, dict):
+                        input_types = {"e": [], "t": []}
+                    if not isinstance(input_types.get("e"), list):
+                        input_types["e"] = []
+                    if not isinstance(input_types.get("t"), list):
+                        input_types["t"] = []
                 except (json.JSONDecodeError, TypeError):
-                    intput_types = {"e": [], "t": []}
+                    input_types = {"e": [], "t": []}
             
             nodes.append(ProcessNode(
                 id=node_result["id"],
@@ -282,7 +285,7 @@ class DataProcessRepository(BaseRepository[DataProcess]):
                 x=node_result["x"],
                 y=node_result["y"],
                 params=params,
-                intput_types=intput_types
+                input_types=input_types
             ))
         
         # 构建边列表
@@ -293,7 +296,8 @@ class DataProcessRepository(BaseRepository[DataProcess]):
                 flow_id=edge_result["flow_id"],
                 source=edge_result["source"],
                 target=edge_result["target"],
-                label=edge_result["label"]
+                label=edge_result["label"],
+                logic_express=edge_result["logic_express"]
             ))
         
         # 构建数据流程对象

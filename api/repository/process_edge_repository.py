@@ -33,7 +33,8 @@ class ProcessEdgeRepository(BaseRepository[ProcessEdge]):
             flow_id TEXT NOT NULL,
             source TEXT NOT NULL,
             target TEXT NOT NULL,
-            label TEXT
+            label TEXT,
+            logic_express TEXT,
         )
         """
         self.execute_non_query(create_table_sql)
@@ -53,7 +54,8 @@ class ProcessEdgeRepository(BaseRepository[ProcessEdge]):
             "flow_id": flow_id,
             "source": edge.source,
             "target": edge.target,
-            "label": edge.label
+            "label": edge.label,
+            "logic_express": edge.logic_express
         }
         return self.insert(self.TABLE_NAME, data)
     
@@ -69,7 +71,8 @@ class ProcessEdgeRepository(BaseRepository[ProcessEdge]):
         data = {
             "source": edge.source,
             "target": edge.target,
-            "label": edge.label
+            "label": edge.label,
+            "logic_express": edge.logic_express
         }
         return super().update(self.TABLE_NAME, data, "id = ?", (edge.id,))
     

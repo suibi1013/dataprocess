@@ -35,15 +35,13 @@
             <Delete />
           </el-icon>
         </button>
-        <button class="toolbar-btn" @click="toggleNodeDescriptions" :class="{ active: showNodeDescriptions }" title="显示/隐藏节点描述">
-          <el-icon>
-            <Document />
-          </el-icon>
+        <button class="toolbar-btn" @click="toggleNodeTooltips" :class="{ active: showNodeTooltips }" title="显示/隐藏节点提示框">
+          <el-icon><ChatLineSquare /></el-icon>
         </button>
       </div>
     </div>
 
-    <div class="canvas-container">
+    <div id="data-process-canvas-container"  class="canvas-container">
       <div id="data-process-canvas" class="data-process-canvas"></div>
       <div v-if="!canvasInitialized" class="canvas-placeholder">
         <i class="el-icon-document-copy"></i>
@@ -87,8 +85,8 @@
 
 <script setup lang="ts">
 import { ElIcon, ElDialog, ElForm, ElFormItem, ElInput, ElButton } from 'element-plus';
-import { onMounted, watch, computed } from 'vue';
-import { ZoomIn, ZoomOut, Refresh, Delete, Remove, Connection, Document } from '@element-plus/icons-vue';
+import { onMounted, watch, computed ,onUnmounted} from 'vue';
+import { ZoomIn, ZoomOut, Refresh, Delete, Remove, Connection} from '@element-plus/icons-vue';
 import { useDataProcess } from '@/composables/useDataProcess';
 
 // Props
@@ -113,11 +111,12 @@ const {
   deleteSelectedNode, 
   deleteSelectedEdge, 
   clearCanvas, 
-  showNodeDescriptions, 
-  toggleNodeDescriptions,
   nodeDescriptionEditor,
   saveNodeDescription,
-  cancelNodeDescription 
+  cancelNodeDescription,
+  showNodeTooltips,
+  toggleNodeTooltips,
+  resizeCanvas
 } = useDataProcess();
 
 // 计算属性：节点名称显示（避免在v-model中使用可选链）
@@ -157,11 +156,35 @@ const setupCanvasEventListeners = () => {
   });
 };
 
+// 添加窗口大小变化事件监听器，处理浏览器窗口大小变化
+let resizeObserver: ResizeObserver | null = null;
 // 组件挂载时设置事件监听器
 onMounted(() => {
-  setupCanvasEventListeners();
+  setupCanvasEventListeners(); 
+  
+  // 添加ResizeObserver监听画布容器大小变化
+  // const canvasContainer = document.getElementById('data-process-canvas');
+  const canvasContainer = document.getElementById('data-process-canvas-container');
+  console.log('canvasContainer:', canvasContainer);
+  if (canvasContainer) {
+    resizeObserver = new ResizeObserver(() => {
+      resizeCanvas();
+    });
+    resizeObserver.observe(canvasContainer);
+  }
 });
-
+onUnmounted(() => {
+  // 组件卸载时清理
+  try {    
+    // 移除ResizeObserver
+    if (resizeObserver) {
+      resizeObserver.disconnect();
+      resizeObserver = null;
+    }
+  } catch (error) {
+    console.error('清理资源失败:', error);
+  }
+});
 // 使用watch监听canvasGraph变化，确保事件监听器被正确设置
 watch(() => canvasGraph.value, (newGraph) => {
   if (newGraph) {
@@ -314,8 +337,7 @@ const resetZoom = () => {
   color: white;
   padding: 12px 24px;
   border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 12px;
   pointer-events: none;
   z-index: 1000;
 }

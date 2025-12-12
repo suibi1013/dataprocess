@@ -267,12 +267,14 @@ export class InstructionService implements InstructionApiService {
    */
   async executeInstruction(
     instructionId: string,
-    params: Record<string, any>
+    params: Record<string, any>,
+    intputTypes?: { t: string[]; e: string[] }
   ): Promise<ApiResponse<InstructionExecutionResult>> {
     try {
       const requestData = {
         instruction_id: instructionId,
-        script_params: params
+        script_params: params,
+        input_types: intputTypes || { t: [], e: [] }
       };
       
       // 修复API路径，应该直接调用/instruction/execute而不是/instructions/execute

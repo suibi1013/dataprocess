@@ -124,6 +124,9 @@ function createDataProcessInstance() {
   // 控制节点描述信息的显示状态
   const showNodeDescriptions = ref(true);
   
+  // 控制节点提示框的显示状态
+  const showNodeTooltips = ref(true);
+  
   // 节点描述编辑器状态
   const nodeDescriptionEditor = reactive({
     visible: false,
@@ -184,15 +187,6 @@ function createDataProcessInstance() {
         await initializeCanvas();
         // 再等待一次确保画布完全初始化
         await nextTick();
-      }
-      
-      // 确保指令列表已加载完成（这是关键的一步）
-      if (instructionCategories.value.length === 0) {
-        await loadInstructionList();
-        // 等待指令加载完成
-        if (instructionCategories.value.length === 0) {
-          throw new Error('无法加载指令列表');
-        }
       }
       
       // 确保画布已初始化后再加载流程（重要：避免时序问题）
@@ -320,6 +314,19 @@ function createDataProcessInstance() {
   };
 
   // ==================== 画布管理 ====================
+  
+  /**
+   * 调整画布大小
+   */
+  const resizeCanvas = () => {
+    const container = document.getElementById('data-process-canvas-container');
+    if (canvasGraph.value && container) {      
+      const width = container.clientWidth;
+      const height = container.clientHeight;      
+      
+      canvasGraph.value.resize(width, height);
+    }
+  };
   
   /**
    * 初始化画布
@@ -639,7 +646,7 @@ function createDataProcessInstance() {
         ]);
         
         // 使用全局tooltip显示节点信息
-        if (globalTooltip) {
+        if (globalTooltip && showNodeTooltips.value) {
           // 格式化参数信息 - 每个参数作为单独的表单项显示
           let paramsHtml = '';
           if (nodeData.params && typeof nodeData.params === 'object' && Object.keys(nodeData.params).length > 0) {
@@ -1116,19 +1123,13 @@ function createDataProcessInstance() {
       x: adjustedX,
       y: adjustedY,
       params: nodeParams,
-      label: instruction.name // 添加label字段，设置为指令名称
+      label: instruction.name, // 添加label字段，设置为指令名称
+      description: '' // 初始化描述信息为空字符串
     };
 
-    // 根据指令类型选择样式
-    let fillColor = '#f6ffed';
-    let strokeColor = '#b7eb8f';
-    if (instruction.category === '数据源') {
-      fillColor = '#e6f7ff';
-      strokeColor = '#91d5ff';
-    } else if (instruction.category === '结果') {
-      fillColor = '#fff2e8';
-      strokeColor = '#ffbb96';
-    }
+    // 设置节点样式
+    const fillColor = '#f6ffed';
+    const strokeColor = '#b7eb8f';
 
     try {
       const node = canvasGraph.value.addNode({
@@ -1138,7 +1139,6 @@ function createDataProcessInstance() {
         width: nodeWidth,
         height: nodeHeight,
         shape: 'rect',
-        label: instruction.name,
         data: nodeData,
 
         attrs: {
@@ -1150,25 +1150,37 @@ function createDataProcessInstance() {
             ry: 4
           },
           label: {
+            text: instruction.name,
             fill: '#333',
-            fontSize: 14,
-            fontWeight: 500,
+            fontSize: 12,
             textAnchor: 'middle',
             textVerticalAnchor: 'middle'
           },
           // 描述信息
           description: {
-            ref: 'body',
-            refY: '100%',
-            refX: '0%',
-            y: 5,
-            textAnchor: 'start',
-            textVerticalAnchor: 'top',
-            fontSize: 12,
-            fill: '#666',
+            text: '',
+            fill: '#ce6c0bff',
+            fontSize: 10,
+            textAnchor: 'middle',
+            textVerticalAnchor: 'middle',
+            y: 0,
             visibility: 'hidden'
           }
         },
+        markup: [
+          {
+            tagName: 'rect',
+            selector: 'body',
+          },
+          {
+            tagName: 'text',
+            selector: 'label',
+          },
+          {
+            tagName: 'text',
+            selector: 'description',
+          },
+        ],
         ports: {
           groups: {
             input: {
@@ -1318,13 +1330,17 @@ function createDataProcessInstance() {
    * 显示参数面板（边）
    */
   const showParamsPanelForEdge = (edge: any) => {
-    // 获取边的当前标签文字
+    // 获取边的当前标签文字和逻辑表达式
     const edgeData = edge.getData() || {};
     const currentLabel = edgeData.label || '';
+    const currentLogicExpress = edgeData.logic_express || '';
     
     paramsPanel.selectedNode = null;
     paramsPanel.selectedEdge = edge;
-    paramsPanel.params = { label: currentLabel };
+    paramsPanel.params = { 
+      label: currentLabel, 
+      logic_express: currentLogicExpress 
+    };
     paramsPanel.visible = true;
   };
 
@@ -1361,28 +1377,40 @@ function createDataProcessInstance() {
     
     const edge = paramsPanel.selectedEdge;
     const newLabel = params.label?.trim() || '';
+    const newLogicExpress = params.logic_express?.trim() || '';
     
     // 更新边的数据
     const edgeData = edge.getData() || {};
     if (newLabel) {
       edgeData.label = newLabel;
-      // 先更新边的数据
-      edge.setData(edgeData);
-      
-      // 直接更新边的标签显示 - 修复标签不显示的问题
-      // 使用更直接的方式更新X6边的标签
-      try {
+    } else {
+      delete edgeData.label;
+    }
+    
+    // 更新逻辑表达式
+    if (newLogicExpress) {
+      edgeData.logic_express = newLogicExpress;
+    } else {
+      delete edgeData.logic_express;
+    }
+    
+    // 先更新边的数据
+    edge.setData(edgeData);
+    
+    // 直接更新边的标签显示 - 修复标签不显示的问题
+    // 使用更直接的方式更新X6边的标签
+    try {
+      if (newLabel) {
         edge.setLabels([
           {
             position: 0.5,
             attrs: {
               text: {
                 text: newLabel,
-                fill: '#333', // 稍微加深颜色提高可读性
-                fontSize: 14, // 稍微增大字体
+                fill: '#333',
+                fontSize: 10,
                 textAnchor: 'middle',
-                textVerticalAnchor: 'middle',
-                fontWeight: 'bold' // 加粗显示
+                textVerticalAnchor: 'middle'
               },
               // 添加背景以提高可读性
               rect: {
@@ -1396,18 +1424,16 @@ function createDataProcessInstance() {
             }
           }
         ]);
-        
-        // 强制刷新边的显示
-        // edge.refresh();
-      } catch (error) {
-        console.error('❌ 标签显示更新失败:', error);
+      } else {
+        // 移除标签显示
+        edge.setLabels([]);
       }
-    } else {
-      delete edgeData.label;
-      edge.setData(edgeData);
-      // 移除标签显示
-      edge.setLabels([]);
-    }    
+      
+      // 强制刷新边的显示
+      // edge.refresh();
+    } catch (error) {
+      console.error('❌ 标签显示更新失败:', error);
+    }
     
     hideParamsPanel();
   };
@@ -1498,7 +1524,7 @@ function createDataProcessInstance() {
             x: position.x,
             y: position.y,
             params: convertParams(nodeData.params),
-            intput_types: formattedInputTypes, // 使用正确的属性名（注意是intput_types，不是input_types）
+            input_types: formattedInputTypes, // 使用正确的属性名（注意是intput_types，不是input_types）
             description: nodeData.description // 保存节点描述信息
           };
         }),
@@ -1524,7 +1550,9 @@ function createDataProcessInstance() {
             sourcePort: edge.getSourcePortId(),
             targetPort: edge.getTargetPortId(),
             // 保存边的标签信息，用于执行条件判断
-            label: edgeLabel
+            label: edgeLabel,
+            // 保存边的逻辑表达式，用于执行条件判断
+            logic_express: edgeData?.logic_express || ''
           };
         })
       };
@@ -1624,7 +1652,7 @@ function createDataProcessInstance() {
                 instructionId: instruction.id,
                 params: nodeData.params || {},
                 description: nodeData.description || '', // 确保description属性存在
-                intput_types: nodeData.intput_types || { t: [], e: [] } // 添加输入类型属性
+                input_types: nodeData.input_types || { t: [], e: [] } // 添加输入类型属性
               },
               attrs: {
                 body: {
@@ -1849,8 +1877,7 @@ function createDataProcessInstance() {
                       text: {
                         text: edgeLabel,
                         fill: '#333',
-                        fontSize: 14,
-                        fontWeight: 'bold',
+                        fontSize: 10,
                         textAnchor: 'middle',
                         textVerticalAnchor: 'middle'
                       },
@@ -2010,7 +2037,7 @@ function createDataProcessInstance() {
             x: position.x,
             y: position.y,
             params: convertParams(nodeData.params),
-            intput_types: formattedInputTypes, // 使用正确的属性名（注意是intput_types，不是input_types）
+            input_types: formattedInputTypes, // 使用正确的属性名（注意是intput_types，不是input_types）
             description: nodeData.description // 保存节点描述信息
           };
         }),
@@ -2023,7 +2050,9 @@ function createDataProcessInstance() {
             sourcePort: edge.getSourcePortId(),
             targetPort: edge.getTargetPortId(),
             // 保存边的标签信息
-            label: edgeData?.label || ''
+            label: edgeData?.label || '',
+            // 保存边的逻辑表达式
+            logic_express: edgeData?.logic_express || ''
           };
         })
       };
@@ -2070,6 +2099,11 @@ function createDataProcessInstance() {
         }
       });
     }
+  };
+  
+  // 切换节点提示框显示状态
+  const toggleNodeTooltips = () => {
+    showNodeTooltips.value = !showNodeTooltips.value;
   };
   
   /**
@@ -2138,9 +2172,14 @@ function createDataProcessInstance() {
     paramsPanel,
     executionState,
     showNodeDescriptions,
+    showNodeTooltips,
+    
+    // 画布控制
+    resizeCanvas,
     
     // 节点描述信息控制
     toggleNodeDescriptions,
+    toggleNodeTooltips,
     // 节点描述编辑器状态
     nodeDescriptionEditor,
     // 节点描述编辑方法

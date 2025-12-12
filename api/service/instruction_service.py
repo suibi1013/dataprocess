@@ -21,6 +21,7 @@ from repository.instruction_parameter_repository import InstructionParameterRepo
 from entity.instruction_category import InstructionCategory as InstructionCategoryEntity
 from entity.instruction_item import InstructionItem as InstructionItemEntity
 from entity.instruction_parameter import InstructionParameter as InstructionParameterEntity
+from utils.python_script_utils import PythonScriptUtils
 
 from dto.instruction_dto import (
     InstructionItem, InstructionCategory, InstructionListResponse, InstructionParameter,
@@ -407,9 +408,9 @@ class InstructionService:
                             description=param_dto.description,
                             type=param_dto.type,
                             required=param_dto.required,
-                            default_value=param_dto.default_value,
+                            default_value=param_dto.defaultValue,
                             direction=param_dto.direction,
-                            api_url=param_dto.api_url
+                            api_url=param_dto.apiUrl 
                         )
                         param_entities.append(param_entity)
                     
@@ -556,8 +557,9 @@ class InstructionService:
             
             # 查找direction为1的输出参数
             result_variable_name = ''
-            params = item_entity.params
-            for param in params:
+            # 使用param_repo获取指令参数，而不是直接访问item_entity.params
+            param_entities = self.param_repo.find_by_instruction_id(item_entity.id)
+            for param in param_entities:
                 if param.direction == 1:
                     result_variable_name = param.name
                     break
@@ -566,10 +568,28 @@ class InstructionService:
             if result_variable_name and result_variable_name in request.script_params:
                 del request.script_params[result_variable_name]
             
+            # 处理intput_types，解析表达式参数
+            processed_params = {}
+            input_types = request.input_types or {}
+            
+            # 获取指令参数配置，用于确定参数类型            
+            for param_name, param_value in request.script_params.items():
+                # 如果是表达式类型参数，处理表达式
+                if param_name in input_types.get('e', []):
+                    # 表达式解析
+                    try:
+                        processed_value = eval(param_value)
+                        processed_params[param_name] = processed_value
+                    except Exception as e:
+                        processed_params[param_name] = param_value                    
+                else:
+                    # 文本类型参数，直接使用原始值
+                    processed_params[param_name] = param_value
+            
             # 执行Python脚本
-            result = await self._execute_python_script(
+            result = PythonScriptUtils._execute_python_script(
                 python_script, 
-                request.script_params or {}
+                processed_params
             )
             return ApiResponse(
                 success=True,
@@ -583,8 +603,9 @@ class InstructionService:
             try:
                 item_entity = self.item_repo.find_by_id(request.instruction_id)
                 if item_entity:
-                    params = item_entity.params
-                    for param in params:
+                    # 使用param_repo获取指令参数，而不是直接访问item_entity.params
+                    param_entities = self.param_repo.find_by_instruction_id(item_entity.id)
+                    for param in param_entities:
                         if param.direction == 1:
                             result_variable_name = param.name
                             break

@@ -20,28 +20,30 @@ from dto.instruction_dto import DataProcessFlow, SaveDataProcessFlowRequest, Sav
 from service.base_service import BaseService
 from service.result import Result
 from repository.instruction_item_repository import InstructionItemRepository
+from repository.instruction_parameter_repository import InstructionParameterRepository
 from repository.data_process_repository import DataProcessRepository
 from repository.execution_record_repository import ExecutionRecordRepository
+from utils.python_script_utils import PythonScriptUtils
 import inspect
 
 
 class DataProcessService(BaseService):
     """数据处理流程服务类"""
     
-    def __init__(self, instruction_item_repo: InstructionItemRepository = None, data_process_repo: DataProcessRepository = None, execution_record_repo: ExecutionRecordRepository = None):
+    def __init__(self, instruction_item_repo: InstructionItemRepository = None, instruction_parameter_repo: InstructionParameterRepository = None, data_process_repo: DataProcessRepository = None, execution_record_repo: ExecutionRecordRepository = None):
         """初始化数据处理流程服务
         
         Args:
             instruction_item_repo: 指令项目仓储实例，将通过依赖注入获取
+            instruction_parameter_repo: 指令参数仓储实例，将通过依赖注入获取
             data_process_repo: 数据流程仓储实例，将通过依赖注入获取
             execution_record_repo: 执行记录仓储实例，将通过依赖注入获取
         """
         # 注入仓储实例
         self.instruction_item_repo = instruction_item_repo
+        self.instruction_parameter_repo = instruction_parameter_repo
         self.data_process_repo = data_process_repo
-        self.execution_record_repo = execution_record_repo
-    
-
+        self.execution_record_repo = execution_record_repo    
     
     def _extract_user_functions_from_ast(self, script: str) -> List[str]:
         """通过AST解析提取脚本中所有def定义的函数名称"""
@@ -210,7 +212,7 @@ class DataProcessService(BaseService):
                     x=node.x,
                     y=node.y,
                     params=node.params,
-                    intput_types=getattr(node, 'intput_types', {})  # 添加输入类型字段，默认空字典
+                    input_types=getattr(node, 'input_types', {})  # 添加输入类型字段，默认空字典
                 ))
             
             edges = []
@@ -220,7 +222,8 @@ class DataProcessService(BaseService):
                     flow_id=flow_id,  # 添加flow_id字段
                     source=edge.source,
                     target=edge.target,
-                    label=edge.label
+                    label=edge.label,
+                    logic_express=edge.logic_express
                 ))
             
             data_process = DataProcess(
@@ -292,13 +295,14 @@ class DataProcessService(BaseService):
                     "x": node.x,
                     "y": node.y,
                     "params": node.params,
-                    "intput_types": node.intput_types
+                    "input_types": node.input_types
                 } for node in process.nodes],
                 "edges": [{
                     "id": edge.id,
                     "source": edge.source,
                     "target": edge.target,
-                    "label": edge.label
+                    "label": edge.label,
+                    "logic_express": edge.logic_express
                 } for edge in process.edges],
                 "createdAt": datetime.fromisoformat(process.created_at),
                 "updatedAt": datetime.fromisoformat(process.updated_at)
@@ -339,13 +343,14 @@ class DataProcessService(BaseService):
                         "x": node.x,
                         "y": node.y,
                         "params": node.params,
-                        "intput_types": node.intput_types
+                        "input_types": node.input_types
                     } for node in process.nodes],
                     "edges": [{
                         "id": edge.id,
                         "source": edge.source,
                         "target": edge.target,
-                        "label": edge.label
+                        "label": edge.label,
+                        "logic_express": edge.logic_express
                     } for edge in process.edges],
                     "createdAt": datetime.fromisoformat(process.created_at),
                     "updatedAt": datetime.fromisoformat(process.updated_at)
@@ -388,9 +393,6 @@ class DataProcessService(BaseService):
         except Exception as e:
             print(f"❌ 删除数据处理流程失败: {str(e)}")
             return Result.fail(f"删除流程失败: {str(e)}")
-    
-            # start_node_id = None
-            # start_node_id = None
     def get_flow_execution_order(self, flow: DataProcessFlow, start_node_id: str) -> List[str]:
         """
         获取数据处理流程的执行顺序
@@ -403,14 +405,14 @@ class DataProcessService(BaseService):
         Returns:
             List[str]: 节点ID的执行顺序列表
         """
-        # 构建边信息字典：{source: [{target, label}]}
+        # 构建边信息字典：{source: [{target, logic_express}]}
         edges_info: Dict[str, List[Dict[str, str]]] = {}
         for edge in flow.edges:
             if edge.source not in edges_info:
                 edges_info[edge.source] = []
             edges_info[edge.source].append({
                 'target': edge.target,
-                'label': edge.label
+                'logic_express': edge.logic_express
             })
         
         # DFS 拓扑排序
@@ -604,42 +606,39 @@ class DataProcessService(BaseService):
         try:
             # 构建节点ID到节点的映射
             node_map = {node.id: node for node in flow.nodes}
+            current_node_id = start_node_id
+            # 跟踪实际执行的节点顺序
+            actual_execution_order = []            
+            process_results = {}
+            execution_result = None
+            # 记录失败的节点信息
+            failure_node_info = None
             
-            # 构建正向边信息字典：{source: [{target, label}]}
+            # 构建正向边信息字典：{source: [{target, logic_express}]}
             edges_info: Dict[str, List[Dict[str, str]]] = {}
             for edge in flow.edges:
                 if edge.source not in edges_info:
                     edges_info[edge.source] = []
                 edges_info[edge.source].append({
                     'target': edge.target,
-                    'label': edge.label
+                    'logic_express': edge.logic_express
                 })
-            
-            # 初始化结束节点集合
-            end_nodes = set(end_node_ids) if end_node_ids else set()
-            
-            # 1. 设置过程参数字典对象变量，用于保存已经执行的节点输入和输出参数结果信息
-            process_results = {}
-            execution_result = None
-            # 跟踪已执行的节点
-            executed_nodes = set()
-            # 跟踪实际执行的节点顺序
-            actual_execution_order = []
-            # 标记是否已经执行到结束节点
-            reached_end_node = False
-            # 记录失败的节点信息
-            failure_node_info = None
-            
-            # 执行节点的函数
-            async def execute_node(node_id):
-                nonlocal execution_result, failure_node_info
-                node = node_map[node_id]
-                print(f"正在执行节点: {node.id}, 指令ID: {node.instructionId}")
-                
+            while not current_node_id in end_node_ids or not current_node_id in actual_execution_order:
+                # 如果当前节点不是结束节点，或没有执行过，就继续执行
+                actual_execution_order.append(current_node_id)
                 try:
+                    # 获取节点指令脚本 
+                    current_node = node_map[current_node_id]                
+                    instruction_info = self.instruction_item_repo.find_by_id(current_node.instructionId)                
+                    if not instruction_info:
+                        raise Exception(f"未找到指令ID: {current_node.instructionId}")                
+                    python_script = instruction_info.python_script
+
                     # 解析当前节点参数中的变量
+                    input_types=(current_node.input_types or {}).get('e', [])
                     resolved_params = {}
-                    for param_name, param_value in node.params.items():
+                    for param_name, param_value in current_node.params.items():
+                        # 解析节点参数中的变量
                         if isinstance(param_value, str):
                             result = param_value
                             # 使用正则表达式查找所有{{节点id.变量名}}格式的变量
@@ -661,23 +660,26 @@ class DataProcessService(BaseService):
                             resolved_params[param_name] = result
                         else:
                             resolved_params[param_name] = param_value
-                    
-                    # 获取当前节点指令信息
-                    instruction_info = await self.instruction_service.get_instruction_by_id(node.instructionId)
-                    
-                    if not instruction_info:
-                        raise Exception(f"未找到指令ID: {node.instructionId}")
-                    
-                    # 获取输入参数值和输出参数名
+                        # 如果是表达式类型参数，执行表达式，结果赋值给当前变量
+                        if param_name in input_types:
+                            # 表达式解析
+                            try:
+                                processed_value = eval(resolved_params[param_name])
+                                resolved_params[param_name] = processed_value
+                            except Exception as e:
+                                resolved_params[param_name] = param_value 
+                    # 获取节点对应指令的参数信息
                     input_params = {}
+                    back_param_name = None
                     output_param_name = None
-                    
-                    for param in instruction_info.get('params', []):
-                        if param.get('direction') == 0:  # 输入参数
-                            if param.get('name') in resolved_params:
-                                value=resolved_params[param.get('name')]
+                    instruction_parameters = self.instruction_parameter_repo.find_by_instruction_id(current_node.instructionId)
+                    # 遍历指令参数，将解析后的参数变量转换类型，对未同步更新的参数赋予默认值（指令中的参数为最新，以指令为标准）
+                    for param in instruction_parameters:
+                        if param.direction == 0:  # 输入参数
+                            if param.name in resolved_params:
+                                value=resolved_params[param.name]
                                 # 值类型转换
-                                match param.get('type'):
+                                match param.type:
                                     case "string":
                                         value=str(value)
                                     case "number":
@@ -686,153 +688,58 @@ class DataProcessService(BaseService):
                                         value=bool(value)
                                     case _:  # 默认情况（相当于 default）
                                         pass
-
-                                input_params[param.get('name')] = value                                
-                        elif param.get('direction') in [1,2]:  # 输出参数
-                            output_param_name = param.get('name') 
+                                # 存在时，重新赋值
+                                input_params[param.name] = value 
+                            else:
+                                # 不存在时，使用指令中参数的默认值
+                                input_params[param.name] = param.defaultValue                        
+                        elif param.direction ==1:  # 输出参数
+                            output_param_name = param.name                            
+                        elif param.direction ==2:  # 回写参数
+                            back_param_name = param.name 
+                    
+                    # 执行节点指令脚本
+                    execution_result = PythonScriptUtils._execute_python_script(python_script, input_params)                    
                     
                     # 保存输入参数
                     for param_name, param_value in input_params.items():
-                        temp_key = f"{node_id}.{param_name}"
+                        temp_key = f"{current_node_id}.{param_name}"
                         process_results[temp_key] = param_value
-                        print(f"  - 保存输入参数 {temp_key} = {param_value}")
-
-                    python_script = instruction_info.get('python_script', '')
-                    
-                    # 执行脚本
-                    execution_result = await self.instruction_service._execute_python_script(python_script, input_params)                    
+                        print(f"  - 保存输入参数 {temp_key} = {param_value}")                  
                     # 回写参数
-                    if param.get('direction') == 2:  # 回写参数
-                        temp_key=node.params.get(param.get('name'),'')
+                    if back_param_name:  # 回写参数
+                        temp_key=current_node.params.get(back_param_name,'')
                         if temp_key and process_results.get(temp_key[2:-2],''):
-                            process_results[temp_key[2:-2]] = execution_result
+                            process_results[temp_key[2:-2]] = execution_result  
                     # 保存输出参数
                     if output_param_name:
-                        temp_key = f"{node_id}.{output_param_name}"
+                        temp_key = f"{current_node_id}.{output_param_name}"
                         process_results[temp_key] = execution_result
                         print(f"  - 保存输出参数 {temp_key} = {execution_result}")
                     
-                    # 标记节点已执行
-                    executed_nodes.add(node_id)
-                    actual_execution_order.append(node_id)
+                    # 检查当前节点是否有出边
+                    if current_node_id not in edges_info:
+                        print(f"当前节点 {current_node_id} 没有出边，流程结束")
+                        break
                     
-                    # 检查是否为结束节点
-                    if node_id in end_nodes:
-                        nonlocal reached_end_node
-                        reached_end_node = True
-                        print(f"执行到结束节点: {node_id}，流程终止")
-                    
-                    return True,output_param_name, execution_result
+                    # 获取下一个节点
+                    next_node_id = self.find_next_node_id(current_node_id,output_param_name, edges_info, process_results)
+
+                    if current_node_id ==next_node_id:
+                        print(f"出现死循环，流程结束")
+                        break
+                    # 更新下一个节点为当前节点
+                    current_node_id = next_node_id
+                
                 except Exception as e:
                     # 记录失败节点信息
                     failure_node_info = {
-                        "node_id": node_id,
-                        "instruction_id": node.instructionId,
+                        "node_id": current_node_id,
+                        "instruction_id": current_node.instructionId,
                         "error_message": str(e),
                         "error_type": type(e).__name__
                     }
-                    print(f"❌ 节点 {node_id} 执行失败: {str(e)}")
-                    
-                    return False,None,f"❌ 节点 {node_id} 执行失败: {str(e)}"
-            
-            # 执行开始节点
-            is_success,output_param_name, source_output = await execute_node(start_node_id)
-            if not is_success:
-                raise Exception(source_output)
-            # 动态执行路径选择
-            current_node_id = start_node_id
-            while not reached_end_node:
-                # 检查当前节点是否有出边
-                if current_node_id not in edges_info:
-                    print(f"当前节点 {current_node_id} 没有出边，流程结束")
-                    break
-                
-                # 遍历当前节点的所有出边，寻找满足条件的第一条路径
-                found_next_node = False
-                for edge_info in edges_info[current_node_id]:
-                    target_node_id = edge_info['target']
-                    edge_label = edge_info['label']
-                    
-                    # 如果目标节点已经执行过，跳过
-                    if target_node_id in executed_nodes:
-                        continue
-                    
-                    # 如果边没有标签，则默认满足条件，执行目标节点
-                    if not edge_label:
-                        print(f"边 {current_node_id} -> {target_node_id} 没有标签，默认满足条件")
-                        is_success,output_param_name, source_output = await execute_node(target_node_id)
-                        if not is_success:
-                            raise Exception(source_output)
-                        current_node_id = target_node_id
-                        found_next_node = True
-                        break
-                    else:
-                        # 替换边标签中的变量
-                        resolved_label = edge_label
-                        if isinstance(edge_label, str):
-                            import re
-                            matches = re.findall(r'\{\{([^}]*)\}\}', edge_label)
-                            
-                            for match in matches:
-                                if '.' in match:
-                                    node_id_part, var_name = match.split('.', 1)
-                                    ref_key = f"{node_id_part}.{var_name}"
-                                    
-                                    if ref_key in process_results:
-                                        placeholder = f"{{{{{match}}}}}"
-                                        resolved_label = resolved_label.replace(placeholder, str(process_results[ref_key]))
-                                        print(f"  - 解析边标签中的变量: {{node_id.var_name}} -> {ref_key} = {process_results[ref_key]}")
-                        
-                        # 构建条件表达式并评估
-                        try:
-                            # 构建条件表达式的上下文环境
-                            context = {}
-                            condition_satisfied=False
-                            # 添加当前节点的输出值到上下文
-                            if output_param_name:
-                                source_output_key = f"{current_node_id}.{output_param_name}"
-                                if source_output_key in process_results:
-                                    context['output'] = process_results[source_output_key]
-                                    context['value'] = process_results[source_output_key]
-                            
-                            # 检查是否是简单的比较表达式
-                            if resolved_label.startswith('==') or resolved_label.startswith('!=') or \
-                               resolved_label.startswith('>') or resolved_label.startswith('<') or \
-                               resolved_label.startswith('>=') or resolved_label.startswith('<='):
-                                # 构建完整的表达式
-                                expr = f"value {resolved_label}"
-                                print(f"  - 执行条件表达式: {expr}")
-                                condition_satisfied = eval(expr, {}, context)
-                            else:
-                                try:             
-                                    print(eval(resolved_label, {}, {}))                           
-                                    condition_satisfied = eval(resolved_label, {}, {})
-                                except Exception as e:
-                                    # 直接比较值
-                                    if 'value' in context:
-                                        condition_satisfied = str(context['value']) == resolved_label
-                                        print(f"  - 直接比较: 值 '{context['value']}' {'==' if condition_satisfied else '!='} 标签 '{resolved_label}'")
-                                    else:
-                                        condition_satisfied = False
-                                        print(f"  - 无法比较: 当前节点没有输出值或表达式错误 ({str(e)})")
-                            
-                            if condition_satisfied:
-                                print(f"  - 条件满足，执行目标节点 {target_node_id}")
-                                # 执行目标节点
-                                is_success,output_param_name, source_output = await execute_node(target_node_id)
-                                if not is_success:
-                                    raise Exception(source_output)
-                                current_node_id = target_node_id
-                                found_next_node = True
-                                break
-                            else:
-                                print(f"  - 条件不满足，跳过目标节点 {target_node_id}")
-                        except Exception as e:
-                            print(f"  - 条件表达式解析错误: {str(e)}")
-                
-                # 如果没有找到满足条件的下一个节点，结束流程
-                if not found_next_node:
-                    print(f"没有找到满足条件的下一个节点，流程结束")
+                    print(f"❌ 节点 {current_node_id} 执行失败: {str(e)}")
                     break
             
             # 3. 处理最终节点的执行结果，特别是文件下载相关
@@ -887,13 +794,14 @@ class DataProcessService(BaseService):
                 "final_result": processed_final_result,
                 "process_results": process_results,
                 "execution_order": actual_execution_order,
-                "total_nodes_executed": len(executed_nodes),
-                "reached_end_node": reached_end_node
+                "total_nodes_executed": len(actual_execution_order),
+                "failure_node_info": failure_node_info,
+                "reached_end_node": failure_node_info is not None,
             }
-            if reached_end_node:
-                return Result.success(final_result)
-            else:
+            if failure_node_info:
                 return Result.fail(f"执行流程失败: 未到达结束节点", final_result)
+            else:
+                return Result.success(final_result)
             
         except Exception as e:
             print(f"❌ 执行数据处理流程失败: {str(e)}")
@@ -906,16 +814,99 @@ class DataProcessService(BaseService):
                 # 只保留简单类型的处理结果，避免循环引用
                 "process_results": {k: v for k, v in process_results.items() if isinstance(v, (str, int, float, bool, type(None)))},
                 "execution_order": actual_execution_order,
-                "total_nodes_executed": len(executed_nodes),
+                "total_nodes_executed": len(actual_execution_order),
                 # 只保留错误信息的关键字段
-                "reached_end_node": {
-                    "node_id": failure_node_info.get('node_id', ''),
-                    "error_message": failure_node_info.get('error_message', '')
-                }
+                "reached_end_node": failure_node_info
             }
             
             return Result.fail(f"执行流程失败: {str(e)}", error_result)
-    
+    def find_next_node_id(self, current_node_id: str,output_param_name: str, edges_info: Dict[str, List[Dict[str, str]]], process_results: Dict[str, Any]) -> Optional[str]:
+        """
+        根据当前节点ID和目标节点ID，返回下一个节点ID
+        
+        Args:
+            current_node_id: 当前节点ID
+            output_param_name: 当前节点输出参数属性名
+            edges_info: 边信息字典
+            process_results: 处理结果字典
+            
+        Returns:
+            Optional[str]: 下一个节点ID，如果未找到则返回None
+        """
+        # 检查当前节点是否有出边
+        if current_node_id not in edges_info:
+            print(f"当前节点 {current_node_id} 没有出边，流程结束")
+            return None
+        
+        # 遍历当前节点的所有出边，寻找满足条件的第一条路径
+        found_next_node = False
+        for edge_info in edges_info[current_node_id]:
+            target_node_id = edge_info['target']
+            edge_logic_express = edge_info['logic_express']                    
+            
+            # 如果边没有逻辑表达式，则默认满足条件，返回目标节点ID
+            if not edge_logic_express:
+                return target_node_id
+            else:
+                # 替换边逻辑表达式中的变量
+                resolved_logic_express = edge_logic_express
+                if isinstance(edge_logic_express, str):
+                    import re
+                    matches = re.findall(r'\{\{([^}]*)\}\}', edge_logic_express)
+                    
+                    for match in matches:
+                        if '.' in match:
+                            node_id_part, var_name = match.split('.', 1)
+                            ref_key = f"{node_id_part}.{var_name}"
+                            
+                            if ref_key in process_results:
+                                placeholder = f"{{{{{match}}}}}"
+                                resolved_logic_express = resolved_logic_express.replace(placeholder, str(process_results[ref_key]))
+                                print(f"  - 解析边标签中的变量: {{node_id.var_name}} -> {ref_key} = {process_results[ref_key]}")
+                
+                # 构建条件表达式并评估
+                try:
+                    # 构建条件表达式的上下文环境
+                    context = {}
+                    condition_satisfied=False
+                    # 添加当前节点的输出值到上下文
+                    if output_param_name:
+                        source_output_key = f"{current_node_id}.{output_param_name}"
+                        if source_output_key in process_results:
+                            context['output'] = process_results[source_output_key]
+                            context['value'] = process_results[source_output_key]
+                    
+                    # 检查是否是简单的比较表达式
+                    if resolved_logic_express.startswith('==') or resolved_logic_express.startswith('!=') or \
+                        resolved_logic_express.startswith('>') or resolved_logic_express.startswith('<') or \
+                        resolved_logic_express.startswith('>=') or resolved_logic_express.startswith('<='):
+                        # 构建完整的表达式
+                        expr = f"value {resolved_logic_express}"
+                        print(f"  - 执行条件表达式: {expr}")
+                        condition_satisfied = eval(expr, {}, context)
+                    else:
+                        try:             
+                            print(eval(resolved_logic_express, {}, {}))                           
+                            condition_satisfied = eval(resolved_logic_express, {}, {})
+                        except Exception as e:
+                            # 直接比较值
+                            if 'value' in context:
+                                condition_satisfied = str(context['value']) == resolved_logic_express
+                                print(f"  - 直接比较: 值 '{context['value']}' {'==' if condition_satisfied else '!='} 标签 '{resolved_logic_express}'")
+                            else:
+                                condition_satisfied = False
+                                print(f"  - 无法比较: 当前节点没有输出值或表达式错误 ({str(e)})")
+                    
+                    if condition_satisfied:
+                        return target_node_id
+                    else:
+                        print(f"  - 条件不满足，跳过目标节点 {target_node_id}")
+                except Exception as e:
+                    print(f"  - 条件表达式解析错误: {str(e)}")
+        
+        # 如果没有找到满足条件的下一个节点，结束流程
+        if not found_next_node:
+            return None
     async def execute_data_process_flow_by_id(self, flow_id: str) -> Result[Dict[str, Any]]:
         """
         根据流程ID执行数据处理流程

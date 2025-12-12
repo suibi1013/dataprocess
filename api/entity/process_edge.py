@@ -14,7 +14,8 @@ class ProcessEdge(BaseModel):
     flow_id: str = Field(..., description="流程ID", alias="flowId")
     source: str = Field(..., description="源节点ID")
     target: str = Field(..., description="目标节点ID")
-    label: Optional[str] = Field(None, description="边标签")
+    label: Optional[str] = Field(None, description="边显示标签")
+    logic_express:Optional[str] = Field(None, description="逻辑表达式")
     
     model_config = {
         "from_attributes": True,  # 允许从ORM模型创建

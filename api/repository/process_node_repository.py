@@ -39,7 +39,7 @@ class ProcessNodeRepository(BaseRepository[ProcessNode]):
             x REAL NOT NULL,
             y REAL NOT NULL,
             params TEXT NOT NULL,
-            intput_types TEXT DEFAULT '{{}}'
+            input_types TEXT DEFAULT '{{}}'
         )
         """
         self.execute_non_query(create_table_sql)
@@ -49,11 +49,11 @@ class ProcessNodeRepository(BaseRepository[ProcessNode]):
         PRAGMA table_info({self.TABLE_NAME})
         """
         columns = self.execute_query(check_column_sql)
-        has_intput_types = any(col[1] == 'intput_types' for col in columns)
+        has_intput_types = any(col[1] == 'input_types' for col in columns)
         
         if not has_intput_types:
             alter_table_sql = f"""
-            ALTER TABLE {self.TABLE_NAME} ADD COLUMN intput_types TEXT DEFAULT '{{}}'
+            ALTER TABLE {self.TABLE_NAME} ADD COLUMN input_types TEXT DEFAULT '{{}}'
             """
             self.execute_non_query(alter_table_sql)
     
@@ -69,7 +69,7 @@ class ProcessNodeRepository(BaseRepository[ProcessNode]):
         """
         # 将参数转换为JSON字符串
         params_json = json.dumps(node.params)
-        intput_types_json = json.dumps(node.intput_types)
+        intput_types_json = json.dumps(node.input_types)
         
         data = {
             "id": node.id,
@@ -80,7 +80,7 @@ class ProcessNodeRepository(BaseRepository[ProcessNode]):
             "x": node.x,
             "y": node.y,
             "params": params_json,
-            "intput_types": intput_types_json
+            "input_types": intput_types_json
         }
         return self.insert(self.TABLE_NAME, data)
     
@@ -95,7 +95,7 @@ class ProcessNodeRepository(BaseRepository[ProcessNode]):
         """
         # 将参数转换为JSON字符串
         params_json = json.dumps(node.params)
-        intput_types_json = json.dumps(node.intput_types)
+        intput_types_json = json.dumps(node.input_types)
         
         data = {
             "instruction_id": node.instruction_id,
@@ -104,7 +104,7 @@ class ProcessNodeRepository(BaseRepository[ProcessNode]):
             "x": node.x,
             "y": node.y,
             "params": params_json,
-            "intput_types": intput_types_json
+            "input_types": intput_types_json
         }
         return super().update(self.TABLE_NAME, data, "id = ?", (node.id,))
     
@@ -149,18 +149,18 @@ class ProcessNodeRepository(BaseRepository[ProcessNode]):
                     result["params"] = {}
             
             # 安全解析输入类型JSON字符串
-            if result["intput_types"]:
+            if result["input_types"]:
                 try:
-                    result["intput_types"] = json.loads(result["intput_types"])
+                    result["input_types"] = json.loads(result["input_types"])
                     # 确保格式正确
-                    if not isinstance(result["intput_types"], dict):
-                        result["intput_types"] = {"e": [], "t": []}
-                    if not isinstance(result["intput_types"].get("e"), list):
-                        result["intput_types"]["e"] = []
-                    if not isinstance(result["intput_types"].get("t"), list):
-                        result["intput_types"]["t"] = []
+                    if not isinstance(result["input_types"], dict):
+                        result["input_types"] = {"e": [], "t": []}
+                    if not isinstance(result["input_types"].get("e"), list):
+                        result["input_types"]["e"] = []
+                    if not isinstance(result["input_types"].get("t"), list):
+                        result["input_types"]["t"] = []
                 except (json.JSONDecodeError, TypeError):
-                    result["intput_types"] = {"e": [], "t": []}
+                    result["input_types"] = {"e": [], "t": []}
             
             return self.dict_to_model(result, ProcessNode)
         return None
@@ -185,18 +185,18 @@ class ProcessNodeRepository(BaseRepository[ProcessNode]):
                     result["params"] = {}
             
             # 安全解析输入类型JSON字符串
-            if result["intput_types"]:
+            if result["input_types"]:
                 try:
-                    result["intput_types"] = json.loads(result["intput_types"])
+                    result["input_types"] = json.loads(result["input_types"])
                     # 确保格式正确
-                    if not isinstance(result["intput_types"], dict):
-                        result["intput_types"] = {"e": [], "t": []}
-                    if not isinstance(result["intput_types"].get("e"), list):
-                        result["intput_types"]["e"] = []
-                    if not isinstance(result["intput_types"].get("t"), list):
-                        result["intput_types"]["t"] = []
+                    if not isinstance(result["input_types"], dict):
+                        result["input_types"] = {"e": [], "t": []}
+                    if not isinstance(result["input_types"].get("e"), list):
+                        result["input_types"]["e"] = []
+                    if not isinstance(result["input_types"].get("t"), list):
+                        result["input_types"]["t"] = []
                 except (json.JSONDecodeError, TypeError):
-                    result["intput_types"] = {"e": [], "t": []}
+                    result["input_types"] = {"e": [], "t": []}
             
             nodes.append(self.dict_to_model(result, ProcessNode))
         return nodes

@@ -326,7 +326,7 @@ async def execute_data_process_flow(
         # 8. 节点属性检查
         for node in flow.nodes:
             # 根据节点的instructionId获取指令信息
-            instruction_item = instruction_service.storage.get_item_by_id(node.instructionId)
+            instruction_item = await instruction_service.get_instruction_by_id(node.instructionId)
             if not instruction_item:
                 raise HTTPException(status_code=400, detail=f"节点 {node.id} 引用的指令不存在")
             
@@ -495,7 +495,7 @@ async def execute_data_process_flow_by_id(
         # 节点属性检查
         for node in flow.nodes:
             # 根据节点的instructionId获取指令信息
-            instruction_item = instruction_service.storage.get_item_by_id(node.instructionId)
+            instruction_item = await instruction_service.get_instruction_by_id(node.instructionId)
             if not instruction_item:
                 return {
                     "success": False,

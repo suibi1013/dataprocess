@@ -8,7 +8,6 @@ import type {
   CanvasNode,
   CanvasEdge,
   DataProcessFlow,
-  InstructionExecutionParams,
   InstructionExecutionResult,
   ProcessExecutionStatus
 } from '@/types';
@@ -113,7 +112,7 @@ export const useInstructionStore = defineStore('instruction', () => {
   };
 
   // 执行单个指令
-  const executeInstruction = async (instructionId: string, params: InstructionExecutionParams) => {
+  const executeInstruction = async (instructionId: string, params: any, intputTypes?: { t: string[]; e: string[] }) => {
     try {
       executionStatus.value = {
         total: 1,
@@ -124,7 +123,7 @@ export const useInstructionStore = defineStore('instruction', () => {
       };
       error.value = null;
 
-      const response: ApiResponse<InstructionExecutionResult> = await instructionService.executeInstruction(instructionId, params);
+      const response: ApiResponse<InstructionExecutionResult> = await instructionService.executeInstruction(instructionId, params, intputTypes);
       
       if (response.success && response.data) {
         executionResult.value = response.data;

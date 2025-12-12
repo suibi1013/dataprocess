@@ -31,9 +31,6 @@
         <!-- 边标签编辑表单 -->
         <div v-else-if="props.paramsPanel.selectedEdge" class="params-form">
           <div class="param-group">
-            <div class="param-group-title">
-              <h4>连线标签设置</h4>
-            </div>
             <div class="form-item">
               <label class="form-label">标签文本</label>
               <div class="input-with-variable" style="position: relative; display: flex; align-items: center; margin-bottom: 2px;">
@@ -47,6 +44,20 @@
                 </button>
               </div>
               <div class="form-help">设置连线的标签文本，点击x按钮可插入变量</div>
+            </div>
+            <div class="form-item">
+              <label class="form-label">逻辑表达式</label>
+              <div class="input-with-variable" style="position: relative; display: flex; align-items: center; margin-bottom: 2px;">
+                <input type="text" class="form-input"
+                  :placeholder="'请输入逻辑表达式'"
+                  :value="props.paramsPanel.params?.logic_express || ''"
+                  @input="updateEdgeLogicExpress(($event.target as HTMLInputElement).value)" />
+                <button type="button" class="variable-select-btn"
+                  @click="onToggleVariableSelector('logic_express', 'string')" title="选择变量">
+                  x
+                </button>
+              </div>
+              <div class="form-help">设置连线的逻辑表达式，用于条件判断</div>
             </div>
           </div>
         </div>
@@ -75,7 +86,7 @@
                     :placeholder="item.param?.placeholder || item.placeholder || '请输入' + (item.param?.label || item.label)" 
                     class="form-input"
                     style="padding: 0px;"
-                    @input="updateParamValue(item.param?.name || item.name, ($event.target as HTMLInputElement).value)"
+                    @input="updateParamValue(item.param?.name || item.name, $event)"
                   >
                     <template #prefix>
                       <!-- 使用 img 标签显示本地图标 -->
@@ -103,7 +114,7 @@
                     :placeholder="item.param?.placeholder || item.placeholder || '请输入' + (item.param?.label || item.label)" 
                     class="form-input"
                     style="padding: 0px;"
-                    @input="updateParamValue(item.param?.name || item.name, ($event.target as HTMLInputElement).value)"
+                    @input="updateParamValue(item.param?.name || item.name, $event)"
                   >
                     <template #prefix>
                       <img 
@@ -260,7 +271,7 @@
                     :placeholder="item.param?.placeholder || item.placeholder || '请输入' + (item.param?.label || item.label)" 
                     class="form-input"
                     style="padding: 0px;"
-                    @input="updateParamValue(item.param?.name || item.name, ($event.target as HTMLInputElement).value)"
+                    @input="updateParamValue(item.param?.name || item.name, $event)"
                   >
                     <template #prefix>
                       <!-- 使用 img 标签显示本地图标 -->
@@ -289,7 +300,7 @@
                     :placeholder="item.param?.placeholder || item.placeholder || '请输入' + (item.param?.label || item.label)" 
                     class="form-input"
                     style="padding: 0px;"
-                    @input="updateParamValue(item.param?.name || item.name, ($event.target as HTMLInputElement).value)"
+                    @input="updateParamValue(item.param?.name || item.name, $event)"
                   >
                     <template #prefix>
                       <img 
@@ -445,7 +456,7 @@
                     :placeholder="item.param?.placeholder || item.placeholder || '请输入' + (item.param?.label || item.label)" 
                     class="form-input"
                     style="padding: 0px;"
-                    @input="updateParamValue(item.param?.name || item.name, ($event.target as HTMLInputElement).value)"
+                    @input="updateParamValue(item.param?.name || item.name, $event)"
                   >
                     <template #prefix>
                       <img 
@@ -473,7 +484,7 @@
                     :placeholder="item.param?.placeholder || item.placeholder || '请输入' + (item.param?.label || item.label)" 
                     class="form-input"
                     style="padding: 0px;"
-                    @input="updateParamValue(item.param?.name || item.name, ($event.target as HTMLInputElement).value)"
+                    @input="updateParamValue(item.param?.name || item.name, $event)"
                   >
                     <template #prefix>
                       <img 
@@ -904,11 +915,20 @@ const onToggleVariableSelector = async (paramName: string, paramType: string) =>
 const onSelectVariable = (paramName: string, variableName: string) => {
   // 根据选中的是节点还是边来调用不同的更新函数
   if (props.paramsPanel.selectedEdge) {
-    // 边的情况：调用updateEdgeLabel更新标签
-    updateEdgeLabel(variableName);
+    if (paramName === 'label') { 
+      // 获取当前值，采用追加机制
+      const currentValue = props.paramsPanel.params?.label || '';
+      updateEdgeLabel(currentValue + variableName);
+    }
+    if (paramName === 'logic_express') { 
+      // 获取当前值，采用追加机制
+      const currentValue = props.paramsPanel.params?.logic_express || '';
+      updateEdgeLogicExpress(currentValue + variableName);
+    }
   } else {
-    // 节点的情况：调用updateParamValue更新参数
-    updateParamValue(paramName, variableName);
+    // 节点的情况：获取当前值，采用追加机制
+    const currentValue = props.paramsPanel.params?.[paramName] || '';
+    updateParamValue(paramName, currentValue + variableName);
   }
   variableSelectorVisible.value = false;
 };
@@ -942,7 +962,7 @@ const toggleInputType = (paramName: string) => {
     });
     
     // 保存到节点数据
-    nodeData.intput_types = intputTypes;
+    nodeData.input_types = intputTypes;
     
     // 兼容旧版本，保留inputTypes属性
     if (!nodeData.inputTypes) {
@@ -994,8 +1014,7 @@ const updateParamValue = (paramName: string, value: any) => {
 
 // 更新边标签（实时更新，但不保存）
 const updateEdgeLabel = (value: string) => {
-  if (!props.paramsPanel.selectedEdge) return;
-  
+  if (!props.paramsPanel.selectedEdge) return;  
   // 更新参数面板的params
   const updatedParams = { ...props.paramsPanel.params, label: value };
   
@@ -1009,6 +1028,29 @@ const updateEdgeLabel = (value: string) => {
   emit('update-edge', {
     edge: props.paramsPanel.selectedEdge,
     label: value,
+    logic_express: updatedParams.logic_express,
+    paramsPanel: updatedParamsPanel
+  });
+};
+
+// 更新边逻辑表达式（实时更新，但不保存）
+const updateEdgeLogicExpress = (value: string) => {
+  if (!props.paramsPanel.selectedEdge) return;
+  
+  // 更新参数面板的params
+  const updatedParams = { ...props.paramsPanel.params, logic_express: value };
+  
+  // 获取当前的paramsPanel对象，并更新params属性
+  const updatedParamsPanel = {
+    ...props.paramsPanel,
+    params: updatedParams
+  };
+  
+  // 发出边更新事件
+  emit('update-edge', {
+    edge: props.paramsPanel.selectedEdge,
+    label: updatedParams.label,
+    logic_express: value,
     paramsPanel: updatedParamsPanel
   });
 };
@@ -1101,7 +1143,6 @@ watch(() => [props.paramsPanel.selectedNode, props.paramsPanel.selectedEdge], ()
     // 初始化输入类型
     if (props.paramsPanel.selectedNode) {
       const nodeData = props.paramsPanel.selectedNode.getData();
-      console.log(nodeData)
       
       // 清空当前的inputTypes
       inputTypes.value = {};
@@ -1109,20 +1150,20 @@ watch(() => [props.paramsPanel.selectedNode, props.paramsPanel.selectedEdge], ()
       let hasInputTypeData = false;
       
       // 检查是否有新格式的intput_types属性
-      if (nodeData.intput_types) {
+      if (nodeData.input_types) {
         try {
           // 确保intput_types是对象
-          if (typeof nodeData.intput_types === 'object' && nodeData.intput_types !== null) {
+          if (typeof nodeData.input_types === 'object' && nodeData.input_types !== null) {
             // 处理表达式类型参数（key为e）
-            if (Array.isArray(nodeData.intput_types.e)) {
-              nodeData.intput_types.e.forEach((paramName: string) => {
+            if (Array.isArray(nodeData.input_types.e)) {
+              nodeData.input_types.e.forEach((paramName: string) => {
                 inputTypes.value[paramName] = true; // true表示表达式类型
                 hasInputTypeData = true;
               });
             }
             // 处理文本类型参数（key为t）
-            if (Array.isArray(nodeData.intput_types.t)) {
-              nodeData.intput_types.t.forEach((paramName: string) => {
+            if (Array.isArray(nodeData.input_types.t)) {
+              nodeData.input_types.t.forEach((paramName: string) => {
                 inputTypes.value[paramName] = false; // false表示文本类型
                 hasInputTypeData = true;
               });
@@ -1145,39 +1186,39 @@ watch(() => [props.paramsPanel.selectedNode, props.paramsPanel.selectedEdge], ()
       }
       
       // 确保节点数据中存在intput_types属性
-      if (!nodeData.intput_types) {
-        nodeData.intput_types = {
+      if (!nodeData.input_types) {
+        nodeData.input_types = {
           e: [], // 表达式类型参数列表
           t: []  // 文本类型参数列表
         };
       }
       
       // 确保intput_types格式正确
-      if (typeof nodeData.intput_types !== 'object' || nodeData.intput_types === null) {
-        nodeData.intput_types = {
+      if (typeof nodeData.input_types !== 'object' || nodeData.input_types === null) {
+        nodeData.input_types = {
           e: [],
           t: []
         };
       }
-      if (!Array.isArray(nodeData.intput_types.e)) {
-        nodeData.intput_types.e = [];
+      if (!Array.isArray(nodeData.input_types.e)) {
+        nodeData.input_types.e = [];
       }
-      if (!Array.isArray(nodeData.intput_types.t)) {
-        nodeData.intput_types.t = [];
+      if (!Array.isArray(nodeData.input_types.t)) {
+        nodeData.input_types.t = [];
       }
       
       // 如果没有任何输入类型数据，根据当前的inputTypes.value生成
       if (!hasInputTypeData) {
         // 清空intput_types
-        nodeData.intput_types.e = [];
-        nodeData.intput_types.t = [];
+        nodeData.input_types.e = [];
+        nodeData.input_types.t = [];
         
         // 遍历所有参数，根据inputTypes分类
         Object.entries(inputTypes.value).forEach(([name, isExpr]) => {
           if (isExpr) {
-            nodeData.intput_types.e.push(name);
+            nodeData.input_types.e.push(name);
           } else {
-            nodeData.intput_types.t.push(name);
+            nodeData.input_types.t.push(name);
           }
         });
       }
@@ -1193,7 +1234,6 @@ watch(() => [props.paramsPanel.selectedNode, props.paramsPanel.selectedEdge], ()
       
       // 保存更新后的节点数据
       props.paramsPanel.selectedNode.setData(nodeData);
-      console.log('更新后的节点数据:', props.paramsPanel.selectedNode.getData())
     }
   }, 0);
 }, { immediate: true, deep: true });
@@ -1422,8 +1462,11 @@ const onHandleRunInstruction = async () => {
       });
     }
     
+    // 获取intput_types属性
+    const intputTypes = nodeData.input_types || { t: [], e: [] };
+    
     // 调用后端API来执行指令    
-    const result = await instructionService.executeInstruction(nodeData.instructionId, typedParams);
+    const result = await instructionService.executeInstruction(nodeData.instructionId, typedParams, intputTypes);
     
     if (result.success && result.data) {
       let details = '';
