@@ -1461,6 +1461,83 @@ function createDataProcessInstance() {
 
   // ==================== 流程执行 ====================
   
+  // 状态检查相关变量
+  let statusCheckInterval: number | null = null;
+  let currentExecutingFlowId: string | null = null;
+
+  /**
+   * 获取流程执行状态
+   */
+  const getFlowStatus = async (flowId: string) => {
+    try {
+      const response = await dataProcessService.getFlowExecutionStatus(flowId);
+      return response;
+    } catch (error) {
+      console.error(`获取流程状态失败: ${flowId}`, error);
+      return null;
+    }
+  };
+
+  /**
+   * 终止正在执行的流程
+   */
+  const terminateFlow = async () => {
+    if (!currentExecutingFlowId) return null;
+    
+    try {
+      const response = await dataProcessService.terminateDataProcessFlow(currentExecutingFlowId);
+      // 清除状态检查定时器
+      if (statusCheckInterval) {
+        clearInterval(statusCheckInterval);
+        statusCheckInterval = null;
+      }
+      return response;
+    } catch (error) {
+      console.error(`终止流程失败: ${currentExecutingFlowId}`, error);
+      return null;
+    } finally {
+      modalState.executing = false;
+      currentExecutingFlowId = null;
+    }
+  };
+
+  /**
+   * 开始定期检查流程状态
+   */
+  const startStatusCheck = (flowId: string | undefined) => {
+    // 清除之前的定时器
+    if (statusCheckInterval) {
+      clearInterval(statusCheckInterval);
+      statusCheckInterval = null;
+    }
+    
+    // 如果flowId为undefined，不启动状态检查
+    if (!flowId) {
+      return;
+    }
+    
+    currentExecutingFlowId = flowId;
+    
+    // 每隔3秒检查一次状态
+    statusCheckInterval = window.setInterval(async () => {
+      const statusResponse = await getFlowStatus(flowId);
+      if (statusResponse && statusResponse.success) {
+        const status = statusResponse.data.status;
+        console.log(`流程 ${flowId} 当前状态: ${status}`);
+        
+        // 如果状态不是running，清除定时器
+        if (status !== 'running') {
+          if (statusCheckInterval) {
+            clearInterval(statusCheckInterval);
+            statusCheckInterval = null;
+            modalState.executing = false;
+            currentExecutingFlowId = null;
+          }
+        }
+      }
+    }, 3000);
+  };
+  
   /**
    * 执行数据处理流程
    */
@@ -1557,6 +1634,9 @@ function createDataProcessInstance() {
         })
       };
       
+      // 开始状态检查
+      startStatusCheck(flowId);
+      
       // 执行流程 - 所有验证逻辑已移至后端
       const response = await dataProcessService.executeDataProcessFlow(flow);
       
@@ -1584,7 +1664,13 @@ function createDataProcessInstance() {
         data: null
       };
     } finally {
+      // 清除状态检查定时器
+      if (statusCheckInterval) {
+        clearInterval(statusCheckInterval);
+        statusCheckInterval = null;
+      }
       modalState.executing = false;
+      currentExecutingFlowId = null;
     }
   };  
   /**
@@ -2158,6 +2244,11 @@ function createDataProcessInstance() {
     nodeDescriptionEditor.description = '';
   };
 
+  // 终止执行函数，暴露给外部组件使用
+  const terminateExecution = async () => {
+    return await terminateFlow();
+  };
+
   // ==================== 返回接口 ====================
   
   return {
@@ -2216,6 +2307,9 @@ function createDataProcessInstance() {
     saveEdgeLabel,
     saveCurrentParams,
     saveCurrentNodeParams,
+    
+    // 流程执行
+    terminateExecution,
     
     // 流程执行
     executeProcess,

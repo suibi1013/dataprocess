@@ -20,6 +20,7 @@ from dto.instruction_dto import (
     CanvasEdge
 )
 from di.container import inject
+from utils.common import execution_terminator
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -647,3 +648,131 @@ async def delete_data_process_flow(
         return {"message": result.message}
     else:
         raise HTTPException(status_code=404, detail=result.error)
+
+
+@router.post("/execute/terminate")
+async def terminate_data_process_flow(
+    terminate_request: Dict[str, str]
+) -> dict:
+    """
+    终止正在执行的数据处理流程
+    
+    Args:
+        terminate_request: 包含流程ID的请求体，格式为 {"flow_id": "流程ID"}
+        
+    Returns:
+        dict: 终止操作的响应结果
+    """
+    try:
+        # 获取流程ID
+        flow_id = terminate_request.get("flow_id")
+        
+        if not flow_id:
+            raise HTTPException(status_code=400, detail="缺少必要参数: flow_id")
+        
+        # 设置终止标志
+        execution_terminator.set_terminate_flag(flow_id)
+        
+        logger.info(f"已设置流程 {flow_id} 的终止标志")
+        
+        # 返回成功响应
+        return {
+            "success": True,
+            "message": f"已成功发送终止信号到流程 {flow_id}",
+            "data": {
+                "flow_id": flow_id,
+                "terminate_status": "requested"
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"终止流程 {flow_id} 失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"终止流程失败: {str(e)}")
+
+
+@router.get("/execute/status/{flow_id}")
+async def get_flow_execution_status(
+    flow_id: str
+) -> dict:
+    """
+    查询指定流程的执行状态
+    
+    Args:
+        flow_id: 流程ID
+        
+    Returns:
+        dict: 流程执行状态响应
+    """
+    try:
+        # 获取流程状态
+        status = execution_terminator.get_flow_status(flow_id)
+        
+        logger.info(f"查询流程 {flow_id} 的执行状态: {status}")
+        
+        # 返回成功响应
+        return {
+            "success": True,
+            "message": f"成功查询流程 {flow_id} 的执行状态",
+            "data": {
+                "flow_id": flow_id,
+                "status": status,
+                "status_text": {
+                    "idle": "空闲",
+                    "running": "运行中",
+                    "completed": "执行完成",
+                    "failed": "执行失败",
+                    "terminated": "已终止"
+                }[status]
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"查询流程 {flow_id} 状态失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"查询流程状态失败: {str(e)}")
+
+
+@router.get("/execute/status")
+async def get_all_flows_execution_status() -> dict:
+    """
+    查询所有流程的执行状态
+    
+    Returns:
+        dict: 所有流程执行状态响应
+    """
+    try:
+        # 获取所有流程状态
+        all_statuses = execution_terminator.get_all_flow_statuses()
+        
+        # 构建包含状态文本的响应数据
+        formatted_statuses = {}
+        status_text_map = {
+            "idle": "空闲",
+            "running": "运行中",
+            "completed": "执行完成",
+            "failed": "执行失败",
+            "terminated": "已终止"
+        }
+        
+        for flow_id, status in all_statuses.items():
+            formatted_statuses[flow_id] = {
+                "status": status,
+                "status_text": status_text_map[status]
+            }
+        
+        logger.info(f"查询所有流程的执行状态，共 {len(all_statuses)} 个流程")
+        
+        # 返回成功响应
+        return {
+            "success": True,
+            "message": "成功查询所有流程的执行状态",
+            "data": {
+                "flow_statuses": formatted_statuses,
+                "total_flows": len(all_statuses)
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"查询所有流程状态失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"查询所有流程状态失败: {str(e)}")

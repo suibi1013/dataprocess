@@ -24,6 +24,7 @@ from repository.instruction_parameter_repository import InstructionParameterRepo
 from repository.data_process_repository import DataProcessRepository
 from repository.execution_record_repository import ExecutionRecordRepository
 from utils.python_script_utils import PythonScriptUtils
+from utils.common import execution_terminator
 import inspect
 
 
@@ -566,10 +567,10 @@ class DataProcessService(BaseService):
             
             # 创建执行结果数据对象
             result_data = ExecutionResultData(
-                flow_id=execution_result.get('flow_id', flow_id),
-                flow_name=execution_result.get('flow_name', flow_name),
-                final_result=execution_result.get('final_result'),
-                process_results=execution_result.get('process_results', {})
+                flow_id=flow_id,
+                flow_name=flow_name,
+                final_result=execution_result.get('final_result',None) if execution_result else None,
+                process_results=execution_result.get('process_results', {}) if execution_result else {},
             )
             
             # 创建执行记录对象
@@ -623,7 +624,28 @@ class DataProcessService(BaseService):
                     'target': edge.target,
                     'logic_express': edge.logic_express
                 })
+            
+            # 重置流程状态和终止标志
+            execution_terminator.reset_flow(flow.id)
+            # 设置流程状态为运行中
+            execution_terminator.set_flow_status(flow.id, execution_terminator.STATUS_RUNNING)
+            
             while not current_node_id in end_node_ids or not current_node_id in actual_execution_order:
+                import asyncio
+                await asyncio.sleep(0.01)
+                # 检查是否需要终止执行
+                if execution_terminator.should_terminate(flow.id):
+                    print(f"流程 {flow.id} 收到终止信号，正在终止执行...")
+                    failure_node_info = {
+                        "node_id": current_node_id,
+                        "instruction_id": node_map[current_node_id].instructionId if current_node_id in node_map else "",
+                        "error_message": "流程执行被用户终止",
+                        "error_type": "UserTerminatedError"
+                    }
+                    # 设置流程状态为终止
+                    execution_terminator.set_flow_status(flow.id, execution_terminator.STATUS_TERMINATED)
+                    break
+                print(f"当前执行节点: {current_node_id}")
                 # 如果当前节点不是结束节点，或没有执行过，就继续执行
                 actual_execution_order.append(current_node_id)
                 try:
@@ -740,7 +762,21 @@ class DataProcessService(BaseService):
                         "error_type": type(e).__name__
                     }
                     print(f"❌ 节点 {current_node_id} 执行失败: {str(e)}")
+                    # 设置流程状态为失败
+                    execution_terminator.set_flow_status(flow.id, execution_terminator.STATUS_FAILED)
                     break
+            
+            # 执行结束，根据结果设置状态
+            if failure_node_info:
+                # 如果有失败信息且不是被终止的，设置为失败状态
+                if failure_node_info["error_type"] != "UserTerminatedError":
+                    execution_terminator.set_flow_status(flow.id, execution_terminator.STATUS_FAILED)
+            else:
+                # 没有失败信息，说明执行成功
+                execution_terminator.set_flow_status(flow.id, execution_terminator.STATUS_COMPLETED)
+            
+            # 执行结束后清除终止标志
+            execution_terminator.clear_terminate_flag(flow.id)
             
             # 3. 处理最终节点的执行结果，特别是文件下载相关
             processed_final_result = execution_result

@@ -103,13 +103,13 @@
 
         <button 
           type="button" 
-          class="btn btn-primary"
-          :disabled="isExecuting"
+          class="btn" 
+          :class="isExecuting ? 'btn-secondary' : 'btn-primary'"
           @click="executeProcess"
         >
-          <i v-if="isExecuting" class="icon-loading"></i>
-          <i v-else class="icon-play"></i>
-          {{ isExecuting ? '执行中...' : '执行流程' }}
+          <el-icon v-if="isExecuting"><Loading /></el-icon>
+          <el-icon v-else><VideoPlay /></el-icon>
+          {{ isExecuting ? '终止执行' : '执行流程' }}
         </button>
         <button 
           type="button" 
@@ -167,6 +167,7 @@ const emit = defineEmits<Emits>();
 const {
   executeProcess: runProcess,
   saveDataProcess: saveProcessConfig,
+  terminateExecution,
   clearCanvas,
   instructionCategories,
   instructionLoading,
@@ -743,10 +744,39 @@ function confirmSheetSelection(displaySheetName) {
 
 // 切换指令分类功能已移至InstructionPanel组件
 
-// 执行流程
+// 执行流程或终止执行
 const executeProcess = async () => {
+  // 如果正在执行，则终止执行
+  if (isExecuting.value) {
+    try {
+      await terminateExecution();
+      // 可以添加终止成功的提示
+      resultModalData.value = {
+        success: true,
+        title: '终止成功',
+        message: '流程已成功终止',
+        details: undefined,
+        finalResult: undefined
+      };
+      showResultModal.value = true;
+    } catch (error) {
+      console.error('终止流程失败:', error);
+      resultModalData.value = {
+        success: false,
+        title: '终止失败',
+        message: '流程终止失败',
+        details: error instanceof Error ? error.message : '未知错误',
+        finalResult: undefined
+      };
+      showResultModal.value = true;
+    } finally {
+      processing.value = false;
+    }
+    return;
+  }
+
+  // 否则执行流程
   processing.value = true;
-  isExecuting.value = true; // 设置执行中状态，禁用按钮并显示执行中效果
   
   try {
     // 执行流程并保存返回结果
@@ -845,7 +875,6 @@ const executeProcess = async () => {
     showResultModal.value = true;
   } finally {
     processing.value = false;
-    isExecuting.value = false; // 重置执行状态，启用按钮
   }
 };
 

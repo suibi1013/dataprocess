@@ -126,6 +126,30 @@ export class DataProcessService {
       throw error;
     }
   }
+
+  /**
+   * 获取流程执行状态
+   */
+  async getFlowExecutionStatus(flowId: string): Promise<ApiResponse<any>> {
+    try {
+      return await httpClient.get<any>(`/data-process/execute/status/${flowId}`);
+    } catch (error) {
+      console.error(`获取流程执行状态失败 (ID: ${flowId}):`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * 终止正在执行的流程
+   */
+  async terminateDataProcessFlow(flowId: string): Promise<ApiResponse<any>> {
+    try {
+      return await httpClient.post<any>(`/data-process/execute/terminate`, { flow_id: flowId });
+    } catch (error) {
+      console.error(`终止流程执行失败 (ID: ${flowId}):`, error);
+      throw error;
+    }
+  }
 }
 
 // 导出数据流程服务实例

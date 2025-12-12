@@ -109,13 +109,18 @@
               编辑
             </el-button>
             <el-button 
-              type="info" 
+              :type="executingFlows.has(scope.row.id) ? 'danger' : 'info'" 
               size="small" 
               @click="executeProcessById(scope.row.id)"
               style="margin-right: 5px"
-              :loading="executingProcessId === scope.row.id"
             >
-              执行
+              <template v-if="executingFlows.has(scope.row.id)">
+                <el-icon><Loading /></el-icon>
+                终止
+              </template>
+              <template v-else>
+                执行
+              </template>
             </el-button>
             <el-button 
               type="danger" 
@@ -278,9 +283,9 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, computed, reactive, onMounted } from 'vue'
+import { defineComponent, ref, computed, reactive, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, Plus } from '@element-plus/icons-vue'
+import { Search, Plus, Loading } from '@element-plus/icons-vue'
 import { dataProcessService } from '../services/dataProcessService'
 import { useDataProcess } from '../composables/useDataProcess'
 import { httpClient } from '../services/httpClient'
@@ -334,21 +339,30 @@ export default defineComponent({
       const { showDataProcessModal, modalState } = useDataProcess();
       
       // 响应式数据
-    const processes = ref<Process[]>([])
-    const searchKeyword = ref('')
-    const loading = ref(false)
-    const error = ref('')
-    const dialogVisible = ref(false)
-    const currentProcessId = ref<string | null>(null)
-    const isSubmitting = ref(false)
-    const formRef = ref()
-    const executingProcessId = ref<string | null>(null)
-    // 新增用于展开行和执行结果的状态
-    const expandedRows = ref<string[]>([])
-    const executionResults = ref<Record<string, ExecutionResult[]>>({})
-    const loadingResults = ref<Record<string, boolean>>({})
-    // 执行结果详情相关状态
-    const activeTab = ref('finalResult')
+      const processes = ref<Process[]>([])
+      const searchKeyword = ref('')
+      const loading = ref(false)
+      const error = ref('')
+      const dialogVisible = ref(false)
+      const currentProcessId = ref<string | null>(null)
+      const isSubmitting = ref(false)
+      const formRef = ref()
+      const executingProcessId = ref<string | null>(null)
+      // 新增用于展开行和执行结果的状态
+      const expandedRows = ref<string[]>([])
+      const executionResults = ref<Record<string, ExecutionResult[]>>({})
+      const loadingResults = ref<Record<string, boolean>>({})
+      // 执行结果详情相关状态
+      const activeTab = ref('finalResult')
+      
+      // 执行状态跟踪
+      const flowExecutionStatus = ref<Record<string, string>>({})
+      // 状态检查定时器
+      const statusCheckIntervals = ref<Record<string, number>>({})
+      // 正在执行的流程ID列表
+      const executingFlows = ref<Set<string>>(new Set())
+      // 终止按钮加载状态
+      const terminatingFlowId = ref<string | null>(null)
     
     // 复制到剪贴板功能
     const copyToClipboard = (text: string) => {
@@ -505,11 +519,23 @@ export default defineComponent({
       }
     }
     
-    // 根据流程ID执行流程
+    // 根据流程ID执行流程或终止流程
     // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
     const executeProcessById = async (flowId: string) => {
+      // 如果流程正在执行，则终止执行
+      if (executingFlows.value.has(flowId)) {
+        await terminateFlow(flowId)
+        return
+      }
+      
       try {
         executingProcessId.value = flowId
+        // 立即添加到正在执行列表，确保按钮状态正确
+        executingFlows.value.add(flowId)
+        flowExecutionStatus.value[flowId] = 'running'
+        
+        // 开始定期检查状态（在调用executeDataProcessFlowById之前）
+        startStatusCheck(flowId)
         
         // 调用服务层执行接口
         const response = await dataProcessService.executeDataProcessFlowById(flowId)
@@ -522,8 +548,85 @@ export default defineComponent({
       } catch (error) {
         console.error('执行流程失败:', error)
         ElMessage.error('执行流程时发生错误')
+        // 清理状态
+        executingFlows.value.delete(flowId)
+        delete flowExecutionStatus.value[flowId]
+        // 清理定时器
+        if (statusCheckIntervals.value[flowId]) {
+          clearInterval(statusCheckIntervals.value[flowId])
+          delete statusCheckIntervals.value[flowId]
+        }
       } finally {
         executingProcessId.value = null
+      }
+    }
+    
+    // 定期检查流程执行状态
+    const startStatusCheck = (flowId: string) => {
+      // 清除之前的定时器
+      if (statusCheckIntervals.value[flowId]) {
+        clearInterval(statusCheckIntervals.value[flowId])
+        delete statusCheckIntervals.value[flowId]
+      }
+      
+      // 每隔3秒检查一次状态
+      const intervalId = window.setInterval(async () => {
+        try {
+          const statusResponse = await dataProcessService.getFlowExecutionStatus(flowId)
+          if (statusResponse.success) {
+            const status = statusResponse.data.status
+            flowExecutionStatus.value[flowId] = status
+            
+            // 如果状态不是running，清除定时器并更新状态
+            if (status !== 'running') {
+              executingFlows.value.delete(flowId)
+              clearInterval(statusCheckIntervals.value[flowId])
+              delete statusCheckIntervals.value[flowId]
+              
+              // 根据最终状态显示提示
+              if (status === 'completed') {
+                ElMessage.success(`流程 ${flowId} 执行完成`)
+              } else if (status === 'failed') {
+                ElMessage.error(`流程 ${flowId} 执行失败`)
+              } else if (status === 'terminated') {
+                ElMessage.info(`流程 ${flowId} 已终止`)
+              }
+            }
+          }
+        } catch (error) {
+          console.error(`获取流程 ${flowId} 状态失败:`, error)
+        }
+      }, 3000)
+      
+      statusCheckIntervals.value[flowId] = intervalId as unknown as number
+    }
+    
+    // 终止流程执行
+    const terminateFlow = async (flowId: string) => {
+      try {
+        terminatingFlowId.value = flowId
+        
+        // 调用服务层终止接口
+        const response = await dataProcessService.terminateDataProcessFlow(flowId)
+        
+        if (response.success) {
+          ElMessage.success('流程终止请求已发送')
+          // 立即更新UI状态，提供更好的用户体验
+          executingFlows.value.delete(flowId)
+          delete flowExecutionStatus.value[flowId]
+          // 清理定时器
+          if (statusCheckIntervals.value[flowId]) {
+            clearInterval(statusCheckIntervals.value[flowId])
+            delete statusCheckIntervals.value[flowId]
+          }
+        } else {
+          ElMessage.error(`终止失败: ${response.message || '未知错误'}`)
+        }
+      } catch (error) {
+        console.error('终止流程失败:', error)
+        ElMessage.error('终止流程时发生错误')
+      } finally {
+        terminatingFlowId.value = null
       }
     }
     
@@ -640,6 +743,16 @@ export default defineComponent({
       loadProcessList()
     })
     
+    // 组件卸载前清理定时器
+    onBeforeUnmount(() => {
+      // 清理所有状态检查定时器
+      Object.values(statusCheckIntervals.value).forEach(intervalId => {
+        clearInterval(intervalId)
+      })
+      statusCheckIntervals.value = {}
+      executingFlows.value.clear()
+    })
+    
     return {
         processes,
         searchKeyword,
@@ -654,6 +767,7 @@ export default defineComponent({
         filteredProcesses,
         Search,
         Plus,
+        Loading,
         debouncedSearch,
         showAddProcessModal,
         configureProcess,
@@ -675,7 +789,11 @@ export default defineComponent({
         closeDetailDialog,
         activeTab,
         copyToClipboard,
-        textToHtmlWithLinks
+        textToHtmlWithLinks,
+        // 执行状态相关导出
+        executingFlows,
+        flowExecutionStatus,
+        terminatingFlowId
       }
   }
 })

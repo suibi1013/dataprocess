@@ -88,11 +88,18 @@ async def internal_server_error_handler(request, exc):
 
 if __name__ == '__main__':
     import uvicorn
+    import argparse
+    
+    # 解析命令行参数
+    parser = argparse.ArgumentParser(description="启动数据流程服务平台")
+    parser.add_argument("--port", type=int, default=5001, help="服务器端口号，默认5001")
+    args = parser.parse_args()
+    
     # 启动PPT转HTML后端API服务器
     uvicorn.run(
         "main:app",
         host="127.0.0.1",
-        port=5001,
+        port=args.port,
         reload=False,  # 在生产环境中禁用reload，避免启动多个python进程
         log_level="info"
     )
