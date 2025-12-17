@@ -126,14 +126,14 @@ export class DataSourceService {
 
   /**
    * 解析数据源路径
-   * @param sourceDataPath 源数据路径 (格式: "数据源ID:工作表名")
+   * @param source_data_path 源数据路径 (格式: "数据源ID:工作表名")
    * @returns 解析后的数据源ID和工作表名
    */
-  parseDataSourcePath(sourceDataPath: string): {
+  parseDataSourcePath(source_data_path: string): {
     dataSourceId: string;
     sheetName: string;
   } {
-    const parts = sourceDataPath.split(':');
+    const parts = source_data_path.split(':');
     return {
       dataSourceId: parts[0] || '',
       sheetName: parts[1] || ''

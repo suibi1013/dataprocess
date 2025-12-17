@@ -16,9 +16,9 @@ class InstructionParameter(BaseModel):
     description: Optional[str] = None  # 参数描述
     type: str  # 参数类型，如：string, number, boolean等
     required: bool = False  # 是否必填
-    defaultValue: Optional[Any] = None  # 默认值
+    default_value: Optional[Any] = None  # 默认值
     direction: int = 0  # 参数方向：0-输入参数，1-输出参数，2-回写参数（常用于循环逻辑中的游标变量）
-    apiUrl: Optional[str] = None  # 数据接口地址
+    api_url: Optional[str] = None  # 数据接口地址
 
 class InstructionItem(BaseModel):
     """指令项目模型"""

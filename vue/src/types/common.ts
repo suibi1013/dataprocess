@@ -59,8 +59,8 @@ export interface TableData {
 
 // 选择区域
 export interface SelectionRange {
-  startRow: number;
-  endRow: number;
+  start_row: number;
+  end_row: number;
   startCol: number;
   endCol: number;
 }

@@ -264,3 +264,6 @@ async def install_dependencies(
             "data": None,
             "message": f"安装依赖包失败: {str(e)}"
         }
+@router.get("/instruction/filter_options")
+async def get_filter_options():
+    return [{"value":"==","label":"等于"},{"value":"!=","label":"不等于"},{"value":">","label":"大于"},{"value":">=","label":"大于等于"},{"value":"<","label":"小于"},{"value":"<=","label":"小于等于"},{"value":"like","label":"包含（模糊匹配）"},{"value":"startswith","label":"以...开头"},{"value":"endswith","label":"以...结尾"},{"value":"in","label":"在列表中"},{"value":"not in","label":"不在列表中"},{"value":"regex","label":"正则匹配"},{"value":"is none","label":"为空（NULL）"},{"value":"is not none","label":"不为空（非 NULL）"}]

@@ -17,12 +17,12 @@ export function useNodeParams() {
   
   // 节点参数
   const nodeParams = ref<DataExtractionParams>({
-    sourceDataPath: '',
-    startRow: 1,
-    endRow: 10,
-    startColumn: 'A',
-    endColumn: 'C',
-    resultVariableName: 'extractedData'
+    source_data_path: '',
+    start_row: 1,
+    end_row: 10,
+    start_column: 'A',
+    end_column: 'C',
+    result_var_name: 'extractedData'
   } as DataExtractionParams);
   
   // 数据源文件列表
@@ -45,7 +45,7 @@ export function useNodeParams() {
   
   // 是否可以预览数据
   const canPreviewData = computed(() => {
-    return !!nodeParams.value.sourceDataPath;
+    return !!nodeParams.value.source_data_path;
   });
   
   /**
@@ -61,12 +61,12 @@ export function useNodeParams() {
       // 如果节点没有参数，初始化默认参数
       if (!nodeData.params) {
         nodeData.params = {
-          sourceDataPath: '',
-          startRow: 1,
-          endRow: 10,
-          startColumn: 'A',
-          endColumn: 'C',
-          resultVariableName: 'extractedData'
+          source_data_path: '',
+          start_row: 1,
+          end_row: 10,
+          start_column: 'A',
+          end_column: 'C',
+          result_var_name: 'extractedData'
         };
         node.setData(nodeData);
       }
@@ -203,12 +203,12 @@ export function useNodeParams() {
     const params = nodeData.params || nodeParams.value;
     
     return {
-      sourceDataPath: params.sourceDataPath,
-      startRow: parseInt(String(params.startRow)),
-      endRow: parseInt(String(params.endRow)),
-      startColumn: params.startColumn,
-      endColumn: params.endColumn,
-      resultVariableName: params.resultVariableName
+      source_data_path: params.source_data_path,
+      start_row: parseInt(String(params.start_row)),
+      end_row: parseInt(String(params.end_row)),
+      start_column: params.start_column,
+      end_column: params.end_column,
+      result_var_name: params.result_var_name
     };
   };
   
@@ -217,12 +217,12 @@ export function useNodeParams() {
    */
   const resetParams = () => {
     const defaultParams: DataExtractionParams = {
-      sourceDataPath: '',
-      startRow: 1,
-      endRow: 10,
-      startColumn: 'A',
-      endColumn: 'C',
-      resultVariableName: 'extractedData'
+      source_data_path: '',
+      start_row: 1,
+      end_row: 10,
+      start_column: 'A',
+      end_column: 'C',
+      result_var_name: 'extractedData'
     };
     
     nodeParams.value = { ...defaultParams };

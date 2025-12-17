@@ -203,9 +203,9 @@ export function useInstructionParams() {
       let paramValue;
       if (param.type === 'select_excelpath') {
         // 优先使用节点参数中的对应名称值，如果不存在则使用sourceDataPath或sheetPath作为回退
-        paramValue = nodeParams[param.name] ?? nodeParams.sourceDataPath ?? nodeParams.sheetPath ?? param.defaultValue ?? getDefaultValueByType(param.type);
+        paramValue = nodeParams[param.name] ?? nodeParams.source_data_path ?? nodeParams.sheetPath ?? param.default_value ?? getDefaultValueByType(param.type);
       } else {
-        paramValue = nodeParams[param.name] ?? param.defaultValue ?? getDefaultValueByType(param.type);
+        paramValue = nodeParams[param.name] ?? param.default_value ?? getDefaultValueByType(param.type);
       }
       
       const formItem = {

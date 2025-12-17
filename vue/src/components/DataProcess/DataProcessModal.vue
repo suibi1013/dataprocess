@@ -563,19 +563,19 @@ const handleDataSelectionConfirm = (selection: DataSelection) => {
       params: {
         ...nodeData.params,
         sheetName:selection.sheetName,
-        startRow: selection.startRow,
-        endRow: selection.endRow,
-        startColumn: selection.startColumn,
-        endColumn: selection.endColumn        
+        start_row: selection.start_row,
+        end_row: selection.end_row,
+        start_column: selection.start_column,
+        end_column: selection.end_column        
       }
     };
     paramsPanelState.selectedNode.setData(updatedNodeData);
     // 将选中区域信息回写到参数设置表单
     updateParamValue('sheetName', selection.sheetName);
-    updateParamValue('startRow', selection.startRow);
-    updateParamValue('endRow', selection.endRow);
-    updateParamValue('startColumn', selection.startColumn);
-    updateParamValue('endColumn', selection.endColumn);
+    updateParamValue('start_row', selection.start_row);
+    updateParamValue('end_row', selection.end_row);
+    updateParamValue('start_column', selection.start_column);
+    updateParamValue('end_column', selection.end_column);
   }
   
   showPreviewModal.value = false;

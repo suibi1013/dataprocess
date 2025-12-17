@@ -452,19 +452,6 @@ class DataProcessService(BaseService):
             Result[List[Dict[str, Any]]]: 包含节点信息和变量的列表
         """
         try:
-            # 读取指令配置文件
-            import json
-            import os
-            instructions_config_path = os.path.join(os.path.dirname(__file__), '../config_infos/instructions/items.json')
-            with open(instructions_config_path, 'r', encoding='utf-8') as f:
-                instructions_config = json.load(f)
-            
-            # 构建指令ID到参数配置的映射
-            instruction_params_map = {}
-            for instruction in instructions_config:
-                param_map = {param['name']: param['label'] for param in instruction.get('params', [])}
-                instruction_params_map[instruction['id']] = param_map
-            
             # 构建节点ID到节点的映射
             node_map = {node.id: node for node in flow.nodes}
             
@@ -506,13 +493,15 @@ class DataProcessService(BaseService):
                 
                 # 收集节点的参数作为变量
                 if hasattr(node, 'params') and node.params:
-                    # 获取当前节点指令的参数配置
-                    param_labels = instruction_params_map.get(node.instructionId, {})
+                    # 从数据库获取当前节点指令的参数配置
+                    instruction_params = self.instruction_parameter_repo.find_by_instruction_id(node.instructionId)
+                    # 构建参数名到label的映射
+                    param_labels = {param.name: param.label for param in instruction_params}
                     
                     for param_name, param_value in node.params.items():
                         # 生成变量名格式：{{node.id.paramName}}
                         variable_name = f"{{{{{node.id}.{param_name}}}}}"
-                        # 优先使用从配置文件获取的label，找不到则回退到参数名
+                        # 优先使用从数据库获取的label，找不到则回退到参数名
                         variable_label = param_labels.get(param_name, param_name)
                         node_info["variables"].append({
                             "name": variable_name,
@@ -714,7 +703,7 @@ class DataProcessService(BaseService):
                                 input_params[param.name] = value 
                             else:
                                 # 不存在时，使用指令中参数的默认值
-                                input_params[param.name] = param.defaultValue                        
+                                input_params[param.name] = param.default_value                        
                         elif param.direction ==1:  # 输出参数
                             output_param_name = param.name                            
                         elif param.direction ==2:  # 回写参数

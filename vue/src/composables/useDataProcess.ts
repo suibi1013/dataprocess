@@ -181,6 +181,9 @@ function createDataProcessInstance() {
     modalState.loading = true;    
     
     try {
+      // 每次打开模态框都重新请求指令列表数据
+      await loadInstructionList();
+      
       // 先确保画布初始化完成
       await nextTick();
       if (!canvasGraph.value) {
@@ -1111,8 +1114,8 @@ function createDataProcessInstance() {
     if (instruction.params && instruction.params.length > 0) {
       instruction.params.forEach(param => {
         // 如果参数有默认值，则应用到节点参数中
-        if (param.defaultValue !== undefined) {
-          nodeParams[param.name] = param.defaultValue;
+        if (param.default_value !== undefined) {
+          nodeParams[param.name] = param.default_value;
         }
       });
     }

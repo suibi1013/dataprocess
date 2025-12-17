@@ -186,7 +186,7 @@ const selectionStatusText = computed(() => {
     return '--暂无选择区域--';
   }
   
-  return ` ${selection.startColumn}${selection.startRow}:${selection.endColumn}${selection.endRow}`;
+  return ` ${selection.start_column}${selection.start_row}:${selection.end_column}${selection.end_row}`;
 });
 
 // 是否有有效选择
@@ -253,15 +253,15 @@ const updateSelection = () => {
   
   // 获取列名
   const columns = props.sheetData.columns;
-  const startColumn = columns[minCol] || 'A';
-  const endColumn = columns[maxCol] || 'A';
+  const start_column = columns[minCol] || 'A';
+  const end_column = columns[maxCol] || 'A';
   
   // 更新选择状态
   selectionState.value.currentSelection = {
-    startRow: minRow + 1, // 转换为1基索引
-    endRow: maxRow + 1,
-    startColumn,
-    endColumn,
+    start_row: minRow + 1, // 转换为1基索引
+    end_row: maxRow + 1,
+    start_column,
+    end_column,
     startColIndex: minCol,
     endColIndex: maxCol
   };

@@ -1073,13 +1073,13 @@ const writebackParams = computed(() => {
 });
 
 
-// 根据apiurl获取options数据
-const fetchOptionsByApiUrl = async (paramName: string, apiUrl: string) => {
-  if (!apiUrl) return;
+// 根据api_url获取options数据
+const fetchOptionsByApiUrl = async (paramName: string, api_url: string) => {
+  if (!api_url) return;
   
   try {
     loadingOptions.value[paramName] = true;
-    const result = await httpClient.get(apiUrl);
+    const result = await httpClient.get(api_url);
     
     if (result && Array.isArray(result)) {
       // 假设返回的是[{value: string, label: string}]格式
@@ -1102,10 +1102,10 @@ const fetchOptionsByApiUrl = async (paramName: string, apiUrl: string) => {
 // 初始化表单项的options数据
 const initFormItemOptions = (item: any) => {
   const paramName = item.param?.name || item.name;
-  const apiUrl = item.param?.apiUrl || item.apiUrl;
-  // 如果有apiurl且尚未加载过，则获取数据
-  if (apiUrl && !dynamicOptions.value[paramName] && !loadingOptions.value[paramName]) {
-    fetchOptionsByApiUrl(paramName, apiUrl);
+  const api_url = item.param?.api_url || item.api_url;
+  // 如果有api_url且尚未加载过，则获取数据
+  if (api_url && !dynamicOptions.value[paramName] && !loadingOptions.value[paramName]) {
+    fetchOptionsByApiUrl(paramName, api_url);
   }
 };
 
@@ -1116,7 +1116,7 @@ const initAllFormItemsOptions = () => {
     // 只处理select和select_excelpath类型的表单项
     if ((item.param?.type === 'select' || item.type === 'select' || 
          item.param?.type === 'select_excelpath' || item.type === 'select_excelpath') &&
-        (item.param?.apiUrl || item.apiUrl)) {          
+        (item.param?.api_url || item.api_url)) {
       initFormItemOptions(item);
     }
   });
@@ -1326,21 +1326,21 @@ const loadingOptions = ref<Record<string, boolean>>({});
 // 手动触发数据预览
 const onHandleManualDataPreview = async (paramName: string) => {
   // 查找参数值
-  let sourceDataPath;
+  let source_data_path;
   // 首先检查输入参数
   const inputParam = inputParams.value.find(inputItem => inputItem.param?.name === paramName);
   if (inputParam) {
-    sourceDataPath = inputParam.value;
+    source_data_path = inputParam.value;
   } else {
     // 然后检查输出参数
     const outputParam = outputParams.value.find(outputItem => outputItem.param?.name === paramName);
     if (outputParam) {
-      sourceDataPath = outputParam.value;
+      source_data_path = outputParam.value;
     }
   }
 
   // 使用实际的excel文件路径选择器已选项
-  if (!sourceDataPath) {
+  if (!source_data_path) {
     console.warn('No data path selected for preview');
     return; // 如果没有选择路径，不进行预览
   }
@@ -1349,11 +1349,11 @@ const onHandleManualDataPreview = async (paramName: string) => {
     
     // 保存当前参数名和文件路径
     currentPreviewParamName.value = paramName;
-    currentPreviewFilePath.value = sourceDataPath;
+    currentPreviewFilePath.value = source_data_path;
     // 通知父组件显示预览模态框
     emit('show-data-preview', {
       paramName,
-      filePath: sourceDataPath
+      filePath: source_data_path
     });
     
     // 直接设置showPreviewModal为true（如果可以访问到）

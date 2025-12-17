@@ -3,10 +3,10 @@
     <div class="params-form active">
       <!-- 源数据路径选择 -->
       <div class="form-group">
-        <label for="sourceDataPath">源数据路径:</label>
+        <label for="source_data_path">源数据路径:</label>
         <div class="source-data-path-container">
           <el-select
-            v-model="nodeParams.sourceDataPath"
+            v-model="nodeParams.source_data_path"
             placeholder="请选择源数据路径"
             :loading="isLoading"
             :disabled="isLoading"
@@ -42,17 +42,17 @@
         <label>选择行:</label>
         <div class="range-input-container">
           <el-input-number
-            v-model="nodeParams.startRow"
+            v-model="nodeParams.start_row"
             :min="1"
             size="small"
-            @change="handleParamChange('startRow', $event)"
+            @change="handleParamChange('start_row', $event)"
           />
           <span class="range-separator">-</span>
           <el-input-number
-            v-model="nodeParams.endRow"
+            v-model="nodeParams.end_row"
             :min="1"
             size="small"
-            @change="handleParamChange('endRow', $event)"
+            @change="handleParamChange('end_row', $event)"
           />
         </div>
       </div>
@@ -62,29 +62,29 @@
         <label>选择列:</label>
         <div class="range-input-container">
           <el-input
-            v-model="nodeParams.startColumn"
+            v-model="nodeParams.start_column"
             size="small"
             placeholder="A"
-            @input="handleParamChange('startColumn', $event)"
+            @input="handleParamChange('start_column', $event)"
           />
           <span class="range-separator">-</span>
           <el-input
-            v-model="nodeParams.endColumn"
+            v-model="nodeParams.end_column"
             size="small"
             placeholder="C"
-            @input="handleParamChange('endColumn', $event)"
+            @input="handleParamChange('end_column', $event)"
           />
         </div>
       </div>
       
       <!-- 结果变量名 -->
       <div class="form-group">
-        <label for="resultVariableName">结果变量名:</label>
+        <label for="result_var_name">结果变量名:</label>
         <el-input
-          v-model="nodeParams.resultVariableName"
+          v-model="nodeParams.result_var_name"
           size="small"
           placeholder="extractedData"
-          @input="handleParamChange('resultVariableName', $event)"
+          @input="handleParamChange('result_var_name', $event)"
         />
       </div>
       
@@ -205,8 +205,8 @@ const executionResult = ref<{
  * 处理源数据路径变化
  */
 const handleSourceDataPathChange = (value: string) => {
-  updateNodeParam('sourceDataPath', value);
-  emit('param-change', 'sourceDataPath', value);
+  updateNodeParam('source_data_path', value);
+  emit('param-change', 'source_data_path', value);
 };
 
 /**
@@ -222,7 +222,7 @@ const handleParamChange = (_paramName: string, _paramValue: any) => {
    * 根据文件路径+工作表名，获取单个工作表的内容
    */
   const handlePreviewData = async () => {    
-    if (!nodeParams.value.sourceDataPath) {
+    if (!nodeParams.value.source_data_path) {
       return;
     }
     
@@ -235,7 +235,7 @@ const handleParamChange = (_paramName: string, _paramValue: any) => {
       // 解析数据源路径 - 格式为"数据源文件路径:工作表名"
       
       // 手动解析，因为dataSourceService.parseDataSourcePath返回的是dataSourceId和sheetName
-      const parts = nodeParams.value.sourceDataPath.split(':');
+      const parts = nodeParams.value.source_data_path.split(':');
       const dataSourceFilePath = parts[0] || '';
       const sheetName = parts[1] || '';
       
@@ -325,12 +325,12 @@ const handleRunInstruction = async () => {
       const params = getNodeParams();
       // 转换参数名称：驼峰命名法 -> 蛇形命名法
       const convertedParams = {
-        source_path: params.sourceDataPath,
-        start_row: params.startRow,
-        end_row: params.endRow,
-        start_column: params.startColumn,
-        end_column: params.endColumn,
-        result_variable_name: params.resultVariableName
+        source_path: params.source_data_path,
+        start_row: params.start_row,
+        end_row: params.end_row,
+        start_column: params.start_column,
+        end_column: params.end_column,
+        result_variable_name: params.result_var_name
       };
       // 获取intput_types属性
       const intputTypes = nodeData.input_types || { t: [], e: [] };

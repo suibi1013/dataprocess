@@ -1349,18 +1349,18 @@ export default class TemplateEditor extends Vue {
       return
     }
     
-    const startRow = Math.min(this.selectionStart.row, this.selectionEnd.row)
-    const endRow = Math.max(this.selectionStart.row, this.selectionEnd.row)
+    const start_row = Math.min(this.selectionStart.row, this.selectionEnd.row)
+    const end_row = Math.max(this.selectionStart.row, this.selectionEnd.row)
     const startCol = Math.min(this.selectionStart.col, this.selectionEnd.col)
     const endCol = Math.max(this.selectionStart.col, this.selectionEnd.col)
     
     const startColStr = this.numberToColumn(startCol)
     const endColStr = this.numberToColumn(endCol)
     
-    if (startRow === endRow && startCol === endCol) {
-      this.selectedRange = `${startColStr}${startRow}`
+    if (start_row === end_row && startCol === endCol) {
+      this.selectedRange = `${startColStr}${start_row}`
     } else {
-      this.selectedRange = `${startColStr}${startRow}:${endColStr}${endRow}`
+      this.selectedRange = `${startColStr}${start_row}:${endColStr}${end_row}`
     }
   }
   
@@ -1422,7 +1422,7 @@ export default class TemplateEditor extends Vue {
       
       // 设置选择的工作表和范围
       element.data.data_source_config.excel_sheet_name = this.currentSelectedSheet
-      element.data.data_source_config.excel_cell_range = `${selection.startColumn}${selection.startRow}:${selection.endColumn}${selection.endRow}`
+      element.data.data_source_config.excel_cell_range = `${selection.start_column}${selection.start_row}:${selection.end_column}${selection.end_row}`
       
       // 查找选中的数据源对象以获取其名称
       const selectedDataSourceObj = this.dataSources.find(source => source.id === this.selectedDataSource)
@@ -1439,7 +1439,7 @@ export default class TemplateEditor extends Vue {
       // 获取实际数据并更新元素
       this.replaceElementDataWithSelectedRange(selection).then(() => {
         this.saveConfig()
-        this.showToastMessage(`已选择区域: 行${selection.startRow}-${selection.endRow}, 列${selection.startColumn}-${selection.endColumn}`, 'success')
+        this.showToastMessage(`已选择区域: 行${selection.start_row}-${selection.end_row}, 列${selection.start_column}-${selection.end_column}`, 'success')
         this.closeDataPreviewModal()
         
         // 数据源更新后重新初始化图表
@@ -1466,7 +1466,7 @@ export default class TemplateEditor extends Vue {
       
       const response = await httpClient.post(`/datasource/${encodeURIComponent(this.selectedDataSource)}/range`, {
         sheet_name: this.currentSelectedSheet,
-        cell_range: `${selection.startColumn}${selection.startRow}:${selection.endColumn}${selection.endRow}`
+        cell_range: `${selection.start_column}${selection.start_row}:${selection.end_column}${selection.end_row}`
       })
       
       if (!response.success) {
@@ -1628,10 +1628,10 @@ export default class TemplateEditor extends Vue {
       // 获取实际数据并更新元素
       this.replaceElementDataWithSelectedRange({
         sheetName:'',
-        startRow: 1,
-        endRow: 10,
-        startColumn: 'A',
-        endColumn: 'Z',
+        start_row: 1,
+        end_row: 10,
+        start_column: 'A',
+        end_column: 'Z',
         startColIndex: 0, // 添加缺失的属性
         endColIndex: 25   // Z列对应索引25
       }).then(() => {

@@ -5,17 +5,17 @@
  */
 export interface DataExtractionParams {
   /** 源数据路径 */
-  sourceDataPath: string;
+  source_data_path: string;
   /** 开始行 */
-  startRow: number;
+  start_row: number;
   /** 结束行 */
-  endRow: number;
+  end_row: number;
   /** 开始列 */
-  startColumn: string;
+  start_column: string;
   /** 结束列 */
-  endColumn: string;
+  end_column: string;
   /** 结果变量名 */
-  resultVariableName: string;
+  result_var_name: string;
 }
 
 /**
@@ -80,13 +80,13 @@ export interface SheetData {
 export interface DataSelection {
   sheetName:string
   /** 开始行 */
-  startRow: number;
+  start_row: number;
   /** 结束行 */
-  endRow: number;
+  end_row: number;
   /** 开始列 */
-  startColumn: string;
+  start_column: string;
   /** 结束列 */
-  endColumn: string;
+  end_column: string;
   /** 开始列索引 */
   startColIndex: number;
   /** 结束列索引 */

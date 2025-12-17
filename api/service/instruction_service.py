@@ -103,9 +103,9 @@ class InstructionService:
                                 description=param_entity.description,
                                 type=param_entity.type,
                                 required=param_entity.required,
-                                defaultValue=param_entity.default_value,
+                                default_value=param_entity.default_value,
                                 direction=param_entity.direction,
-                                apiUrl=param_entity.api_url
+                                api_url=param_entity.api_url
                             )
                             param_dtos.append(param_dto)
                         
@@ -257,9 +257,9 @@ class InstructionService:
                             description=param_entity.description,
                             type=param_entity.type,
                             required=param_entity.required,
-                            defaultValue=param_entity.default_value,
+                            default_value=param_entity.default_value,
                             direction=param_entity.direction,
-                            apiUrl=param_entity.api_url
+                            api_url=param_entity.api_url
                         )
                         param_dtos.append(param_dto)
                 
@@ -411,9 +411,9 @@ class InstructionService:
                             description=param_dto.description,
                             type=param_dto.type,
                             required=param_dto.required,
-                            default_value=param_dto.defaultValue,
+                            default_value=param_dto.default_value,
                             direction=param_dto.direction,
-                            api_url=param_dto.apiUrl 
+                            api_url=param_dto.api_url 
                         )
                         param_entities.append(param_entity)
                     
@@ -433,9 +433,9 @@ class InstructionService:
                             description=param_entity.description,
                             type=param_entity.type,
                             required=param_entity.required,
-                            defaultValue=param_entity.default_value,
+                            default_value=param_entity.default_value,
                             direction=param_entity.direction,
-                            apiUrl=param_entity.api_url
+                            api_url=param_entity.api_url
                         )
                         param_dtos.append(param_dto)
                 

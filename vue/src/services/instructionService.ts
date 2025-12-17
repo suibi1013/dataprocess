@@ -195,7 +195,7 @@ export class InstructionService implements InstructionApiService {
             description: match[2].trim(),
             type: 'string', // 默认类型为字符串
             required: false,
-            defaultValue: '',
+            default_value: '',
             validation: {}
           });
         }
@@ -219,7 +219,7 @@ export class InstructionService implements InstructionApiService {
             description: '',
             type: 'string',
             required: false,
-            defaultValue: '',
+            default_value: '',
             validation: {}
           });
         });

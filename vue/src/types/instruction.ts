@@ -17,7 +17,7 @@ export interface InstructionParam {
   type: 'string' | 'number' | 'boolean' | 'select' | 'file' | 'range' | 'column' | 'textarea' | 'select_excelpath';
   label: string;
   required: boolean;
-  defaultValue?: any;
+  default_value?: any;
   options?: Array<{ label: string; value: any }>;
   description?: string;
   placeholder?: string;

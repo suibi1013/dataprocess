@@ -217,7 +217,7 @@
               <div v-if="param.type !== 'checkbox'" class="form-item">
                 <label class="form-label">默认值</label>
                 <input 
-                  v-model="param.defaultValue"
+                  v-model="param.default_value"
                   type="text"
                   class="form-input"
                   placeholder="请输入默认值"
@@ -255,7 +255,7 @@
             <div class="form-item">
               <label class="form-label">数据接口地址</label>
               <input 
-                v-model="param.apiUrl"
+                v-model="param.api_url"
                 type="text"
                 class="form-input"
                 placeholder="请输入数据接口地址（选填）"
@@ -366,7 +366,7 @@ interface FormData {
     label: string;
     required: boolean;
     description?: string;
-    defaultValue?: any;
+    default_value?: any;
     direction?: number; // 0: 输入参数, 1: 输出参数，2: 回写参数
     validation?: {
       pattern?: string;
@@ -374,7 +374,7 @@ interface FormData {
     };
     multiple?: boolean;
     columns?: string[];
-    apiUrl?: string;
+    api_url?: string;
 
   }>;
   sort_order?: number;
@@ -521,9 +521,9 @@ export default defineComponent({
             label: param.label || '',
             required: param.required || false,
             description: param.description || '',
-            defaultValue: param.defaultValue !== undefined ? param.defaultValue : '',
+            default_value: param.default_value !== undefined ? param.default_value : '',
             direction: param.direction !== undefined ? param.direction : 0, // 默认设置为输入参数
-            apiUrl: param.apiUrl || ''
+            api_url: param.api_url || ''
           };
           
           return cleanParam;
@@ -655,9 +655,9 @@ export default defineComponent({
         label: '',
         required: false,
         description: '',
-        defaultValue: '',
+        default_value: '',
         direction: 0, // 默认设置为输入参数
-        apiUrl: ''
+        api_url: ''
       });
       
       // 等待DOM更新后自动滚动到添加参数按钮
@@ -761,11 +761,11 @@ export default defineComponent({
     const onParamTypeChange = (param: any, _index: number) => {
       // 根据参数类型调整默认值
       if (param.type === 'boolean') {
-        param.defaultValue = false;
+        param.default_value = false;
       } else if (param.type === 'number') {
-        param.defaultValue = 0;
+        param.default_value = 0;
       } else {
-        param.defaultValue = '';
+        param.default_value = '';
       }      
     };
 
@@ -799,9 +799,9 @@ export default defineComponent({
               label: param.label,
               required: param.required,
               description: param.description,
-              defaultValue: param.defaultValue,
+              default_value: param.default_value,
               direction: param.direction,
-              apiUrl: param.apiUrl
+              api_url: param.api_url
             };
           })
         };
