@@ -61,14 +61,13 @@ class PythonScriptUtils:
         for param_name, param in signature.parameters.items():
             # 检查参数是否存在且有类型注解
             if param_name in params and param.annotation != inspect.Parameter.empty:
-                param_value = params[param_name]
-                # 如果参数值已经是目标类型，则不需要转换
-                if isinstance(param_value, param.annotation):
-                    converted_params[param_name] = param_value
-                    continue
-                
+                param_value = params[param_name]                
                 # 尝试根据类型注解进行转换
                 try:
+                    # 如果参数值已经是目标类型，则不需要转换
+                    if isinstance(param_value, param.annotation):
+                        converted_params[param_name] = param_value
+                        continue
                     # 处理常见类型的转换
                     if param.annotation == int:
                         # 尝试将字符串或浮点数转换为整数

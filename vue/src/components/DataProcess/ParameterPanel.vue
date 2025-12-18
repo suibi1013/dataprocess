@@ -39,7 +39,8 @@
                   :value="props.paramsPanel.params?.label || ''"
                   @input="updateEdgeLabel(($event.target as HTMLInputElement).value)" />
                 <button type="button" class="variable-select-btn"
-                  @click="onToggleVariableSelector('label', 'string')" title="选择变量">
+                  @click="onToggleVariableSelector('label', 'string')" title="选择变量"
+                  :data-param-name="'label'">
                   x
                 </button>
               </div>
@@ -53,7 +54,8 @@
                   :value="props.paramsPanel.params?.logic_express || ''"
                   @input="updateEdgeLogicExpress(($event.target as HTMLInputElement).value)" />
                 <button type="button" class="variable-select-btn"
-                  @click="onToggleVariableSelector('logic_express', 'string')" title="选择变量">
+                  @click="onToggleVariableSelector('logic_express', 'string')" title="选择变量"
+                  :data-param-name="'logic_express'">
                   x
                 </button>
               </div>
@@ -100,7 +102,8 @@
                     </template>
                   </el-input>
                   <button type="button" class="variable-select-btn"
-                    @click="onToggleVariableSelector(item.param?.name || item.name, 'number')" title="选择变量">
+                    @click="onToggleVariableSelector(item.param?.name || item.name, 'number')" title="选择变量"
+                    :data-param-name="item.param?.name || item.name">
                     x
                   </button>
                 </div>
@@ -127,7 +130,8 @@
                     </template>
                   </el-input>
                   <button type="button" class="variable-select-btn"
-                    @click="onToggleVariableSelector(item.param?.name || item.name, 'string')" title="选择变量">
+                    @click="onToggleVariableSelector(item.param?.name || item.name, 'string')" title="选择变量"
+                    :data-param-name="item.param?.name || item.name">
                     x
                   </button>
                 </div>
@@ -285,7 +289,8 @@
                     </template>
                   </el-input>
                   <button type="button" class="variable-select-btn"
-                    @click="onToggleVariableSelector(item.param?.name || item.name, 'number')" title="选择变量">
+                    @click="onToggleVariableSelector(item.param?.name || item.name, 'number')" title="选择变量"
+                    :data-param-name="item.param?.name || item.name">
                     x
                   </button>
                 </div>
@@ -313,7 +318,8 @@
                     </template>
                   </el-input>
                   <button type="button" class="variable-select-btn"
-                    @click="onToggleVariableSelector(item.param?.name || item.name, 'string')" title="选择变量">
+                    @click="onToggleVariableSelector(item.param?.name || item.name, 'string')" title="选择变量"
+                    :data-param-name="item.param?.name || item.name">
                     x
                   </button>
                 </div>
@@ -469,7 +475,8 @@
                     </template>
                   </el-input>
                   <button type="button" class="variable-select-btn"
-                    @click="onToggleVariableSelector(item.param?.name || item.name, 'number')" title="选择变量">
+                    @click="onToggleVariableSelector(item.param?.name || item.name, 'number')" title="选择变量"
+                    :data-param-name="item.param?.name || item.name">
                     x
                   </button>
                 </div>
@@ -497,7 +504,8 @@
                     </template>
                   </el-input>
                   <button type="button" class="variable-select-btn"
-                    @click="onToggleVariableSelector(item.param?.name || item.name, 'string')" title="选择变量">
+                    @click="onToggleVariableSelector(item.param?.name || item.name, 'string')" title="选择变量"
+                    :data-param-name="item.param?.name || item.name">
                     x
                   </button>
                 </div>
@@ -737,11 +745,11 @@ const onGetProcessVariables = async (selectedNode: any) => {
   }
 };
 
-// 计算变量选择器的样式，避免被模态框footer遮挡
+// 计算变量选择器的样式
 const getVariableSelectorStyle = (_event: any, paramName: string) => {
   // 获取基础样式
   const baseStyle = {
-    position: 'absolute',
+    position: 'fixed', // 使用fixed定位，避免被容器裁剪
     zIndex: 2000,
     background: 'white',
     border: '1px solid #dcdfe6',
@@ -750,48 +758,55 @@ const getVariableSelectorStyle = (_event: any, paramName: string) => {
     boxShadow: '0 2px 12px 0 rgba(0, 0, 0, 0.1)',
     minWidth: '300px',
     maxHeight: '300px',
-    overflowY: 'auto',
-    right: '65px'
+    overflowY: 'auto'
   };
 
   try {
-    // 获取当前变量选择按钮的位置信息
-    const btnSelector = `.variable-select-btn[onclick*="${paramName}"]`;
-    const btnElement = document.querySelector(btnSelector);
+    // 使用数据属性定位当前变量选择按钮，这比使用onclick事件更可靠
+    const btnElement = document.querySelector(`.variable-select-btn[data-param-name="${paramName}"]`);
 
     if (btnElement && btnElement instanceof HTMLElement) {
       const btnRect = btnElement.getBoundingClientRect();
-      const modalContainer = document.querySelector('.modal-container');
-
-      if (modalContainer && modalContainer instanceof HTMLElement) {
-        const modalRect = modalContainer.getBoundingClientRect();
-        const modalFooter = document.querySelector('.modal-footer');
-        let footerHeight = 60; // 默认footer高度
-
-        if (modalFooter && modalFooter instanceof HTMLElement) {
-          footerHeight = modalFooter.offsetHeight;
-        }
-
-        // 计算按钮底部到模态框底部的距离
-        const distanceToBottom = modalRect.bottom - btnRect.bottom;
-
-        // 如果距离小于300px（变量选择器的最大高度），则向上弹出
-        if (distanceToBottom < 300 + footerHeight) {
-          return {
-            ...baseStyle,
-            bottom: '30px',
-            top: 'auto'
-          };
-        }
+      
+      // 计算变量选择器的位置，使其显示在触发按钮的正下方
+      let top = btnRect.bottom + 5;
+      let left = btnRect.left;
+      
+      // 确保选择器不会超出视口右侧边界
+      if (left + 300 > window.innerWidth) {
+        left = window.innerWidth - 310;
       }
+      
+      // 确保选择器不会超出视口底部边界
+      if (top + 300 > window.innerHeight) {
+        // 如果会超出底部，则显示在按钮正上方
+        top = btnRect.top - 305;
+      }
+      
+      // 确保选择器不会超出视口顶部边界
+      if (top < 0) {
+        top = 10;
+      }
+      
+      // 确保选择器不会超出视口左侧边界
+      if (left < 0) {
+        left = 10;
+      }
+      
+      return {
+        ...baseStyle,
+        top: `${top}px`,
+        left: `${left}px`
+      };
     }
   } catch (error) {
     console.error('计算变量选择器样式失败:', error);
   }
 
-  // 默认样式 - 向下弹出
+  // 默认样式 - 显示在触发按钮附近
   return {
     ...baseStyle,
+    right: '65px',
     top: '30px'
   };
 };

@@ -1525,9 +1525,7 @@ function createDataProcessInstance() {
     statusCheckInterval = window.setInterval(async () => {
       const statusResponse = await getFlowStatus(flowId);
       if (statusResponse && statusResponse.success) {
-        const status = statusResponse.data.status;
-        console.log(`流程 ${flowId} 当前状态: ${status}`);
-        
+        const status = statusResponse.data.status;        
         // 如果状态不是running，清除定时器
         if (status !== 'running') {
           if (statusCheckInterval) {

@@ -27,6 +27,7 @@ class CommonUtils:
         
         return unique_code
 
+    @staticmethod
     def encode_text_to_code(text: str) -> str:
         """
         将文本编码为Base64字符串（可逆）。
@@ -45,6 +46,7 @@ class CommonUtils:
         code = code_bytes.decode('ascii').rstrip('=')  # Base64结果是ASCII字符
         return code
 
+    @staticmethod
     def decode_code_to_text(code: str) -> str:
         """
         将用于文件名的Base64字符串解码为原始文本。
@@ -68,6 +70,28 @@ class CommonUtils:
         text = text_bytes.decode('utf-8')
         
         return text
+    
+    @staticmethod
+    def deep_serialize(data):
+        """
+        深度序列化数据，确保所有类型都能被Pydantic正确序列化
+        
+        Args:
+            data: 要序列化的数据
+        
+        Returns:
+            序列化后的数据，所有复杂类型都被转换为基本类型
+        """
+        if isinstance(data, (str, int, float, bool, type(None))):
+            return data
+        elif isinstance(data, dict):
+            return {k: CommonUtils.deep_serialize(v) for k, v in data.items()}
+        elif isinstance(data, list):
+            return [CommonUtils.deep_serialize(item) for item in data]
+        elif hasattr(data, 'read'):  # 处理文件对象
+            return f"<{type(data).__name__} object>"
+        else:  # 处理其他复杂类型
+            return str(data)
 
 
 class ExecutionTerminator:

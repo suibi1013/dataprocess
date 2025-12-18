@@ -165,7 +165,6 @@ onMounted(() => {
   // 添加ResizeObserver监听画布容器大小变化
   // const canvasContainer = document.getElementById('data-process-canvas');
   const canvasContainer = document.getElementById('data-process-canvas-container');
-  console.log('canvasContainer:', canvasContainer);
   if (canvasContainer) {
     resizeObserver = new ResizeObserver(() => {
       resizeCanvas();

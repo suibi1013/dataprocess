@@ -24,7 +24,7 @@ from repository.instruction_parameter_repository import InstructionParameterRepo
 from repository.data_process_repository import DataProcessRepository
 from repository.execution_record_repository import ExecutionRecordRepository
 from utils.python_script_utils import PythonScriptUtils
-from utils.common import execution_terminator
+from utils.common import execution_terminator, CommonUtils
 import inspect
 
 
@@ -628,6 +628,7 @@ class DataProcessService(BaseService):
                     failure_node_info = {
                         "node_id": current_node_id,
                         "instruction_id": node_map[current_node_id].instructionId if current_node_id in node_map else "",
+                        "node_params": node_map[current_node_id].params if current_node_id in node_map else {},
                         "error_message": "流程执行被用户终止",
                         "error_type": "UserTerminatedError"
                     }
@@ -747,6 +748,7 @@ class DataProcessService(BaseService):
                     failure_node_info = {
                         "node_id": current_node_id,
                         "instruction_id": current_node.instructionId,
+                        "node_params": current_node.params if current_node.params else {},
                         "error_message": str(e),
                         "error_type": type(e).__name__
                     }
@@ -812,12 +814,16 @@ class DataProcessService(BaseService):
                 print("严重警告: final_result为空，将强制替换")
                 final_result = {"message": "执行成功，但返回数据异常"}
             
+            # 使用CommonUtils的深度序列化方法处理结果
+            processed_final_result = CommonUtils.deep_serialize(processed_final_result)            
+            serialized_process_results = CommonUtils.deep_serialize(process_results)
+            
             # 构建最终返回结果
             final_result = {
                 "flow_id": flow.id,
                 "flow_name": flow.name,
                 "final_result": processed_final_result,
-                "process_results": process_results,
+                "process_results": serialized_process_results,
                 "execution_order": actual_execution_order,
                 "total_nodes_executed": len(actual_execution_order),
                 "failure_node_info": failure_node_info,
@@ -831,13 +837,16 @@ class DataProcessService(BaseService):
         except Exception as e:
             print(f"❌ 执行数据处理流程失败: {str(e)}")
             
+            # 构建错误结果，确保所有数据都能被序列化
+            error_process_results = CommonUtils.deep_serialize(process_results)
+            
             # 构建错误结果，避免包含可能导致循环引用的复杂数据
             error_result = {
                 "flow_id": flow.id,
                 "flow_name": flow.name,
-                "final_result": f"执行流程（{failure_node_info.get('node_id','')}）失败: {str(e)}",
+                "final_result": f"执行流程（{failure_node_info.get('node_id','') if failure_node_info else ''}）失败: {str(e)}",
                 # 只保留简单类型的处理结果，避免循环引用
-                "process_results": {k: v for k, v in process_results.items() if isinstance(v, (str, int, float, bool, type(None)))},
+                "process_results": error_process_results,
                 "execution_order": actual_execution_order,
                 "total_nodes_executed": len(actual_execution_order),
                 # 只保留错误信息的关键字段
