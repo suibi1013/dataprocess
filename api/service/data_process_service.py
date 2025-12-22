@@ -664,7 +664,10 @@ class DataProcessService(BaseService):
                                     
                                     if ref_key in process_results:
                                         placeholder = f"{{{{{match}}}}}"
-                                        result = result.replace(placeholder, str(process_results[ref_key]))
+                                        if placeholder==param_value:
+                                            result = process_results[ref_key]
+                                        else:
+                                            result = result.replace(placeholder, str(process_results[ref_key]))
                                         print(f"  - 解析变量 {param_name} 中的 {{node_id.var_name}} -> {ref_key} = {process_results[ref_key]}")
                                     else:
                                         print(f"  - 变量 {ref_key} 未找到")
@@ -691,15 +694,15 @@ class DataProcessService(BaseService):
                             if param.name in resolved_params:
                                 value=resolved_params[param.name]
                                 # 值类型转换
-                                match param.type:
-                                    case "string":
-                                        value=str(value)
-                                    case "number":
-                                        value=int(value)
-                                    case "boolean":
-                                        value=bool(value)
-                                    case _:  # 默认情况（相当于 default）
-                                        pass
+                                # match param.type:
+                                #     case "string":
+                                #         value=str(value)
+                                #     case "number":
+                                #         value=int(value)
+                                #     case "boolean":
+                                #         value=bool(value)
+                                #     case _:  # 默认情况（相当于 default）
+                                #         pass
                                 # 存在时，重新赋值
                                 input_params[param.name] = value 
                             else:
@@ -748,7 +751,7 @@ class DataProcessService(BaseService):
                     failure_node_info = {
                         "node_id": current_node_id,
                         "instruction_id": current_node.instructionId,
-                        "node_params": current_node.params if current_node.params else {},
+                        "node_params": input_params,
                         "error_message": str(e),
                         "error_type": type(e).__name__
                     }

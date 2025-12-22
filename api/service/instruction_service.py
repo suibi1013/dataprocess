@@ -411,7 +411,7 @@ class InstructionService:
                             description=param_dto.description,
                             type=param_dto.type,
                             required=param_dto.required,
-                            default_value=param_dto.default_value,
+                            default_value=str(param_dto.default_value),
                             direction=param_dto.direction,
                             api_url=param_dto.api_url 
                         )
