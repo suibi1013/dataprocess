@@ -20,20 +20,21 @@
         </button>
       </div>
       <div class="toolbar-group">
-        <button class="toolbar-btn" @click="handleDeleteNode" :disabled="!props.selectedNode" title="删除节点">
-          <el-icon>
-            <Remove />
-          </el-icon>
+        <button class="toolbar-btn" @click="undo" title="撤销 (Ctrl+Z)">
+          <el-icon><RefreshLeft /></el-icon>
         </button>
-        <button class="toolbar-btn" @click="handleDeleteEdge" :disabled="!props.selectedEdge" title="删除连线">
-          <el-icon>
-            <Connection />
-          </el-icon>
+        <button class="toolbar-btn" @click="redo" title="重做 (Ctrl+Y)">
+          <el-icon><RefreshRight /></el-icon>
         </button>
-        <button class="toolbar-btn" @click="clearCanvas" title="清空画布">
-          <el-icon>
-            <Delete />
-          </el-icon>
+      </div>
+      <div class="toolbar-group">
+        <button 
+          class="toolbar-btn" 
+          @click="handleToggleSelectionMode" 
+          :class="{ active: isRubberbandMode }" 
+          :title="isRubberbandMode ? '切换到画布平移模式' : '切换到框选模式'"
+        >
+          <el-icon><Pointer /></el-icon>
         </button>
         <button class="toolbar-btn" @click="toggleNodeTooltips" :class="{ active: showNodeTooltips }" title="显示/隐藏节点提示框">
           <el-icon><ChatLineSquare /></el-icon>
@@ -86,7 +87,7 @@
 <script setup lang="ts">
 import { ElIcon, ElDialog, ElForm, ElFormItem, ElInput, ElButton } from 'element-plus';
 import { onMounted, watch, computed ,onUnmounted} from 'vue';
-import { ZoomIn, ZoomOut, Refresh, Delete, Remove, Connection} from '@element-plus/icons-vue';
+import { ZoomIn, ZoomOut, Refresh } from '@element-plus/icons-vue';
 import { useDataProcess } from '@/composables/useDataProcess';
 
 // Props
@@ -108,16 +109,22 @@ const emit = defineEmits<{
 // 使用数据处理组合式函数获取canvasGraph和相关方法（单例模式）
 const { 
   canvasGraph, 
-  deleteSelectedNode, 
-  deleteSelectedEdge, 
-  clearCanvas, 
   nodeDescriptionEditor,
   saveNodeDescription,
   cancelNodeDescription,
   showNodeTooltips,
   toggleNodeTooltips,
-  resizeCanvas
+  resizeCanvas,
+  toggleSelectionMode,
+  isRubberbandMode,
+  undo,
+  redo
 } = useDataProcess();
+
+// 切换选择模式（框选/平移）
+const handleToggleSelectionMode = () => {
+  toggleSelectionMode();
+};
 
 // 计算属性：节点名称显示（避免在v-model中使用可选链）
 const nodeNameDisplay = computed(() => {
@@ -197,28 +204,6 @@ watch(() => props.canvasInitialized, (initialized) => {
     setupCanvasEventListeners();
   }
 });
-
-// 处理删除节点
-const handleDeleteNode = () => {
-  if (deleteSelectedNode && props.selectedNode) {
-    // 显示确认对话框
-    if (window.confirm('确定要删除当前选中的节点吗？')) {
-      // 调用组合式函数中的方法删除节点
-      deleteSelectedNode();
-    }
-  }
-};
-
-// 处理删除连线
-const handleDeleteEdge = () => {
-  if (deleteSelectedEdge && props.selectedEdge) {
-    // 显示确认对话框
-    if (window.confirm('确定要删除当前选中的连线吗？')) {
-      // 调用组合式函数中的方法删除连线
-      deleteSelectedEdge();
-    }
-  }
-};
 
 // 放大
 const zoomIn = () => {

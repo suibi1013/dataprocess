@@ -2,7 +2,7 @@
 // 管理数据处理模态框的状态、画布操作、指令执行等逻辑
 
 import { ref, reactive, computed, nextTick } from 'vue';
-import { Graph, Node } from '@antv/x6';
+import { Graph, Node,Selection,Clipboard,Keyboard, Scroller, History } from '@antv/x6';
 
 // 扩展Window接口声明
 declare global {
@@ -125,7 +125,10 @@ function createDataProcessInstance() {
   const showNodeDescriptions = ref(true);
   
   // 控制节点提示框的显示状态
-  const showNodeTooltips = ref(true);
+  const showNodeTooltips = ref(false);
+  
+  // 选择模式状态：true为框选模式，false为平移模式
+  const isRubberbandMode = ref(false);
   
   // 节点描述编辑器状态
   const nodeDescriptionEditor = reactive({
@@ -478,100 +481,57 @@ function createDataProcessInstance() {
         }
       }
     });
-
+    // 启用Selection插件，内置了Rubberband功能
+    canvasGraph.value!.use(
+      new Selection({
+        enabled: true,
+        multiple: true,
+        showNodeSelectionBox: false, // 禁用虚线选择框，避免遮挡连接桩
+        rubberband: isRubberbandMode.value, // 根据模式设置框选功能
+      })
+    );
+    // 启用Clipboard插件，内置了复制粘贴功能
+    canvasGraph.value!.use(
+      new Clipboard({
+        enabled: true,
+      }),
+    );
+    // 启用Keyboard插件，用于处理键盘快捷键
+    canvasGraph.value!.use(
+      new Keyboard({
+        enabled: true,
+      }),
+    );
+    // 启用Scroller插件，提供画布滚动能力
+    canvasGraph.value!.use(
+      new Scroller({
+        enabled: true,
+        pageVisible: true,
+        pageBreak: false,
+        pannable: true,
+        autoResize: true,
+      }),
+    );
+    // 启用History插件，提供撤销重做功能
+    canvasGraph.value!.use(
+      new History({
+        enabled: true,
+        ignoreAdd: false,
+        ignoreRemove: false,
+      }),
+    );
     bindCanvasEvents();
-    initializeCanvasDrop();
-    
-    // 添加节点移动中事件监听器，用于动态更新连接桩（实时更新）
-    canvasGraph.value.on('node:moving', ({ node }: any) => {
-      // 获取与当前节点相连的所有边
-      const edges = canvasGraph.value!.getEdges().filter((edge: any) => 
-        edge.getSourceCellId() === node.id || edge.getTargetCellId() === node.id
-      );
-      
-      // 遍历所有相连的边，更新连接桩
-      edges.forEach((edge: any) => {
-        try {
-          // 获取源节点和目标节点
-          const sourceNode = canvasGraph.value!.getCellById(edge.getSourceCellId());
-          const targetNode = canvasGraph.value!.getCellById(edge.getTargetCellId());
-          
-          if (sourceNode && targetNode) {
-            // 计算节点之间的相对位置
-            const sourceBBox = sourceNode.getBBox();
-            const targetBBox = targetNode.getBBox();
-            
-            // 计算节点中心坐标
-            const sourceCenter = { 
-              x: sourceBBox.x + sourceBBox.width / 2, 
-              y: sourceBBox.y + sourceBBox.height / 2 
-            };
-            const targetCenter = { 
-              x: targetBBox.x + targetBBox.width / 2, 
-              y: targetBBox.y + targetBBox.height / 2 
-            };
-            
-            // 计算水平和垂直方向的距离差
-            const dx = Math.abs(targetCenter.x - sourceCenter.x);
-            const dy = Math.abs(targetCenter.y - sourceCenter.y);
-            
-            // 根据距离差决定是水平方向还是垂直方向优先
-            // 源节点的连接桩
-            let sourcePortId = 'output';
-            // 目标节点的连接桩
-            let targetPortId = 'input';
-            
-            if (dx > dy) {
-              // 水平方向优先
-              if (sourceCenter.x < targetCenter.x) {
-                // 源在左，目标在右
-                sourcePortId = 'output'; // 源的右侧连接桩
-                targetPortId = 'input';  // 目标的左侧连接桩
-              } else {
-                // 源在右，目标在左
-                sourcePortId = 'input';  // 源的左侧连接桩
-                targetPortId = 'output'; // 目标的右侧连接桩
-              }
-            } else {
-              // 垂直方向优先
-              if (sourceCenter.y < targetCenter.y) {
-                // 源在上，目标在下
-                sourcePortId = 'bottom'; // 源的底部连接桩
-                targetPortId = 'top';    // 目标的顶部连接桩
-              } else {
-                // 源在下，目标在上
-                sourcePortId = 'top';    // 源的顶部连接桩
-                targetPortId = 'bottom'; // 目标的底部连接桩
-              }
-            }
-            
-            // 使用X6正确的API设置边的连接桩
-            // 首先设置源节点和源连接桩
-            edge.setSource({
-              cell: sourceNode.id,
-              port: sourcePortId
-            });
-            
-            // 然后设置目标节点和目标连接桩
-            edge.setTarget({
-              cell: targetNode.id,
-              port: targetPortId
-            });
-            
-            // 强制重新计算边的路径
-            edge.setVertices([]);
-            
-            // 刷新边以确保连接正确显示
-            // edge.refresh();
-            
-            // 确保画布更新
-            canvasGraph.value!.trigger('cell:change', { cell: edge });
-          }
-        } catch (error) {
-          console.error('更新边连接桩失败:', error);
-        }
+    initializeCanvasDrop();    
+  };
+  const removeAllNodesPorts = () => { 
+    // 隐藏所有节点的连接桩 - 解决启用Selection插件后点击空白处连接桩无法隐藏的问题
+      const allNodes = canvasGraph.value!.getNodes();
+      allNodes.forEach((node: any) => {
+        const ports = node.getPorts();
+        ports.forEach((port: any) => {
+          node.portProp(port.id, `attrs/circle/opacity`, 0);
+        });
       });
-    });
   };
 
   /**
@@ -707,8 +667,8 @@ function createDataProcessInstance() {
       }
     });
     
-    // 节点单击事件
-    canvasGraph.value.on('node:click', ({ node }) => {
+    // 节点单击事件 - 支持按住Ctrl键进行多选
+    canvasGraph.value.on('node:click', ({ node, e }) => {
       // 恢复之前选中边的默认样式
       if (selectedEdge.value) {
         selectedEdge.value.attr('line/stroke', '#1890ff');
@@ -724,21 +684,161 @@ function createDataProcessInstance() {
         selectedEdge.value = null;
       }
       
-      // 恢复之前选中节点的默认样式
-      if (selectedNode.value && selectedNode.value !== node) {
-        selectedNode.value.attr('body/stroke', '#1890ff');
-        selectedNode.value.attr('body/strokeWidth', 1);
-      }
-      
-      // 为当前选中节点设置高亮样式
       if (node) {
-        node.attr('body/stroke', '#FF4500');
-        node.attr('body/strokeWidth', 3);
+        // 判断是否按住了Ctrl键（多选）
+        const isMultiSelect = e.ctrlKey || e.metaKey;
+        
+        if (isMultiSelect) {
+          // 多选模式：切换节点的选中状态
+          const currentStroke = node.attr('body/stroke');
+          const isSelected = currentStroke === '#FF4500';
+          
+          if (isSelected) {
+            // 取消选中
+            node.attr('body/stroke', '#1890ff');
+            node.attr('body/strokeWidth', 1);
+            // 如果是当前单选节点，清空单选状态
+            if (selectedNode.value === node) {
+              selectedNode.value = null;
+            }
+          } else {
+            // 添加选中
+            node.attr('body/stroke', '#FF4500');
+            node.attr('body/strokeWidth', 3);
+            // 更新单选节点为当前节点（保持与原有逻辑兼容）
+            selectedNode.value = node;
+          }
+        } else {
+          // 单选模式：先恢复所有节点的默认样式
+          const allNodes = canvasGraph.value!.getNodes();
+          allNodes.forEach((n: any) => {
+            n.attr('body/stroke', '#1890ff');
+            n.attr('body/strokeWidth', 1);
+          });
+          
+          // 然后选中当前节点
+          node.attr('body/stroke', '#FF4500');
+          node.attr('body/strokeWidth', 3);
+          selectedNode.value = node;
+        }
       }
-      
-      selectedNode.value = node;
     });
     
+    // 监听Selection插件的选择变化事件
+    canvasGraph.value.on('selection:changed', ({ selected }) => {
+      // 先恢复所有节点的默认样式
+      const allNodes = canvasGraph.value!.getNodes();
+      allNodes.forEach((node: any) => {
+        node.attr('body/stroke', '#1890ff');
+        node.attr('body/strokeWidth', 1);
+      });
+      
+      // 为选中的节点设置高亮样式
+      selected.forEach((cell: any) => {
+        if (cell.isNode()) {
+          cell.attr('body/stroke', '#FF4500');
+          cell.attr('body/strokeWidth', 3);
+        }
+      });
+      
+      // 更新单选节点（保持与原有逻辑兼容）
+      if (selected.length > 0 && selected[0].isNode()) {
+        selectedNode.value = selected[0];
+      } else {
+        selectedNode.value = null;
+      }
+    });
+    
+    // 添加节点移动中事件监听器，用于动态更新连接桩（实时更新）
+    canvasGraph.value.on('node:moving', ({ node }: any) => {
+      // 获取与当前节点相连的所有边
+      const edges = canvasGraph.value!.getEdges().filter((edge: any) => 
+        edge.getSourceCellId() === node.id || edge.getTargetCellId() === node.id
+      );
+      
+      // 遍历所有相连的边，更新连接桩
+      edges.forEach((edge: any) => {
+        try {
+          // 获取源节点和目标节点
+          const sourceNode = canvasGraph.value!.getCellById(edge.getSourceCellId());
+          const targetNode = canvasGraph.value!.getCellById(edge.getTargetCellId());
+          
+          if (sourceNode && targetNode) {
+            // 计算节点之间的相对位置
+            const sourceBBox = sourceNode.getBBox();
+            const targetBBox = targetNode.getBBox();
+            
+            // 计算节点中心坐标
+            const sourceCenter = { 
+              x: sourceBBox.x + sourceBBox.width / 2, 
+              y: sourceBBox.y + sourceBBox.height / 2 
+            };
+            const targetCenter = { 
+              x: targetBBox.x + targetBBox.width / 2, 
+              y: targetBBox.y + targetBBox.height / 2 
+            };
+            
+            // 计算水平和垂直方向的距离差
+            const dx = Math.abs(targetCenter.x - sourceCenter.x);
+            const dy = Math.abs(targetCenter.y - sourceCenter.y);
+            
+            // 根据距离差决定是水平方向还是垂直方向优先
+            // 源节点的连接桩
+            let sourcePortId = 'output';
+            // 目标节点的连接桩
+            let targetPortId = 'input';
+            
+            if (dx > dy) {
+              // 水平方向优先
+              if (sourceCenter.x < targetCenter.x) {
+                // 源在左，目标在右
+                sourcePortId = 'output'; // 源的右侧连接桩
+                targetPortId = 'input';  // 目标的左侧连接桩
+              } else {
+                // 源在右，目标在左
+                sourcePortId = 'input';  // 源的左侧连接桩
+                targetPortId = 'output'; // 目标的右侧连接桩
+              }
+            } else {
+              // 垂直方向优先
+              if (sourceCenter.y < targetCenter.y) {
+                // 源在上，目标在下
+                sourcePortId = 'bottom'; // 源的底部连接桩
+                targetPortId = 'top';    // 目标的顶部连接桩
+              } else {
+                // 源在下，目标在上
+                sourcePortId = 'top';    // 源的顶部连接桩
+                targetPortId = 'bottom'; // 目标的底部连接桩
+              }
+            }
+            
+            // 使用X6正确的API设置边的连接桩
+            // 首先设置源节点和源连接桩
+            edge.setSource({
+              cell: sourceNode.id,
+              port: sourcePortId
+            });
+            
+            // 然后设置目标节点和目标连接桩
+            edge.setTarget({
+              cell: targetNode.id,
+              port: targetPortId
+            });
+            
+            // 强制重新计算边的路径
+            edge.setVertices([]);
+            
+            // 刷新边以确保连接正确显示
+            // edge.refresh();
+            
+            // 确保画布更新
+            canvasGraph.value!.trigger('cell:change', { cell: edge });
+          }
+        } catch (error) {
+          console.error('更新边连接桩失败:', error);
+        }
+      });
+    });
     // 画布点击事件 - 清空选中节点和边
     canvasGraph.value.on('blank:click', () => {
       // 恢复之前选中边的默认样式
@@ -759,8 +859,8 @@ function createDataProcessInstance() {
       if (selectedNode.value) {
         selectedNode.value.attr('body/stroke', '#1890ff');
         selectedNode.value.attr('body/strokeWidth', 1);
-      }
-      
+      }      
+      removeAllNodesPorts();      
       selectedNode.value = null;
       selectedEdge.value = null;
       hideParamsPanel();
@@ -794,7 +894,7 @@ function createDataProcessInstance() {
       if (edge){
         const edge_attrs=edge.getAttrs()
         edge_attrs['line']['stroke']='#FF4500'
-        edge_attrs['line']['strokeWidth']=5
+        edge_attrs['line']['strokeWidth']=3
         edge_attrs['line']['targetMarker']={
           name: 'classic',
           width: 12,
@@ -840,7 +940,7 @@ function createDataProcessInstance() {
     canvasGraph.value.on('edge:mouseenter', ({ edge }) => {
       // 设置鼠标悬停时的样式与选中时一致
       edge.attr('line/stroke', '#FF4500');
-      edge.attr('line/strokeWidth', 5);
+      edge.attr('line/strokeWidth', 3);
       edge.attr('line/targetMarker', {
         name: 'classic',
         width: 12,
@@ -864,6 +964,61 @@ function createDataProcessInstance() {
         });
       }
     });
+    // Ctrl+C：复制选中的节点
+    canvasGraph.value!.bindKey(['ctrl+c', 'meta+c'], () => {
+      const cells = canvasGraph.value!.getSelectedCells()
+      if (cells.length) {
+        // 复制到剪贴板
+        canvasGraph.value!.copy(cells)
+        console.log('已复制', cells.length, '个元素')
+      }
+      return false // 阻止默认浏览器行为（如复制文本）
+    })
+
+    // Ctrl+V：粘贴为新节点
+    canvasGraph.value!.bindKey(['ctrl+v', 'meta+v'], () => {
+      if (!canvasGraph.value!.isClipboardEmpty()) {
+        // 粘贴到鼠标位置 or 偏移位置
+        const pastedCells = canvasGraph.value!.paste({
+          offset: 20, // 每次粘贴向右下偏移 20px，避免重叠
+        })
+        console.log('已粘贴', pastedCells.length, '个元素')
+        // 可选：自动选中新粘贴的节点
+        canvasGraph.value!.cleanSelection()
+        canvasGraph.value!.select(pastedCells)
+      }
+      return false
+    })
+        
+    // 支持Delete键
+    canvasGraph.value!.bindKey('delete', () => {
+      const cells = canvasGraph.value!.getSelectedCells()
+      if (cells.length) {
+        if (window.confirm(`确定要删除选中的${cells.length}个元素吗？`)) {
+          canvasGraph.value!.removeCells(cells)
+          console.log('已删除', cells.length, '个元素')
+        }
+      }
+      return false
+    })
+    
+    // Ctrl+Z：撤销操作
+    canvasGraph.value!.bindKey(['ctrl+z', 'meta+z'], () => {
+      if (canvasGraph.value!.canUndo()) {
+        canvasGraph.value!.undo()
+        console.log('已撤销')
+      }
+      return false
+    })
+    
+    // Ctrl+Y 或 Ctrl+Shift+Z：重做操作
+    canvasGraph.value!.bindKey(['ctrl+y', 'meta+y', 'ctrl+shift+z', 'meta+shift+z'], () => {
+      if (canvasGraph.value!.canRedo()) {
+        canvasGraph.value!.redo()
+        console.log('已重做')
+      }
+      return false
+    })
   };
 
   // handleKeyDown函数已移除
@@ -2194,6 +2349,30 @@ function createDataProcessInstance() {
   };
   
   /**
+   * 切换选择模式（框选/平移）
+   * 当切换到框选模式时，启用rubberband功能，禁用panning
+   * 当切换到平移模式时，禁用rubberband功能，启用panning
+   */
+  const toggleSelectionMode = () => {
+    isRubberbandMode.value = !isRubberbandMode.value;
+    if (canvasGraph.value) {
+      // 获取Selection插件实例
+      const selection = canvasGraph.value.getPlugin('selection') as Selection;
+      if (selection) {
+        if (isRubberbandMode.value) {
+          // 开启框选，关闭平移
+          selection.enableRubberband();
+          canvasGraph.value.disablePanning();
+        } else {
+          // 关闭框选，开启平移
+          selection.disableRubberband();
+          canvasGraph.value.enablePanning();
+        }
+      }
+    }
+  };
+  
+  /**
    * 显示节点描述编辑器
    */
   const showNodeDescriptionEditor = (node: Node) => {
@@ -2252,6 +2431,26 @@ function createDataProcessInstance() {
 
   // ==================== 返回接口 ====================
   
+  /**
+   * 撤销操作
+   */
+  const undo = () => {
+    if (canvasGraph.value?.canUndo()) {
+      canvasGraph.value.undo();
+      console.log('已撤销');
+    }
+  };
+
+  /**
+   * 重做操作
+   */
+  const redo = () => {
+    if (canvasGraph.value?.canRedo()) {
+      canvasGraph.value.redo();
+      console.log('已重做');
+    }
+  };
+
   return {
     // 状态
     modalState,
@@ -2265,6 +2464,8 @@ function createDataProcessInstance() {
     executionState,
     showNodeDescriptions,
     showNodeTooltips,
+    undo,
+    redo,
     
     // 画布控制
     resizeCanvas,
@@ -2272,6 +2473,8 @@ function createDataProcessInstance() {
     // 节点描述信息控制
     toggleNodeDescriptions,
     toggleNodeTooltips,
+    isRubberbandMode,
+    toggleSelectionMode,
     // 节点描述编辑器状态
     nodeDescriptionEditor,
     // 节点描述编辑方法
