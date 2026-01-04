@@ -439,35 +439,21 @@ const hasUploadedFiles = computed(() => {
 const mergedFileList = computed(() => {
   if (mode.value !== 'edit' || formData.type !== 'excel') return [];
   
-  // 获取已上传文件列表
-  const uploadedFiles = Array.isArray(formData.config.files) ? [...formData.config.files] : [];
+  // 获取已上传文件列表，并过滤掉没有name或file_name属性的无效文件
+  // 只使用formData.config.files，因为它包含了服务器返回的所有有效文件数据
+  const uploadedFiles = (Array.isArray(formData.config.files) ? [...formData.config.files] : [])
+    .filter(file => file && (file.name || file.file_name));
   
-  // 创建新添加文件的名称集合，用于快速查找
-  const newFileNames = new Set(editModeSelectedFiles.value.map(file => file.name));
-  
-  // 合并文件列表并标记
-  const result = uploadedFiles.map((file, index) => ({
+  // 直接返回过滤后的文件列表，无需再合并editModeSelectedFiles
+  // 因为现在我们不再将浏览器的File对象添加到editModeSelectedFiles中
+  // 所有文件都来自服务器，且都有有效文件名
+  return uploadedFiles.map((file, index) => ({
     ...file,
-    isNew: newFileNames.has(file.name || file.file_name),
+    // 标记所有文件为非新文件，因为我们现在不再跟踪本地选择的文件
+    // 所有文件都来自服务器
+    isNew: false,
     key: `original-${index}`
   }));
-  
-  // 对于新添加但不在已上传列表中的文件，也添加到结果中
-  editModeSelectedFiles.value.forEach((file, index) => {
-    // 检查文件是否已经在结果中（通过文件名匹配）
-    const fileName = file.name;
-    const exists = result.some(item => item.name === fileName || item.file_name === fileName);
-    
-    if (!exists) {
-      result.push({
-        ...file,
-        isNew: true,
-        key: `new-${index}`
-      });
-    }
-  });
-  
-  return result;
 });
 
 // 清除错误
@@ -512,6 +498,9 @@ const loadDataSource = (dataSource: DataSource) => {
     // 初始化files数组（如果不存在）
     if (!Array.isArray(configCopy.files)) {
       configCopy.files = [];
+    } else {
+      // 过滤掉没有name或file_name属性的无效文件
+      configCopy.files = configCopy.files.filter(file => file && (file.name || file.file_name));
     }
     
     // 检查是否有单文件配置，如果有则添加到files数组
@@ -682,13 +671,18 @@ const handleFileChange = async (event: Event) => {
           const response = await httpClient.upload('/datasource/upload-file', uploadFormData);
           
           if (response.success && response.data) {
-            // 将服务器返回的文件配置添加到表单数据中
-            if (!formData.config.files) {
-              formData.config.files = [];
-            }
-            
-            if (Array.isArray(formData.config.files)) {
-              formData.config.files.push(response.data);
+            // 验证服务器返回的文件数据是否包含有效文件名
+            if (response.data && (response.data.name || response.data.file_name)) {
+              // 将服务器返回的文件配置添加到表单数据中
+              if (!formData.config.files) {
+                formData.config.files = [];
+              }
+              
+              if (Array.isArray(formData.config.files)) {
+                formData.config.files.push(response.data);
+              }
+            } else {
+              console.warn('服务器返回的文件数据缺少有效文件名:', response.data);
             }
           } else {
             throw new Error(response.message || '文件上传失败');
@@ -699,7 +693,10 @@ const handleFileChange = async (event: Event) => {
       if (mode.value === 'add') {
         selectedFiles.value = validFiles;
       } else {
-        editModeSelectedFiles.value = [...editModeSelectedFiles.value, ...validFiles];
+        // 对于编辑模式，不要直接添加浏览器的File对象到editModeSelectedFiles
+        // 而是使用服务器返回的文件数据，这些数据已经被添加到formData.config.files中
+        // 这样可以确保editModeSelectedFiles和formData.config.files保持一致
+        // 并且避免出现"未知文件名"的问题
       }
     } catch (error) {
       console.error('文件上传失败:', error);
@@ -723,14 +720,10 @@ const handleRemoveNewFile = (file: any) => {
   if (mode.value === 'edit') {
     // 从editModeSelectedFiles中移除对应的文件
     const fileName = file.name || file.file_name;
+    
+    // 如果有文件名，先尝试精确移除
     if (fileName) {
-      // 移除本地选中的文件
-      const index = editModeSelectedFiles.value.findIndex(f => f.name === fileName);
-      if (index > -1) {
-        editModeSelectedFiles.value.splice(index, 1);
-      }
-      
-      // 同时从formData.config.files中移除对应的文件
+      // 同时从两个列表中移除对应的文件
       if (Array.isArray(formData.config.files)) {
         const fileIndex = formData.config.files.findIndex(
           f => f.name === fileName || f.file_name === fileName
@@ -739,6 +732,19 @@ const handleRemoveNewFile = (file: any) => {
           formData.config.files.splice(fileIndex, 1);
         }
       }
+    } else {
+      // 如果没有文件名，这可能是一个无效文件，需要清理
+      // 移除所有无效文件
+      if (Array.isArray(formData.config.files)) {
+        formData.config.files = formData.config.files.filter(
+          f => f && (f.name || f.file_name)
+        );
+      }
+    }
+    
+    // 重置fileInput，允许用户重新选择相同的文件
+    if (fileInput.value) {
+      fileInput.value.value = '';
     }
   }
 };

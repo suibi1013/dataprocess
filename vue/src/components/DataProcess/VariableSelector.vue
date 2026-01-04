@@ -33,7 +33,7 @@
             <span class="tree-expand-icon" :class="{ expanded: expandedNodes[nodeName] }">
               {{ expandedNodes[nodeName] ? '▼' : '▶' }}
             </span>
-            {{ nodeName }} ({{ nodeVars.length }})
+            {{ nodeName.replace(/_\d+$/, '') }} ({{ nodeVars.length }})
           </div>
           <div 
             class="variable-list tree-node-children"
@@ -182,7 +182,7 @@ const onVariableItemMouseLeave = () => {
 }
 
 .variable-tree {
-  max-height: 200px;
+  max-height: 300px;
   overflow-y: auto;
 }
 

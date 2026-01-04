@@ -15,11 +15,11 @@ class InstructionParameter(BaseModel):
     name: str = Field(..., description="参数名称")  # 参数名称
     label: str = Field(..., description="参数标签")  # 参数标签
     description: Optional[str] = Field(None, description="参数描述")  # 参数描述
-    type: str = Field("string", description="参数类型")  # 参数类型
+    type: str = Field("string", description="控件类型")  # 控件类型
     required: bool = Field(False, description="是否必填")  # 是否必填
     default_value: Optional[str] = Field(None, description="默认值")  # 默认值
     direction: int = Field(0, description="方向：0-输入参数，1-输出参数")  # 方向
-    api_url: Optional[str] = Field(None, description="API URL，用于动态加载选项")  # API URL
+    api_url: Optional[str] = Field(None, description="option数据或数据请求接口地址，用于动态加载选项")  # option数据或数据请求接口地址
     
     model_config = {
         "from_attributes": True,  # 允许从ORM模型创建

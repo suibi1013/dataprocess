@@ -194,19 +194,19 @@
                 <div v-if="errors[`param_${index}_name`]" class="error-message">{{ errors[`param_${index}_name`] }}</div>
               </div>
 
-              <!-- 参数类型 -->
+              <!-- 控件类型 -->
               <div class="form-item">
-                <label class="form-label required">参数类型</label>
+                <label class="form-label required">控件类型</label>
                 <select 
                   v-model="param.type"
                   class="form-select"
                   @change="onParamTypeChange(param, index)"
                 >
-                  <option value="string">字符串</option>
+                  <option value="string">文本/表达式</option>
                   <option value="number">数字</option>
-                  <option value="boolean">布尔值</option>
-                  <option value="select">下拉单选</option>
-                  <option value="select_excelpath">下拉单选-excel路径</option>
+                  <option value="boolean">布尔开关</option>
+                  <option value="select">下拉单选框</option>
+                  <option value="select_excelpath">excel数据源选择</option>
                   <option value="file">文件</option>
                 </select>
               </div>
@@ -253,12 +253,12 @@
             
             <!-- 数据接口地址 -->
             <div class="form-item">
-              <label class="form-label">数据接口地址</label>
+              <label class="form-label">option数据或数据请求接口地址（仅选择带option的控件时填写）</label>
               <input 
                 v-model="param.api_url"
                 type="text"
                 class="form-input"
-                placeholder="请输入数据接口地址（选填）"
+                placeholder='请输入option数据或数据请求接口地址，结果示例：[{"value": "a", "label": "选项A"},{"value": "b", "label": "选项B"}]'
                 maxlength="200"
               >
             </div>
@@ -759,7 +759,7 @@ export default defineComponent({
 
 
     const onParamTypeChange = (param: any, _index: number) => {
-      // 根据参数类型调整默认值
+      // 根据控件类型调整默认值
       if (param.type === 'boolean') {
         param.default_value = false;
       } else if (param.type === 'number') {

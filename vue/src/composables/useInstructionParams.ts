@@ -221,7 +221,7 @@ export function useInstructionParams() {
   // setupDefaultParams函数已被移除，相关功能已在updateParamValue和showParamsPanel中实现
 
   /**
-   * 根据参数类型获取默认值
+   * 根据控件类型获取默认值
    */
   const getDefaultValueByType = (type: string): any => {
     switch (type) {

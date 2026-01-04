@@ -14,11 +14,11 @@ class InstructionParameter(BaseModel):
     name: str  # 参数名称
     label: str  # 参数标签
     description: Optional[str] = None  # 参数描述
-    type: str  # 参数类型，如：string, number, boolean等
+    type: str  # 控件类型，如：string, number, boolean,select,select_excelpath,file等
     required: bool = False  # 是否必填
     default_value: Optional[Any] = None  # 默认值
     direction: int = 0  # 参数方向：0-输入参数，1-输出参数，2-回写参数（常用于循环逻辑中的游标变量）
-    api_url: Optional[str] = None  # 数据接口地址
+    api_url: Optional[str] = None  # option数据或数据请求接口地址，用于动态加载选项
 
 class InstructionItem(BaseModel):
     """指令项目模型"""

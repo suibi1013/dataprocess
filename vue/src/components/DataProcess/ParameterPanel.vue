@@ -724,12 +724,19 @@ const onGetProcessVariables = async (selectedNode: any) => {
       const initialExpandedNodes: Record<string, boolean> = {};
 
       if (result.data.previous_nodes && Array.isArray(result.data.previous_nodes)) {
-        result.data.previous_nodes.forEach(node => {
-          // 只添加包含变量的节点
-          if (node.node_name && node.variables && node.variables.length > 0) {
-            variablesByNode[node.node_name] = node.variables;
-            initialExpandedNodes[node.node_name] = true; // 默认展开所有节点
-          }
+        result.data.previous_nodes.forEach((node, index) => {
+          // 处理节点名称：如果没有名称则使用默认名称，对于重复名称添加索引
+          let nodeName = node.node_name || `未命名节点${index}`;
+          
+          // 确保变量数组存在，并深拷贝避免循环引用
+          const variables = node.variables ? [...node.variables].map(v => ({ ...v })) : [];
+          
+          // 为每个节点生成唯一键，避免重复节点名称覆盖
+          const uniqueNodeKey = `${nodeName}_${index}`;
+          
+          // 添加所有节点，无论是否包含变量
+          variablesByNode[uniqueNodeKey] = variables;
+          initialExpandedNodes[uniqueNodeKey] = true; // 默认展开所有节点
         });
       }
 
@@ -757,7 +764,7 @@ const getVariableSelectorStyle = (_event: any, paramName: string) => {
     padding: '10px',
     boxShadow: '0 2px 12px 0 rgba(0, 0, 0, 0.1)',
     minWidth: '300px',
-    maxHeight: '300px',
+    maxHeight: '400px',
     overflowY: 'auto'
   };
 
@@ -942,8 +949,10 @@ const onSelectVariable = (paramName: string, variableName: string) => {
     }
   } else {
     // 节点的情况：获取当前值，采用追加机制
-    const currentValue = props.paramsPanel.params?.[paramName] || '';
-    updateParamValue(paramName, currentValue + variableName);
+    // const currentValue = props.paramsPanel.params?.[paramName] || '';
+    // updateParamValue(paramName, currentValue + variableName);
+    // 采用替换机制
+    updateParamValue(paramName, variableName);
   }
   variableSelectorVisible.value = false;
 };
@@ -1118,9 +1127,44 @@ const fetchOptionsByApiUrl = async (paramName: string, api_url: string) => {
 const initFormItemOptions = (item: any) => {
   const paramName = item.param?.name || item.name;
   const api_url = item.param?.api_url || item.api_url;
-  // 如果有api_url且尚未加载过，则获取数据
-  if (api_url && !dynamicOptions.value[paramName] && !loadingOptions.value[paramName]) {
-    fetchOptionsByApiUrl(paramName, api_url);
+  console.log('initFormItemOptions', paramName, api_url);  
+  // 如果有api_url且尚未加载过，则处理数据
+  console.log('if', dynamicOptions.value[paramName], loadingOptions.value[paramName]);
+  if (api_url && !dynamicOptions.value[paramName] && !loadingOptions.value[paramName]) {    
+    // 检查api_url类型，如果是数组则直接作为options数据
+    if (Array.isArray(api_url)) {
+      // 直接使用api_url数组作为options数据
+      dynamicOptions.value[paramName] = api_url;
+    } else if (typeof api_url === 'string') {
+      // 尝试将字符串解析为JSON，看是否是数组格式的options数据
+      try {
+        // 先尝试标准JSON解析
+        const parsedData = JSON.parse(api_url);
+        if (Array.isArray(parsedData)) {
+          // 如果解析成功且是数组，则作为options数据使用
+          dynamicOptions.value[paramName] = parsedData;
+          return;
+        }
+      } catch (error) {
+        // 标准JSON解析失败，尝试处理单引号格式的JSON字符串
+        try {
+          // 替换单引号为双引号，然后再解析
+          const normalizedJson = api_url.replace(/'/g, '"');
+          const parsedData = JSON.parse(normalizedJson);
+          if (Array.isArray(parsedData)) {
+            // 如果解析成功且是数组，则作为options数据使用
+            dynamicOptions.value[paramName] = parsedData;
+            return;
+          }
+        } catch (secondError) {
+          // 两种解析都失败，说明不是JSON格式的数组数据，继续作为API接口处理
+          console.log('JSON解析失败，作为API接口处理:', secondError);
+        }
+      }
+      
+      // 如果是普通字符串则作为API请求接口
+      fetchOptionsByApiUrl(paramName, api_url);
+    }
   }
 };
 
@@ -1742,6 +1786,23 @@ const onHandleRunInstruction = async () => {
   font-size: 13px;
   transition: all 0.3s;
   box-sizing: border-box;
+}
+
+/* 解决下拉选择框外层框问题 - 移除el-select.form-select的额外padding */
+.el-select.form-select {
+  padding: 0;
+  
+  /* 确保Element Plus内部输入框有正确的padding */
+  :deep(.el-input__inner) {
+    padding: 8px 12px;
+  }
+  
+  /* 移除Element Plus默认的内部边框 */
+  :deep(.el-input__wrapper) {
+    border: none;
+    box-shadow: none;
+    padding: 0;
+  }
 }
 
 .form-input:focus,
