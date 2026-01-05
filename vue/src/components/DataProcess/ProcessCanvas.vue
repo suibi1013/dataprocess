@@ -114,7 +114,6 @@ const {
   cancelNodeDescription,
   showNodeTooltips,
   toggleNodeTooltips,
-  resizeCanvas,
   toggleSelectionMode,
   isRubberbandMode,
   undo,
@@ -163,43 +162,14 @@ const setupCanvasEventListeners = () => {
   });
 };
 
-// 添加窗口大小变化事件监听器，处理浏览器窗口大小变化
-let resizeObserver: ResizeObserver | null = null;
-// 防抖定时器
-let resizeTimer: number | null = null;
 // 组件挂载时设置事件监听器
 onMounted(() => {
   setupCanvasEventListeners(); 
-  
-  // 添加ResizeObserver监听画布容器大小变化
-  // const canvasContainer = document.getElementById('data-process-canvas');
-  const canvasContainer = document.getElementById('data-process-canvas-container');
-  if (canvasContainer) {
-    resizeObserver = new ResizeObserver(() => {
-      // 添加防抖处理，避免频繁触发导致循环
-      if (resizeTimer) {
-        clearTimeout(resizeTimer);
-      }
-      resizeTimer = window.setTimeout(() => {
-        resizeCanvas();
-      }, 100);
-    });
-    resizeObserver.observe(canvasContainer);
-  }
 });
 onUnmounted(() => {
   // 组件卸载时清理
-  try {    
-    // 清除防抖定时器
-    if (resizeTimer) {
-      clearTimeout(resizeTimer);
-      resizeTimer = null;
-    }
-    // 移除ResizeObserver
-    if (resizeObserver) {
-      resizeObserver.disconnect();
-      resizeObserver = null;
-    }
+  try {
+    // 清理工作已在useDataProcess的cleanupCanvas函数中处理
   } catch (error) {
     console.error('清理资源失败:', error);
   }
