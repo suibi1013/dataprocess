@@ -30,7 +30,8 @@ from dto.instruction_dto import (
     InstructionItem, InstructionCategory, InstructionListResponse, InstructionParameter,
     CreateInstructionCategoryRequest, CreateInstructionItemRequest,
     UpdateInstructionCategoryRequest, UpdateInstructionItemRequest,
-    ExecuteInstructionRequest, ExecuteInstructionResponse
+    ExecuteInstructionRequest, ExecuteInstructionResponse,
+    ExecuteEventRequest
 )
 from dto.common_dto import ApiResponse
 
@@ -105,7 +106,8 @@ class InstructionService:
                                 required=param_entity.required,
                                 default_value=param_entity.default_value,
                                 direction=param_entity.direction,
-                                api_url=param_entity.api_url
+                                api_url=param_entity.api_url,
+                                event_script=param_entity.event_script
                             )
                             param_dtos.append(param_dto)
                         
@@ -225,7 +227,8 @@ class InstructionService:
                         required=param_dto.required,
                         default_value=param_dto.default_value,
                         direction=param_dto.direction,
-                        api_url=param_dto.api_url
+                        api_url=param_dto.api_url,
+                        event_script=param_dto.event_script
                     )
                     param_entities.append(param_entity)
             
@@ -259,7 +262,8 @@ class InstructionService:
                             required=param_entity.required,
                             default_value=param_entity.default_value,
                             direction=param_entity.direction,
-                            api_url=param_entity.api_url
+                            api_url=param_entity.api_url,
+                            event_script=param_entity.event_script
                         )
                         param_dtos.append(param_dto)
                 
@@ -413,7 +417,8 @@ class InstructionService:
                             required=param_dto.required,
                             default_value=str(param_dto.default_value),
                             direction=param_dto.direction,
-                            api_url=param_dto.api_url 
+                            api_url=param_dto.api_url,
+                            event_script=param_dto.event_script
                         )
                         param_entities.append(param_entity)
                     
@@ -435,7 +440,8 @@ class InstructionService:
                             required=param_entity.required,
                             default_value=param_entity.default_value,
                             direction=param_entity.direction,
-                            api_url=param_entity.api_url
+                            api_url=param_entity.api_url,
+                            event_script=param_entity.event_script
                         )
                         param_dtos.append(param_dto)
                 
@@ -619,6 +625,92 @@ class InstructionService:
                 success=False,
                 data={result_variable_name: None} if result_variable_name else None,
                 message=f"指令执行失败: {str(e)}"
+            )
+            
+    async def execute_event(self, request: ExecuteEventRequest) -> ApiResponse[Any]:
+        """执行事件脚本"""
+        try:
+            # 1. 根据指令id获取指令信息
+            item_entity = self.item_repo.find_by_id(request.instruction_id)
+            if not item_entity:
+                return ApiResponse(
+                    success=False,
+                    data=None,
+                    message="指令不存在"
+                )
+            
+            # 2. 根据事件参数名称获取事件脚本
+            event_script = None
+            param_entities = self.param_repo.find_by_instruction_id(item_entity.id)
+            for param in param_entities:
+                if param.name == request.event_param_name and param.event_script:
+                    event_script = param.event_script
+                    break
+            
+            if not event_script:
+                return ApiResponse(
+                    success=False,
+                    data=None,
+                    message=f"未找到参数'{request.event_param_name}'的事件脚本"
+                )
+            
+            # 3. 处理intput_types，解析表达式参数
+            processed_params = {}
+            input_types = request.input_types or {}
+            
+            for param_name, param_value in request.script_params.items():
+                # 如果是表达式类型参数，处理表达式
+                if param_name in input_types.get('e', []):
+                    # 表达式解析
+                    try:
+                        processed_value = eval(param_value)
+                        processed_params[param_name] = processed_value
+                    except Exception as e:
+                        processed_params[param_name] = param_value                    
+                else:
+                    # 文本类型参数，直接使用原始值
+                    processed_params[param_name] = param_value
+            
+            # 4. 从处理后的指令参数集合中，获取与事件脚本参数名称相同的参数值
+            # 提取事件脚本的参数名称
+            def extract_function_params(script):
+                try:
+                    # 解析脚本AST
+                    tree = ast.parse(script)
+                    for node in ast.walk(tree):
+                        if isinstance(node, ast.FunctionDef):
+                            # 返回函数参数名称列表
+                            return [arg.arg for arg in node.args.args]
+                except:
+                    pass
+                return []
+            
+            # 获取事件脚本的函数参数名称
+            script_params = extract_function_params(event_script)
+            
+            # 构建传递给事件脚本的参数
+            event_params = {}
+            for param_name in script_params:
+                if param_name in processed_params:
+                    event_params[param_name] = processed_params[param_name]
+            
+            # 5. 执行事件脚本
+            result = PythonScriptUtils._execute_python_script(
+                event_script, 
+                event_params
+            )
+            
+            return ApiResponse(
+                success=True,
+                data=result,
+                message="事件脚本执行成功"
+            )
+            
+        except Exception as e:
+            return ApiResponse(
+                success=False,
+                data=None,
+                message=f"事件脚本执行失败: {str(e)}"
             )
 
     async def _execute_python_script(self, script: str, params: Dict[str, Any]) -> Any:

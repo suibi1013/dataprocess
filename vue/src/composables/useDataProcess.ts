@@ -970,7 +970,6 @@ function createDataProcessInstance() {
       if (cells.length) {
         // 复制到剪贴板
         canvasGraph.value!.copy(cells)
-        console.log('已复制', cells.length, '个元素')
       }
       return false // 阻止默认浏览器行为（如复制文本）
     })
@@ -982,7 +981,6 @@ function createDataProcessInstance() {
         const pastedCells = canvasGraph.value!.paste({
           offset: 20, // 每次粘贴向右下偏移 20px，避免重叠
         })
-        console.log('已粘贴', pastedCells.length, '个元素')
         // 可选：自动选中新粘贴的节点
         canvasGraph.value!.cleanSelection()
         canvasGraph.value!.select(pastedCells)
@@ -996,7 +994,6 @@ function createDataProcessInstance() {
       if (cells.length) {
         if (window.confirm(`确定要删除选中的${cells.length}个元素吗？`)) {
           canvasGraph.value!.removeCells(cells)
-          console.log('已删除', cells.length, '个元素')
         }
       }
       return false
@@ -1006,7 +1003,6 @@ function createDataProcessInstance() {
     canvasGraph.value!.bindKey(['ctrl+z', 'meta+z'], () => {
       if (canvasGraph.value!.canUndo()) {
         canvasGraph.value!.undo()
-        console.log('已撤销')
       }
       return false
     })
@@ -1015,7 +1011,6 @@ function createDataProcessInstance() {
     canvasGraph.value!.bindKey(['ctrl+y', 'meta+y', 'ctrl+shift+z', 'meta+shift+z'], () => {
       if (canvasGraph.value!.canRedo()) {
         canvasGraph.value!.redo()
-        console.log('已重做')
       }
       return false
     })
@@ -2437,7 +2432,6 @@ function createDataProcessInstance() {
   const undo = () => {
     if (canvasGraph.value?.canUndo()) {
       canvasGraph.value.undo();
-      console.log('已撤销');
     }
   };
 
@@ -2447,7 +2441,6 @@ function createDataProcessInstance() {
   const redo = () => {
     if (canvasGraph.value?.canRedo()) {
       canvasGraph.value.redo();
-      console.log('已重做');
     }
   };
 

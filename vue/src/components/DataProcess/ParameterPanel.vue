@@ -224,6 +224,36 @@
                   </div>
                 </div>
 
+                <!-- 按钮事件类型 -->
+                <div v-else-if="(item.param?.type === 'button_event' || item.type === 'button_event')" class="button-event-container" style="position: relative; display: flex; align-items: center; margin-bottom: 2px;">
+                  <el-input 
+                    type="text" 
+                    v-model="item.value" 
+                    :placeholder="item.param?.placeholder || item.placeholder || '请输入' + (item.param?.label || item.label)" 
+                    class="form-input" 
+                    @input="updateParamValue(item.param?.name || item.name, $event)"
+                  >
+                    <template #prefix>
+                      <!-- 使用 img 标签显示本地图标 -->
+                      <img 
+                        :src="getInputTypeIconPath(item.param?.name || item.name)" 
+                        alt="切换输入类型" 
+                        class="input-type-toggle-icon" 
+                        @click="toggleInputType(item.param?.name || item.name)" 
+                        title="切换输入类型（表达式/文本）" 
+                      />
+                    </template>
+                  </el-input>
+                  <el-button 
+                    type="primary" 
+                    :loading="executingButtons[item.param?.name || item.name]" 
+                    @click="onHandleButtonEventClick(item)"
+                    style="margin-left: 8px;"
+                  >
+                    {{ item.param?.label || item.label }}
+                  </el-button>
+                </div>
+                
                 <!-- 文本域 -->
                 <div v-else-if="(item.param?.type === 'textarea' || item.type === 'textarea')" class="textarea-with-type-btn" style="position: relative; margin-bottom: 2px;">
                   <!-- 使用 img 标签显示本地图标 -->
@@ -412,6 +442,36 @@
                   </div>
                 </div>
 
+                <!-- 按钮事件类型 -->
+                <div v-else-if="(item.param?.type === 'button_event' || item.type === 'button_event')" class="button-event-container" style="position: relative; display: flex; align-items: center; margin-bottom: 2px;">
+                  <el-input 
+                    type="text" 
+                    v-model="item.value" 
+                    :placeholder="item.param?.placeholder || item.placeholder || '请输入' + (item.param?.label || item.label)" 
+                    class="form-input" 
+                    @input="updateParamValue(item.param?.name || item.name, $event)"
+                  >
+                    <template #prefix>
+                      <!-- 使用 img 标签显示本地图标 -->
+                      <img 
+                        :src="getInputTypeIconPath(item.param?.name || item.name)" 
+                        alt="切换输入类型" 
+                        class="input-type-toggle-icon" 
+                        @click="toggleInputType(item.param?.name || item.name)" 
+                        title="切换输入类型（表达式/文本）" 
+                      />
+                    </template>
+                  </el-input>
+                  <el-button 
+                    type="primary" 
+                    :loading="executingButtons[item.param?.name || item.name]" 
+                    @click="onHandleButtonEventClick(item)"
+                    style="margin-left: 8px;"
+                  >
+                    {{ item.param?.label || item.label }}
+                  </el-button>
+                </div>
+                
                 <!-- 文本域 -->
                 <div v-else-if="(item.param?.type === 'textarea' || item.type === 'textarea')" class="textarea-with-type-btn" style="position: relative; margin-bottom: 2px;">
                   <img 
@@ -598,6 +658,36 @@
                   </div>
                 </div>
 
+                <!-- 按钮事件类型 -->
+                <div v-else-if="(item.param?.type === 'button_event' || item.type === 'button_event')" class="button-event-container" style="position: relative; display: flex; align-items: center; margin-bottom: 2px;">
+                  <el-input 
+                    type="text" 
+                    v-model="item.value" 
+                    :placeholder="item.param?.placeholder || item.placeholder || '请输入' + (item.param?.label || item.label)" 
+                    class="form-input" 
+                    @input="updateParamValue(item.param?.name || item.name, $event)"
+                  >
+                    <template #prefix>
+                      <!-- 使用 img 标签显示本地图标 -->
+                      <img 
+                        :src="getInputTypeIconPath(item.param?.name || item.name)" 
+                        alt="切换输入类型" 
+                        class="input-type-toggle-icon" 
+                        @click="toggleInputType(item.param?.name || item.name)" 
+                        title="切换输入类型（表达式/文本）" 
+                      />
+                    </template>
+                  </el-input>
+                  <el-button 
+                    type="primary" 
+                    :loading="executingButtons[item.param?.name || item.name]" 
+                    @click="onHandleButtonEventClick(item)"
+                    style="margin-left: 8px;"
+                  >
+                    {{ item.param?.label || item.label }}
+                  </el-button>
+                </div>
+
                 <!-- 文本域 -->
                 <div v-else-if="(item.param?.type === 'textarea' || item.type === 'textarea')" class="textarea-with-type-btn" style="position: relative; margin-bottom: 2px;">
                   <img 
@@ -654,7 +744,7 @@
 </template>
 
 <script setup lang="ts">
-import { ElSelect, ElOption, ElButton, ElIcon, ElCascader } from 'element-plus';
+import { ElSelect, ElOption, ElButton, ElIcon, ElCascader, ElNotification } from 'element-plus';
 import { VideoPlay, DocumentChecked } from '@element-plus/icons-vue';
 import { ref, computed, watch } from 'vue';
 import VariableSelector from './VariableSelector.vue';
@@ -673,7 +763,8 @@ const processVariables = ref<Record<string, Array<{name: string; label: string; 
 const hoveredVariable = ref(''); // 用于鼠标悬停效果
 const expandedNodes = ref<Record<string, boolean>>({}); // 用于跟踪节点的展开/折叠状态
 // 执行状态控制
-const isExecuting = ref(false);
+const isExecuting = ref(false); // 用于"运行指令"按钮
+const executingButtons = ref<Record<string, boolean>>({}); // 用于按钮事件类型控件
 // 折叠功能已取消，不再需要isCollapsed状态
 
 // 输入类型状态：键为参数名，值为boolean（true表示表达式，false表示文本）
@@ -1127,9 +1218,7 @@ const fetchOptionsByApiUrl = async (paramName: string, api_url: string) => {
 const initFormItemOptions = (item: any) => {
   const paramName = item.param?.name || item.name;
   const api_url = item.param?.api_url || item.api_url;
-  console.log('initFormItemOptions', paramName, api_url);  
   // 如果有api_url且尚未加载过，则处理数据
-  console.log('if', dynamicOptions.value[paramName], loadingOptions.value[paramName]);
   if (api_url && !dynamicOptions.value[paramName] && !loadingOptions.value[paramName]) {    
     // 检查api_url类型，如果是数组则直接作为options数据
     if (Array.isArray(api_url)) {
@@ -1323,11 +1412,27 @@ const getPanelTitle = () => {
 // 更新多列选择值
 const updateMultiColumnValue = (paramName: string, columnName: string, checked: boolean) => {
   // 首先检查输入参数
-  let currentValue = inputParams.value.find(item => item.name === paramName)?.value || [];
+  let currentValue = inputParams.value.find(item => (item.param?.name === paramName || item.name === paramName))?.value || [];
   // 如果输入参数中没有找到，检查输出参数
   if (currentValue.length === 0) {
-    currentValue = outputParams.value.find(item => item.name === paramName)?.value || [];
+    currentValue = outputParams.value.find(item => (item.param?.name === paramName || item.name === paramName))?.value || [];
   }
+
+  let newValue;
+
+  if (checked) {
+    newValue = [...currentValue, columnName];
+  } else {
+    newValue = currentValue.filter((col: string) => col !== columnName);
+  }
+
+  updateParamValue(paramName, newValue);
+};
+
+// 回写参数的多列选择更新函数
+const onUpdateMultiColumnValue = (paramName: string, columnName: string, checked: boolean) => {
+  // 首先检查回写参数
+  let currentValue = writebackParams.value.find(item => (item.param?.name === paramName || item.name === paramName))?.value || [];
 
   let newValue;
 
@@ -1452,6 +1557,96 @@ const findInstructionById = (instructionId: string) => {
     }
   }
   return null;
+};
+
+// 处理按钮事件点击
+const onHandleButtonEventClick = async (item) => {
+  if (!props.paramsPanel.selectedNode) {
+    return;
+  }
+  
+  const nodeData = props.paramsPanel.selectedNode.getData();
+  if (!nodeData || !nodeData.instructionId) {
+    console.error('节点数据无效，缺少指令ID');
+    return;
+  }
+  
+  // 获取当前按钮的唯一标识（使用参数名）
+  const buttonKey = item.param?.name || item.name;
+  // 按钮名称
+  const buttonLabel = '<'+(item.param?.label || item.label)+'> ';
+  
+  // 设置当前按钮为加载状态
+  executingButtons.value[buttonKey] = true;
+  
+  // 注意：ElNotification的position属性只支持预定义的字符串值，不支持自定义坐标
+  // 预定义值：'top-right', 'top-left', 'bottom-right', 'bottom-left'
+  // 这里我们使用 'top-right' 作为默认值，靠近按钮位置
+  const position = 'top-right';
+  
+  try {
+    // 获取节点参数
+    const params = props.paramsPanel.params || {};
+    
+    // 构建请求数据
+    const requestData = {
+      instruction_id: nodeData.instructionId, // 指令ID
+      script_params: params, // Python脚本参数
+      input_types: inputTypes.value, // 输入类型，t表示文本，e表示表达式
+      event_param_name: buttonKey // 事件参数名称
+    };
+    
+    // 调用执行事件脚本接口
+    const result = await httpClient.post('/instruction/event_execute', requestData);
+    
+    if (result.success) {
+      // 将接口返回结果赋值给表单项的文本框
+      const responseValue = result.data || '';
+      
+      // 更新表单项的值
+      updateParamValue(buttonKey, responseValue);
+      
+      // 同时更新当前item的value，确保视图立即更新
+      item.value = responseValue;      
+      // 显示成功消息
+      ElNotification({
+        title: '成功',
+        message: buttonLabel+result.message || '操作成功！',
+        type: 'success',
+        duration: 3000,
+        position: position || 'top-right',
+        offset: 10
+      });
+    } else {
+      // 处理错误响应
+      console.error('按钮事件执行失败:', result.message);
+      
+      // 显示错误消息
+      ElNotification({
+        title: '失败',
+        message: buttonLabel+result.message || '操作失败，请重试！',
+        type: 'error',
+        duration: 3000,
+        position: position || 'top-right',
+        offset: 10
+      });
+    }
+  } catch (error) {
+    console.error('执行按钮事件时发生错误:', error);
+    
+    // 显示错误消息
+    ElNotification({
+      title: '错误',
+      message: buttonLabel+error instanceof Error ? error.message : '操作失败，请重试！',
+      type: 'error',
+      duration: 3000,
+      position: position || 'top-right',
+      offset: 10
+    });
+  } finally {
+    // 清除当前按钮的加载状态
+    executingButtons.value[buttonKey] = false;
+  }
 };
 
 // 执行指令方法
@@ -1780,7 +1975,7 @@ const onHandleRunInstruction = async () => {
 .form-select,
 .form-textarea {
   width: 100%;
-  padding: 8px 12px;
+  padding: 0;
   border: 1px solid #d9d9d9;
   border-radius: 4px;
   font-size: 13px;

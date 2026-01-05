@@ -20,6 +20,7 @@ class InstructionParameter(BaseModel):
     default_value: Optional[str] = Field(None, description="默认值")  # 默认值
     direction: int = Field(0, description="方向：0-输入参数，1-输出参数")  # 方向
     api_url: Optional[str] = Field(None, description="option数据或数据请求接口地址，用于动态加载选项")  # option数据或数据请求接口地址
+    event_script: Optional[str] = Field(None, description="事件脚本")
     
     model_config = {
         "from_attributes": True,  # 允许从ORM模型创建

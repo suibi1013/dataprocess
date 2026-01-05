@@ -14,7 +14,8 @@ from dto.instruction_dto import (
     CreateInstructionCategoryRequest, CreateInstructionItemRequest,
     UpdateInstructionCategoryRequest, UpdateInstructionItemRequest,
     ExecuteInstructionRequest, ExecuteInstructionResponse,
-    InstallDependenciesRequest
+    InstallDependenciesRequest,
+    ExecuteEventRequest
 )
 from di.container import inject
 
@@ -267,3 +268,25 @@ async def install_dependencies(
 @router.get("/instruction/filter_options")
 async def get_filter_options():
     return [{"value":"==","label":"等于"},{"value":"!=","label":"不等于"},{"value":">","label":"大于"},{"value":">=","label":"大于等于"},{"value":"<","label":"小于"},{"value":"<=","label":"小于等于"},{"value":"like","label":"包含（模糊匹配）"},{"value":"startswith","label":"以...开头"},{"value":"endswith","label":"以...结尾"},{"value":"in","label":"在列表中"},{"value":"not in","label":"不在列表中"},{"value":"regex","label":"正则匹配"},{"value":"is none","label":"为空（NULL）"},{"value":"is not none","label":"不为空（非 NULL）"}]
+
+@router.post("/instruction/event_execute")
+async def execute_event(
+    request: ExecuteEventRequest,
+    instruction_service: InstructionService = Depends(lambda: inject(InstructionService))
+):
+    """执行事件脚本"""
+    try:
+        response = await instruction_service.execute_event(request)
+        
+        return {
+            "success": response.success,
+            "data": response.data,
+            "message": response.message
+        }
+            
+    except Exception as e:
+        return {
+            "success": False,
+            "data": None,
+            "message": f"执行事件脚本失败: {str(e)}"
+        }

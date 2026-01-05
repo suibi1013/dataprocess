@@ -204,7 +204,6 @@ const formatTextWithUrls = (text: string): string => {
 // 将JSON数据转换为树节点数据
 const convertJsonToTreeNode = (data: any, parentKey: string = ''): any[] => {
   const treeNode: any[] = [];
-  console.log('convertJsonToTreeNode',data,parentKey)
   // 处理null值
   if (data === null) {
     // 如果是子节点且数据为null，添加一个null节点

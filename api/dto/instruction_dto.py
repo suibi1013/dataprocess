@@ -19,6 +19,7 @@ class InstructionParameter(BaseModel):
     default_value: Optional[Any] = None  # 默认值
     direction: int = 0  # 参数方向：0-输入参数，1-输出参数，2-回写参数（常用于循环逻辑中的游标变量）
     api_url: Optional[str] = None  # option数据或数据请求接口地址，用于动态加载选项
+    event_script: Optional[str] = None  # 按钮事件脚本，用于处理按钮点击事件
 
 class InstructionItem(BaseModel):
     """指令项目模型"""
@@ -167,3 +168,11 @@ class SaveDataProcessFlowResponse(BaseModel):
 class InstallDependenciesRequest(BaseModel):
     """安装依赖包请求模型"""
     dependencies: Optional[str] = None  # 要安装的依赖包，支持多行输入，每行一个依赖包
+
+
+class ExecuteEventRequest(BaseModel):
+    """执行事件请求模型"""
+    instruction_id: str  # 指令ID
+    script_params: Optional[Dict[str, Any]] = {}  # Python脚本参数
+    input_types: Optional[Dict[str, List[str]]] = {}  # 输入类型，t表示文本，e表示表达式
+    event_param_name: str  # 事件参数名称

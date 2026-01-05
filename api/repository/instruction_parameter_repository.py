@@ -39,6 +39,7 @@ class InstructionParameterRepository(BaseRepository[InstructionParameter]):
             default_value TEXT,
             direction INTEGER DEFAULT 0,
             api_url TEXT,
+            event_script TEXT,
             FOREIGN KEY (instruction_id) REFERENCES instruction_items(id) ON DELETE CASCADE
         )
         """
@@ -70,7 +71,8 @@ class InstructionParameterRepository(BaseRepository[InstructionParameter]):
             "required": 1 if param.required else 0,
             "default_value": param.default_value,
             "direction": param.direction,
-            "api_url": param.api_url
+            "api_url": param.api_url,
+            "event_script": param.event_script
         }
         return self.insert(self.TABLE_NAME, data)
     
@@ -104,7 +106,8 @@ class InstructionParameterRepository(BaseRepository[InstructionParameter]):
                 "required": 1 if param.required else 0,
                 "default_value": param.default_value,
                 "direction": param.direction,
-                "api_url": param.api_url
+                "api_url": param.api_url,
+                "event_script": param.event_script
             }
             data_list.append(data)
         
@@ -127,7 +130,8 @@ class InstructionParameterRepository(BaseRepository[InstructionParameter]):
             "required": 1 if param.required else 0,
             "default_value": param.default_value,
             "direction": param.direction,
-            "api_url": param.api_url
+            "api_url": param.api_url,
+            "event_script": param.event_script
         }
         return super().update(self.TABLE_NAME, data, "id = ?", (param.id,))
     

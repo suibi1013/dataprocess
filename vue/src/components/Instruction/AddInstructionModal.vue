@@ -13,7 +13,7 @@
     <form @submit.prevent="handleSave">
       <!-- 基本信息 -->
       <div class="form-section">
-        <h4>基本信息</h4>
+        <h3>基本信息</h3>
         <div class="form-grid">
           <!-- 指令名称 -->
           <div class="form-item">
@@ -117,7 +117,12 @@
             <textarea 
               v-model="formData.python_script"
               class="script-textarea"
-              placeholder="请输入Python脚本代码\n\n# 参数可通过params字典获取，如params['param_name']\n# 处理结果请返回，如return {'result': data}\n\ndef execute(params):\n    # 示例代码\n    return {'result': 'Hello World'}"
+              placeholder="# 请输入Python脚本代码
+def execute(params):
+    # 请在这里编写指令的Python代码
+    # 参数可以通过params字典获取，如params['param_name']
+    # 处理结果请通过return返回
+    return {'result': 'Hello World'}"
               rows="10"
               @blur="validateScript"
             ></textarea>
@@ -136,11 +141,8 @@
       </div>
 
       <!-- 参数配置 -->
-        <div class="form-section">
-          <div class="section-header">
-            <h3>参数配置</h3>
-          </div>       
-        
+        <div class="form-section">          
+          <h3>参数配置</h3>             
         <div class="params-container">
           <div 
             v-for="(param, index) in formData.params"
@@ -198,17 +200,18 @@
               <div class="form-item">
                 <label class="form-label required">控件类型</label>
                 <select 
-                  v-model="param.type"
-                  class="form-select"
-                  @change="onParamTypeChange(param, index)"
-                >
-                  <option value="string">文本/表达式</option>
-                  <option value="number">数字</option>
-                  <option value="boolean">布尔开关</option>
-                  <option value="select">下拉单选框</option>
-                  <option value="select_excelpath">excel数据源选择</option>
-                  <option value="file">文件</option>
-                </select>
+                v-model="param.type"
+                class="form-select"
+                @change="onParamTypeChange(param, index)"
+              >
+                <option value="string">文本/表达式</option>
+                <option value="number">数字</option>
+                <option value="boolean">布尔开关</option>
+                <option value="select">下拉单选框</option>
+                <option value="select_excelpath">excel数据源选择</option>
+                <option value="file">文件</option>
+                <option value="button_event">按钮事件</option>
+              </select>
               </div>
 
 
@@ -237,23 +240,10 @@
                 </div>
               </div>
             </div>
-
-            <!-- 参数描述 -->
-            <div class="form-item">
-              <label class="form-label">参数描述</label>
-              <textarea 
-                v-model="param.description"
-                class="form-textarea"
-                placeholder="请输入参数描述"
-                rows="2"
-                maxlength="100"
-              ></textarea>
-              <div class="char-count">{{ param.description?.length || 0 }}/100</div>
-            </div>
             
             <!-- 数据接口地址 -->
-            <div class="form-item">
-              <label class="form-label">option数据或数据请求接口地址（仅选择带option的控件时填写）</label>
+            <div v-if="param.type === 'select'" class="form-item">
+              <label class="form-label">option数据或数据请求接口地址</label>
               <input 
                 v-model="param.api_url"
                 type="text"
@@ -261,6 +251,25 @@
                 placeholder='请输入option数据或数据请求接口地址，结果示例：[{"value": "a", "label": "选项A"},{"value": "b", "label": "选项B"}]'
                 maxlength="200"
               >
+            </div>
+            
+            <!-- 事件脚本 -->
+            <div v-if="param.type === 'button_event'" class="form-item">
+              <label class="form-label required">事件脚本</label>
+              <textarea 
+                v-model="param.event_script"
+                class="form-textarea"
+                placeholder="请输入按钮点击事件的Python脚本
+
+# 示例代码，参数名称与其他参数相同时，会自动传递其参数值给当前脚本
+def handle_click(params):
+    print('按钮被点击了')
+    # 可以使用params获取当前参数值
+    # 可以通过return返回结果
+    return {'success': True}"
+                rows="8"
+              ></textarea>
+              <div v-if="errors[`param_${index}_event_script`]" class="error-message">{{ errors[`param_${index}_event_script`] }}</div>
             </div>
 
             <!-- 参数方向 -->
@@ -294,7 +303,20 @@
               </div>
             </div>
 
+            <!-- 参数描述 -->
+            <div class="form-item">
+              <label class="form-label">参数描述</label>
+              <textarea 
+                v-model="param.description"
+                class="form-textarea"
+                placeholder="请输入参数描述"
+                rows="2"
+                maxlength="100"
+              ></textarea>
+              <div class="char-count">{{ param.description?.length || 0 }}/100</div>
+            </div>
           </div>
+
           <!-- 添加参数按钮 -->
           <div class="add-param-button-container">
             <button 
@@ -351,9 +373,10 @@
 import { defineComponent, ref, reactive, computed, watch, onMounted } from 'vue';
 import Modal from '@/components/Common/Modal.vue';
 import type { Instruction } from '@/types/instruction';
-import { instructionService } from '@/services/instructionService';
+
 import * as ElementPlusIconsVue from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
+import { useInstructionStore } from '@/store/instructionStore';
 
 interface FormData {
   name: string;
@@ -375,7 +398,7 @@ interface FormData {
     multiple?: boolean;
     columns?: string[];
     api_url?: string;
-
+    event_script?: string;
   }>;
   sort_order?: number;
   python_script: string;
@@ -409,11 +432,16 @@ export default defineComponent({
     // 使用本地状态来控制Modal显示，避免直接修改props
     const localVisible = ref(props.visible);
     const loading = ref(false);
-    const categories = ref<any[]>([]);
     const errors = reactive<ErrorState>({});
     const iconSearchKeyword = ref('');
     const selectedIcon = ref('');
     const showIconSelector = ref(false);
+    
+    // 引入指令store
+    const instructionStore = useInstructionStore();
+    
+    // 从store获取分类数据（响应式）
+    const categories = computed(() => instructionStore.categories);
 
     // 将图标组件名称转换为el-icon格式
     const commonIcons = Object.keys(ElementPlusIconsVue).map(key => {
@@ -451,7 +479,8 @@ export default defineComponent({
       icon: 'code',
       params: [],
       sort_order: 1,
-      python_script: `def execute(params):
+      python_script: `# 请输入Python脚本代码
+def execute(params):
     # 请在这里编写指令的Python代码
     # 参数可以通过params字典获取，如params['param_name']
     # 处理结果请通过return返回
@@ -461,21 +490,12 @@ export default defineComponent({
     // 编辑状态标志
     const isEdit = ref(false);
 
-    // 加载分类数据
-    const loadCategories = async () => {
-      try {
-        const response = await instructionService.getInstructionCategoriesWithInstructions();
-        if (response.success && response.data) {
-          categories.value = response.data;
-          // 如果有分类数据，且不是编辑模式，且没有选中的分类，则自动选择第一个分类
-          if (categories.value.length > 0 && !isEdit.value && !formData.category) {
-            formData.category = categories.value[0].id;
-          }
-        }
-      } catch (error) {
-        console.error('加载分类失败:', error);
+    // 监听分类数据变化，自动选择第一个分类（如果需要）
+    watch(categories, (newCategories) => {
+      if (newCategories.length > 0 && !isEdit.value && !formData.category) {
+        formData.category = newCategories[0].id;
       }
-    };
+    }, { immediate: true });
 
     // 重置表单
     const resetForm = () => {
@@ -485,7 +505,8 @@ export default defineComponent({
       formData.icon = 'code';
       formData.params = [];
       formData.sort_order = 1;
-      formData.python_script = `def execute(params):
+      formData.python_script = `# 请输入Python脚本代码
+def execute(params):
     # 请在这里编写指令的Python代码
     # 参数可以通过params字典获取，如params['param_name']
     # 处理结果请通过return返回
@@ -523,7 +544,8 @@ export default defineComponent({
             description: param.description || '',
             default_value: param.default_value !== undefined ? param.default_value : '',
             direction: param.direction !== undefined ? param.direction : 0, // 默认设置为输入参数
-            api_url: param.api_url || ''
+            api_url: param.api_url || '',
+            event_script: param.event_script || ''
           };
           
           return cleanParam;
@@ -550,13 +572,6 @@ export default defineComponent({
         errors.name = '请输入指令名称';
         isValid = false;
       }
-      
-      // 指令描述不再是必填项
-      // if (!formData.description.trim()) {
-      //   errors.description = '请输入指令描述';
-      //   isValid = false;
-      // }
-      
       if (!formData.category) {
         errors.category = '请选择指令分类';
         isValid = false;
@@ -587,7 +602,13 @@ export default defineComponent({
         if (!param.label.trim()) {
           errors[`param_${index}_label`] = '请输入参数中文名称';
           isValid = false;
-        }         
+        }
+        
+        // 验证按钮事件类型的事件脚本
+        if (param.type === 'button_event' && !param.event_script?.trim()) {
+          errors[`param_${index}_event_script`] = '请输入事件脚本';
+          isValid = false;
+        }
       });
       
       return isValid;
@@ -766,6 +787,16 @@ export default defineComponent({
         param.default_value = 0;
       } else {
         param.default_value = '';
+      }
+      
+      // 只有下拉单选框需要api_url，其他类型清空
+      if (param.type !== 'select') {
+        param.api_url = '';
+      }
+      
+      // 只有按钮事件类型需要event_script，其他类型清空
+      if (param.type !== 'button_event') {
+        param.event_script = '';
       }      
     };
 
@@ -801,7 +832,8 @@ export default defineComponent({
               description: param.description,
               default_value: param.default_value,
               direction: param.direction,
-              api_url: param.api_url
+              api_url: param.api_url,
+              event_script: param.event_script
             };
           })
         };
@@ -862,7 +894,7 @@ export default defineComponent({
 
     // 组件挂载时加载分类数据
     onMounted(() => {
-      loadCategories();
+      instructionStore.fetchAllData();
     });
 
     return {
@@ -910,8 +942,8 @@ export default defineComponent({
 
 /* 表单区域 */
 .form-section {
-  margin-bottom: 24px;
-  padding-bottom: 16px;
+  margin-bottom: 2px;
+  padding-bottom: 2px;
   border-bottom: 1px solid #e1e8ed;
 }
 
@@ -939,13 +971,13 @@ export default defineComponent({
 .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin-bottom: 16px;
+  gap: 4px;
 }
 
 /* 表单项目 */
 .form-item {
-  margin-bottom: 2px;
+  margin-bottom: 4px;
+  position: relative; /* 设置为相对定位，作为错误提示的定位容器 */
 }
 
 .form-label {
@@ -1028,9 +1060,38 @@ export default defineComponent({
 }
 
 .error-message {
-  margin-top: 4px;
+  /* 将错误提示改为绝对定位，浮动显示 */
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 2px;
   font-size: 12px;
   color: #ef4444;
+  background-color: #fef2f2;
+  border: 1px solid #fee2e2;
+  border-radius: 4px;
+  padding: 4px 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  /* 添加动画效果，让错误提示显示更平滑 */
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* 错误提示淡入动画 */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .char-count {
