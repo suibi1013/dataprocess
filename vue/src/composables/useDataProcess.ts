@@ -141,6 +141,11 @@ function createDataProcessInstance() {
   const canvasGraph = ref<Graph | null>(null);
   const canvasContainer = ref<HTMLElement | null>(null);
   
+  // 序号标识与节点id的映射字典
+  const nodeIdToSerialMap = ref<Map<string, number>>(new Map());
+  // 节点序号计数器
+  const serialCounter = ref(1);
+  
   // 拖拽事件监听器引用，用于清理
   const dragEventListeners = ref<{
     dragover?: (_e: DragEvent) => void;
@@ -340,6 +345,10 @@ function createDataProcessInstance() {
   const initializeCanvas = async () => {
     cleanupCanvas();
     await nextTick();
+    
+    // 重置节点序号映射和计数器
+    nodeIdToSerialMap.value.clear();
+    serialCounter.value = 1;
     
     const container = document.getElementById('data-process-canvas');
     if (!container) {
@@ -613,14 +622,36 @@ function createDataProcessInstance() {
           // 格式化参数信息 - 每个参数作为单独的表单项显示
           let paramsHtml = '';
           if (nodeData.params && typeof nodeData.params === 'object' && Object.keys(nodeData.params).length > 0) {
+            // 处理参数值中的节点id，替换为序号标识
+            const processParamValue = (value: any) => {
+              if (typeof value === 'string') {
+                // 使用正则表达式匹配 {{节点id.节点参数名}} 格式，确保匹配下划线
+                return value.replace(/\{\{([\w_]+)\.(\w+)\}\}/g, (match, nodeId, paramName) => {
+                  // 从映射字典中获取序号标识
+                  const serialNumber = nodeIdToSerialMap.value.get(nodeId);
+                  if (serialNumber) {
+                    // 替换为【序号标识.节点参数名】格式
+                    return `{{#${serialNumber}.${paramName}}}`;
+                  }
+                  // 如果没有找到对应的序号，保持原样
+                  return match;
+                });
+              }
+              return value;
+            };
+            
             // 为每个参数创建单独的表单项元素，确保每行显示一个参数
             paramsHtml = Object.entries(nodeData.params)
-              .map(([key, value]) => `
-                <div style="margin-bottom: 3px; display: flex; align-items: flex-start;">
-                  <div style="font-weight: 500; color: #2c5282; font-size: 12px; margin-right: 6px; min-width: 60px;">${key}:</div>
-                  <div style="color: #4a5759; font-size: 12px; flex: 1; word-break: break-all;">${JSON.stringify(value)}</div>
-                </div>
-              `)
+              .map(([key, value]) => {
+                // 处理参数值
+                const processedValue = processParamValue(value);
+                return `
+                  <div style="margin-bottom: 3px; display: flex; align-items: flex-start;">
+                    <div style="font-weight: 500; color: #2c5282; font-size: 12px; margin-right: 6px; min-width: 60px;">${key}:</div>
+                    <div style="color: #4a5759; font-size: 12px; flex: 1; word-break: break-all;">${JSON.stringify(processedValue)}</div>
+                  </div>
+                `;
+              })
               .join('');
           } else {
             paramsHtml = '<div style="color: #2d3748; font-size: 12px;">无参数</div>';
@@ -1251,6 +1282,11 @@ function createDataProcessInstance() {
 
     const nodeId = `node_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
+    // 为新节点分配序号
+    const serialNumber = serialCounter.value++;
+    // 将序号和节点id添加到映射字典
+    nodeIdToSerialMap.value.set(nodeId, serialNumber);
+    
     // 调整坐标，使鼠标位置对应节点中心
     const nodeWidth = 120;
     const nodeHeight = 40;
@@ -1270,13 +1306,16 @@ function createDataProcessInstance() {
       });
     }
     
+    // 生成带序号的节点名称
+    const nodeLabel = `${serialNumber}-${instruction.name}`;
+    
     const nodeData: CanvasNode = {
       id: nodeId,
       instructionId: instruction.id,
       x: adjustedX,
       y: adjustedY,
       params: nodeParams,
-      label: instruction.name, // 添加label字段，设置为指令名称
+      label: nodeLabel, // 添加label字段，设置为带序号的指令名称
       description: '' // 初始化描述信息为空字符串
     };
 
@@ -1303,7 +1342,7 @@ function createDataProcessInstance() {
             ry: 4
           },
           label: {
-            text: instruction.name,
+            text: nodeLabel,
             fill: '#333',
             fontSize: 12,
             textAnchor: 'middle',
@@ -1872,10 +1911,19 @@ function createDataProcessInstance() {
           try {
             // 使用简单的方式创建节点
             const nodeId = nodeData.id; // 直接使用流程中保存的ID
+            
+            // 为节点分配序号
+            const serialNumber = serialCounter.value++;
+            // 将序号和节点id添加到映射字典
+            nodeIdToSerialMap.value.set(nodeId, serialNumber);
+            
             const nodeWidth = 120;
             const nodeHeight = 40;
             const adjustedX = nodeData.x - nodeWidth / 2;
             const adjustedY = nodeData.y - nodeHeight / 2;
+            
+            // 生成带序号的节点名称
+            const nodeLabel = `${serialNumber}-${instruction.name}`;
             
             // 创建节点 - 优化端口配置
             const node = canvasGraph.value.addNode({
@@ -1885,7 +1933,7 @@ function createDataProcessInstance() {
               width: nodeWidth,
               height: nodeHeight,
               data: {
-                label: instruction.name,
+                label: nodeLabel,
                 instructionId: instruction.id,
                 params: nodeData.params || {},
                 description: nodeData.description || '', // 确保description属性存在
@@ -1899,7 +1947,7 @@ function createDataProcessInstance() {
                   ry: 4
                 },
                 label: {
-                  text: instruction.name,
+                  text: nodeLabel,
                   fill: '#333',
                   fontSize: 12,
                   textAnchor: 'middle',

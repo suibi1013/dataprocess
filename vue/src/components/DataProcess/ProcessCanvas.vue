@@ -165,6 +165,8 @@ const setupCanvasEventListeners = () => {
 
 // 添加窗口大小变化事件监听器，处理浏览器窗口大小变化
 let resizeObserver: ResizeObserver | null = null;
+// 防抖定时器
+let resizeTimer: number | null = null;
 // 组件挂载时设置事件监听器
 onMounted(() => {
   setupCanvasEventListeners(); 
@@ -174,7 +176,13 @@ onMounted(() => {
   const canvasContainer = document.getElementById('data-process-canvas-container');
   if (canvasContainer) {
     resizeObserver = new ResizeObserver(() => {
-      resizeCanvas();
+      // 添加防抖处理，避免频繁触发导致循环
+      if (resizeTimer) {
+        clearTimeout(resizeTimer);
+      }
+      resizeTimer = window.setTimeout(() => {
+        resizeCanvas();
+      }, 100);
     });
     resizeObserver.observe(canvasContainer);
   }
@@ -182,6 +190,11 @@ onMounted(() => {
 onUnmounted(() => {
   // 组件卸载时清理
   try {    
+    // 清除防抖定时器
+    if (resizeTimer) {
+      clearTimeout(resizeTimer);
+      resizeTimer = null;
+    }
     // 移除ResizeObserver
     if (resizeObserver) {
       resizeObserver.disconnect();

@@ -34,30 +34,44 @@
             <div class="form-item">
               <label class="form-label">标签文本</label>
               <div class="input-with-variable" style="position: relative; display: flex; align-items: center; margin-bottom: 2px;">
-                <input type="text" class="form-input"
+                <el-input 
+                  type="text" 
+                  class="form-input"
                   :placeholder="'请输入连线标签文本'"
-                  :value="props.paramsPanel.params?.label || ''"
-                  @input="updateEdgeLabel(($event.target as HTMLInputElement).value)" />
-                <button type="button" class="variable-select-btn"
-                  @click="onToggleVariableSelector('label', 'string')" title="选择变量"
-                  :data-param-name="'label'">
+                  :model-value="props.paramsPanel.params?.label || ''"
+                  @update:model-value="updateEdgeLabel"
+                ></el-input>
+                <el-button 
+                  type="button" 
+                  class="variable-select-btn"
+                  @click="onToggleVariableSelector('label', 'string')" 
+                  title="选择变量"
+                  :data-param-name="'label'"
+                >
                   x
-                </button>
+                </el-button>
               </div>
               <div class="form-help">设置连线的标签文本，点击x按钮可插入变量</div>
             </div>
             <div class="form-item">
               <label class="form-label">逻辑表达式</label>
               <div class="input-with-variable" style="position: relative; display: flex; align-items: center; margin-bottom: 2px;">
-                <input type="text" class="form-input"
+                <el-input 
+                  type="text" 
+                  class="form-input"
                   :placeholder="'请输入逻辑表达式'"
-                  :value="props.paramsPanel.params?.logic_express || ''"
-                  @input="updateEdgeLogicExpress(($event.target as HTMLInputElement).value)" />
-                <button type="button" class="variable-select-btn"
-                  @click="onToggleVariableSelector('logic_express', 'string')" title="选择变量"
-                  :data-param-name="'logic_express'">
+                  :model-value="props.paramsPanel.params?.logic_express || ''"
+                  @update:model-value="updateEdgeLogicExpress"
+                ></el-input>
+                <el-button 
+                  type="button" 
+                  class="variable-select-btn"
+                  @click="onToggleVariableSelector('logic_express', 'string')" 
+                  title="选择变量"
+                  :data-param-name="'logic_express'"
+                >
                   x
-                </button>
+                </el-button>
               </div>
               <div class="form-help">设置连线的逻辑表达式，用于条件判断</div>
             </div>
@@ -101,11 +115,15 @@
                       />
                     </template>
                   </el-input>
-                  <button type="button" class="variable-select-btn"
-                    @click="onToggleVariableSelector(item.param?.name || item.name, 'number')" title="选择变量"
-                    :data-param-name="item.param?.name || item.name">
+                  <el-button 
+                    type="button" 
+                    class="variable-select-btn"
+                    @click="onToggleVariableSelector(item.param?.name || item.name, 'number')" 
+                    title="选择变量"
+                    :data-param-name="item.param?.name || item.name"
+                  >
                     x
-                  </button>
+                  </el-button>
                 </div>
 
                 <!-- 文本输入框 - 复合型输入框 -->
@@ -129,11 +147,15 @@
                       />
                     </template>
                   </el-input>
-                  <button type="button" class="variable-select-btn"
-                    @click="onToggleVariableSelector(item.param?.name || item.name, 'string')" title="选择变量"
-                    :data-param-name="item.param?.name || item.name">
+                  <el-button 
+                    type="button" 
+                    class="variable-select-btn"
+                    @click="onToggleVariableSelector(item.param?.name || item.name, 'string')" 
+                    title="选择变量"
+                    :data-param-name="item.param?.name || item.name"
+                  >
                     x
-                  </button>
+                  </el-button>
                 </div>
                 
                 <!-- excel文件路径选择器 (select_excelpath类型) - 使用级联选择器 -->
@@ -159,24 +181,29 @@
 
                 <!-- 开关选择器 (boolean类型) -->
                 <div v-else-if="(item.param?.type === 'boolean' || item.type === 'boolean')" class="switch-container" style="margin-bottom: 2px;">
-                  <label class="switch-label">
-                    <input type="checkbox" class="switch-input" :checked="!!item.value"
-                      @change="updateParamValue(item.param?.name || item.name, ($event.target as HTMLInputElement).checked)" />
-                    <span class="switch-slider"></span>
-                  </label>
+                  <el-switch 
+                    v-model="item.value"
+                    @change="updateParamValue(item.param?.name || item.name, $event)"
+                  ></el-switch>
                 </div>
 
                 <!-- 文件上传 (file类型) -->
                 <div v-else-if="(item.param?.type === 'file' || item.type === 'file')" class="upload-container" style="margin-bottom: 2px;">
-                  <label :for="'file-upload-' + (item.param?.name || item.name)" class="upload-button">
-                    {{ item.value ? '更换文件' : '选择文件' }}
-                  </label>
-                  <input :id="'file-upload-' + (item.param?.name || item.name)" type="file" class="upload-input"
-                    @change="onHandleFileUpload(item.param?.name || item.name, $event)" />
-                  <div v-if="item.value" class="upload-file-info">
+                  <el-upload 
+                    :file-list="item.value ? [{name: onGetFileNameFromPath(item.value), url: item.value}] : []"
+                    :auto-upload="false"
+                    :on-change="(uploadFile) => onHandleFileUpload(item.param?.name || item.name, { target: { files: [uploadFile.raw] } } as any)"
+                    accept=".*"
+                  >
+                    <el-button type="primary">{{ item.value ? '更换文件' : '选择文件' }}</el-button>
+                  </el-upload>
+                  <div v-if="item.value" class="upload-file-info" style="margin-top: 10px;">
                     {{ onGetFileNameFromPath(item.value) }}
-                    <button type="button" class="remove-file-btn"
-                      @click="updateParamValue(item.param?.name || item.name, null)">移除</button>
+                    <el-button 
+                      type="text" 
+                      class="remove-file-btn"
+                      @click="updateParamValue(item.param?.name || item.name, null)"
+                    >移除</el-button>
                   </div>
                 </div>
 
@@ -205,22 +232,23 @@
 
                 <!-- 列选择器 -->
                 <div v-else-if="(item.param?.type === 'column' || item.type === 'column')" class="column-selector" style="margin-bottom: 2px;">
-                  <select v-if="!item.param?.multiple && !item.multiple" class="form-select" :value="item.value"
-                    @change="updateParamValue(item.param?.name || item.name, ($event.target as HTMLSelectElement).value)">
-                    <option value="">请选择列</option>
-                    <option v-for="column in availableColumns" :key="column" :value="column">
-                      {{ column }}
-                    </option>
-                  </select>
+                  <el-select 
+                    v-if="!item.param?.multiple && !item.multiple" 
+                    class="form-select" 
+                    :model-value="item.value"
+                    @update:model-value="updateParamValue(item.param?.name || item.name, $event)"
+                    placeholder="请选择列"
+                  >
+                    <el-option v-for="column in availableColumns" :key="column" :value="column" :label="column"></el-option>
+                  </el-select>
 
                   <div v-else class="multi-column-selector">
-                    <div v-for="column in availableColumns" :key="column" class="column-option">
-                      <label class="checkbox-label">
-                        <input type="checkbox" :value="column" :checked="(item.value || []).includes(column)"
-                          @change="updateMultiColumnValue(item.param?.name || item.name, column, ($event.target as HTMLInputElement).checked)" />
-                        <span>{{ column }}</span>
-                      </label>
-                    </div>
+                    <el-checkbox-group 
+                      v-model="item.value" 
+                      @change="(values) => updateParamValue(item.param?.name || item.name, values)"
+                    >
+                      <el-checkbox v-for="column in availableColumns" :key="column" :label="column"></el-checkbox>
+                    </el-checkbox-group>
                   </div>
                 </div>
 
@@ -264,12 +292,14 @@
                         @click="toggleInputType(item.param?.name || item.name)" 
                         title="切换输入类型（表达式/文本）" 
                       />
-                  <textarea 
+                  <el-input 
+                    type="textarea"
                     class="form-textarea"
                     :placeholder="item.param?.placeholder || item.placeholder || '请输入' + (item.param?.label || item.label)"
-                    :value="item.value"
-                    @input="updateParamValue(item.param?.name || item.name, ($event.target as HTMLTextAreaElement).value)"
-                    rows="3"></textarea>
+                    v-model="item.value"
+                    @input="updateParamValue(item.param?.name || item.name, $event)"
+                    :rows="3"
+                  ></el-input>
                 </div>
 
                 <!-- 参数描述信息 -->
@@ -377,24 +407,29 @@
 
                 <!-- 开关选择器 (boolean类型) -->
                 <div v-else-if="(item.param?.type === 'boolean' || item.type === 'boolean')" class="switch-container" style="margin-bottom: 2px;">
-                  <label class="switch-label">
-                    <input type="checkbox" class="switch-input" :checked="!!item.value"
-                      @change="updateParamValue(item.param?.name || item.name, ($event.target as HTMLInputElement).checked)" />
-                    <span class="switch-slider"></span>
-                  </label>
+                  <el-switch 
+                    v-model="item.value"
+                    @change="updateParamValue(item.param?.name || item.name, $event)"
+                  ></el-switch>
                 </div>
 
                 <!-- 文件上传 (file类型) -->
                 <div v-else-if="(item.param?.type === 'file' || item.type === 'file')" class="upload-container" style="margin-bottom: 2px;">
-                  <label :for="'file-upload-' + (item.param?.name || item.name)" class="upload-button">
-                    {{ item.value ? '更换文件' : '选择文件' }}
-                  </label>
-                  <input :id="'file-upload-' + (item.param?.name || item.name)" type="file" class="upload-input"
-                    @change="onHandleFileUpload(item.param?.name || item.name, $event)" />
-                  <div v-if="item.value" class="upload-file-info">
+                  <el-upload 
+                    :file-list="item.value ? [{name: onGetFileNameFromPath(item.value), url: item.value}] : []"
+                    :auto-upload="false"
+                    :on-change="(uploadFile) => onHandleFileUpload(item.param?.name || item.name, { target: { files: [uploadFile.raw] } } as any)"
+                    accept=".*"
+                  >
+                    <el-button type="primary">{{ item.value ? '更换文件' : '选择文件' }}</el-button>
+                  </el-upload>
+                  <div v-if="item.value" class="upload-file-info" style="margin-top: 10px;">
                     {{ onGetFileNameFromPath(item.value) }}
-                    <button type="button" class="remove-file-btn"
-                      @click="updateParamValue(item.param?.name || item.name, null)">移除</button>
+                    <el-button 
+                      type="text" 
+                      class="remove-file-btn"
+                      @click="updateParamValue(item.param?.name || item.name, null)"
+                    >移除</el-button>
                   </div>
                 </div>
 
@@ -423,22 +458,23 @@
 
                 <!-- 列选择器 -->
                 <div v-else-if="(item.param?.type === 'column' || item.type === 'column')" class="column-selector" style="margin-bottom: 2px;">
-                  <select v-if="!item.param?.multiple && !item.multiple" class="form-select" :value="item.value"
-                    @change="updateParamValue(item.param?.name || item.name, ($event.target as HTMLSelectElement).value)">
-                    <option value="">请选择列</option>
-                    <option v-for="column in availableColumns" :key="column" :value="column">
-                      {{ column }}
-                    </option>
-                  </select>
+                  <el-select 
+                    v-if="!item.param?.multiple && !item.multiple" 
+                    class="form-select" 
+                    :model-value="item.value"
+                    @update:model-value="updateParamValue(item.param?.name || item.name, $event)"
+                    placeholder="请选择列"
+                  >
+                    <el-option v-for="column in availableColumns" :key="column" :value="column" :label="column"></el-option>
+                  </el-select>
 
                   <div v-else class="multi-column-selector">
-                    <div v-for="column in availableColumns" :key="column" class="column-option">
-                      <label class="checkbox-label">
-                        <input type="checkbox" :value="column" :checked="(item.value || []).includes(column)"
-                          @change="onUpdateMultiColumnValue(item.param?.name || item.name, column, ($event.target as HTMLInputElement).checked)" />
-                        <span>{{ column }}</span>
-                      </label>
-                    </div>
+                    <el-checkbox-group 
+                      v-model="item.value" 
+                      @change="(values) => updateParamValue(item.param?.name || item.name, values)"
+                    >
+                      <el-checkbox v-for="column in availableColumns" :key="column" :label="column"></el-checkbox>
+                    </el-checkbox-group>
                   </div>
                 </div>
 
@@ -481,12 +517,14 @@
                         @click="toggleInputType(item.param?.name || item.name)" 
                         title="切换输入类型（表达式/文本）" 
                       />
-                  <textarea 
+                  <el-input 
+                    type="textarea"
                     class="form-textarea"
                     :placeholder="item.param?.placeholder || item.placeholder || '请输入' + (item.param?.label || item.label)"
-                    :value="item.value"
-                    @input="updateParamValue(item.param?.name || item.name, ($event.target as HTMLTextAreaElement).value)"
-                    rows="3"></textarea>
+                    v-model="item.value"
+                    @input="updateParamValue(item.param?.name || item.name, $event)"
+                    :rows="3"
+                  ></el-input>
                 </div>
 
                 <!-- 参数描述信息 -->
@@ -593,24 +631,29 @@
 
                 <!-- 开关选择器 (boolean类型) -->
                 <div v-else-if="(item.param?.type === 'boolean' || item.type === 'boolean')" class="switch-container">
-                  <label class="switch-label">
-                    <input type="checkbox" class="switch-input" :checked="!!item.value"
-                      @change="updateParamValue(item.param?.name || item.name, ($event.target as HTMLInputElement).checked)" />
-                    <span class="switch-slider"></span>
-                  </label>
+                  <el-switch 
+                    v-model="item.value"
+                    @change="updateParamValue(item.param?.name || item.name, $event)"
+                  ></el-switch>
                 </div>
 
                 <!-- 文件上传 (file类型) -->
                 <div v-else-if="(item.param?.type === 'file' || item.type === 'file')" class="upload-container">
-                  <label :for="'file-upload-' + (item.param?.name || item.name)" class="upload-button">
-                    {{ item.value ? '更换文件' : '选择文件' }}
-                  </label>
-                  <input :id="'file-upload-' + (item.param?.name || item.name)" type="file" class="upload-input"
-                    @change="onHandleFileUpload(item.param?.name || item.name, $event)" />
-                  <div v-if="item.value" class="upload-file-info">
+                  <el-upload 
+                    :file-list="item.value ? [{name: onGetFileNameFromPath(item.value), url: item.value}] : []"
+                    :auto-upload="false"
+                    :on-change="(uploadFile) => onHandleFileUpload(item.param?.name || item.name, { target: { files: [uploadFile.raw] } } as any)"
+                    accept=".*"
+                  >
+                    <el-button type="primary">{{ item.value ? '更换文件' : '选择文件' }}</el-button>
+                  </el-upload>
+                  <div v-if="item.value" class="upload-file-info" style="margin-top: 10px;">
                     {{ onGetFileNameFromPath(item.value) }}
-                    <button type="button" class="remove-file-btn"
-                      @click="updateParamValue(item.param?.name || item.name, null)">移除</button>
+                    <el-button 
+                      type="text" 
+                      class="remove-file-btn"
+                      @click="updateParamValue(item.param?.name || item.name, null)"
+                    >移除</el-button>
                   </div>
                 </div>
 
@@ -639,22 +682,23 @@
 
                 <!-- 列选择器 -->
                 <div v-else-if="(item.param?.type === 'column' || item.type === 'column')" class="column-selector">
-                  <select v-if="!item.param?.multiple && !item.multiple" class="form-select" :value="item.value"
-                    @change="updateParamValue(item.param?.name || item.name, ($event.target as HTMLSelectElement).value)">
-                    <option value="">请选择列</option>
-                    <option v-for="column in availableColumns" :key="column" :value="column">
-                      {{ column }}
-                    </option>
-                  </select>
+                  <el-select 
+                    v-if="!item.param?.multiple && !item.multiple" 
+                    class="form-select" 
+                    :model-value="item.value"
+                    @update:model-value="updateParamValue(item.param?.name || item.name, $event)"
+                    placeholder="请选择列"
+                  >
+                    <el-option v-for="column in availableColumns" :key="column" :value="column" :label="column"></el-option>
+                  </el-select>
 
                   <div v-else class="multi-column-selector">
-                    <div v-for="column in availableColumns" :key="column" class="column-option">
-                      <label class="checkbox-label">
-                        <input type="checkbox" :value="column" :checked="(item.value || []).includes(column)"
-                          @change="onUpdateMultiColumnValue(item.param?.name || item.name, column, ($event.target as HTMLInputElement).checked)" />
-                        <span>{{ column }}</span>
-                      </label>
-                    </div>
+                    <el-checkbox-group 
+                      v-model="item.value" 
+                      @change="(values) => updateParamValue(item.param?.name || item.name, values)"
+                    >
+                      <el-checkbox v-for="column in availableColumns" :key="column" :label="column"></el-checkbox>
+                    </el-checkbox-group>
                   </div>
                 </div>
 
@@ -697,12 +741,14 @@
                         @click="toggleInputType(item.param?.name || item.name)" 
                         title="切换输入类型（表达式/文本）" 
                       />
-                  <textarea 
+                  <el-input 
+                    type="textarea"
                     class="form-textarea"
                     :placeholder="item.param?.placeholder || item.placeholder || '请输入' + (item.param?.label || item.label)"
-                    :value="item.value"
-                    @input="updateParamValue(item.param?.name || item.name, ($event.target as HTMLTextAreaElement).value)"
-                    rows="3"></textarea>
+                    v-model="item.value"
+                    @input="updateParamValue(item.param?.name || item.name, $event)"
+                    :rows="3"
+                  ></el-input>
                 </div>
 
                 <!-- 参数描述信息 -->
@@ -744,8 +790,8 @@
 </template>
 
 <script setup lang="ts">
-import { ElSelect, ElOption, ElButton, ElIcon, ElCascader, ElNotification } from 'element-plus';
 import { VideoPlay, DocumentChecked } from '@element-plus/icons-vue';
+import { ElNotification } from 'element-plus';
 import { ref, computed, watch } from 'vue';
 import VariableSelector from './VariableSelector.vue';
 import { useDataProcess } from '@/composables/useDataProcess';
@@ -1409,41 +1455,7 @@ const getPanelTitle = () => {
   return '参数设置';
 };
 
-// 更新多列选择值
-const updateMultiColumnValue = (paramName: string, columnName: string, checked: boolean) => {
-  // 首先检查输入参数
-  let currentValue = inputParams.value.find(item => (item.param?.name === paramName || item.name === paramName))?.value || [];
-  // 如果输入参数中没有找到，检查输出参数
-  if (currentValue.length === 0) {
-    currentValue = outputParams.value.find(item => (item.param?.name === paramName || item.name === paramName))?.value || [];
-  }
 
-  let newValue;
-
-  if (checked) {
-    newValue = [...currentValue, columnName];
-  } else {
-    newValue = currentValue.filter((col: string) => col !== columnName);
-  }
-
-  updateParamValue(paramName, newValue);
-};
-
-// 回写参数的多列选择更新函数
-const onUpdateMultiColumnValue = (paramName: string, columnName: string, checked: boolean) => {
-  // 首先检查回写参数
-  let currentValue = writebackParams.value.find(item => (item.param?.name === paramName || item.name === paramName))?.value || [];
-
-  let newValue;
-
-  if (checked) {
-    newValue = [...currentValue, columnName];
-  } else {
-    newValue = currentValue.filter((col: string) => col !== columnName);
-  }
-
-  updateParamValue(paramName, newValue);
-};
 
 
 
