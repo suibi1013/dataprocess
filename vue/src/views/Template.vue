@@ -275,8 +275,8 @@ function showStatus(message: string, type: 'success' | 'error') {
 
 // 编辑模板
 function editTemplate(templateId: string) {
-  // 跳转到模板编辑页面
-  window.location.href = `/template/editor?template=${templateId}`
+  // 使用Vue Router的push方法跳转到模板编辑页面，避免404错误
+  window.location.href = `/#/template/editor?template=${templateId}`
 }
 
 // 删除模板
