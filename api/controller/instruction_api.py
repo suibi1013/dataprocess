@@ -29,7 +29,7 @@ async def get_instruction_list(
 ):
     """获取指令列表"""
     try:
-        response = await instruction_service.get_instruction_list()
+        response = await instruction_service.get_instruction_list(get_active=False)
         
         if response.success:
             return {
@@ -50,7 +50,33 @@ async def get_instruction_list(
             "data": None,
             "message": f"获取指令列表失败: {str(e)}"
         }
-
+@router.get("/instructions/active")
+async def get_instruction_active_list(
+    instruction_service: InstructionService = Depends(lambda: inject(InstructionService))
+):
+    """获取指令列表"""
+    try:
+        response = await instruction_service.get_instruction_list(get_active=True)
+        
+        if response.success:
+            return {
+                "success": True,
+                "data": response.data.dict(),
+                "message": response.message
+            }
+        else:
+            return {
+                "success": False,
+                "data": None,
+                "message": response.message
+            }
+            
+    except Exception as e:
+        return {
+            "success": False,
+            "data": None,
+            "message": f"获取指令列表失败: {str(e)}"
+        }
 @router.post("/instruction/category/create")
 async def create_category(
     request: CreateInstructionCategoryRequest,

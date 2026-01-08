@@ -138,6 +138,8 @@ function createDataProcessInstance() {
   const selectedNode = ref<Node | null>(null);
   // 选中的边状态
   const selectedEdge = ref<any>(null);
+  // 是否有选中的节点
+  const hasSelectedNodes = ref(false);
   
   // 指令列表
   const instructionCategories = ref<InstructionCategory[]>([]);
@@ -330,7 +332,7 @@ function createDataProcessInstance() {
     instructionLoading.value = true;
     try {
       // 使用新的统一接口一次性获取指令分类和指令数据
-      const response = await instructionService.getInstructionCategoriesWithInstructions();
+      const response = await instructionService.getInstructionCategoriesWithInstructionsActive();
       
       if (response.success && response.data) {
         instructionCategories.value = response.data;
@@ -585,6 +587,16 @@ function createDataProcessInstance() {
         showParamsPanel(node);
       }
     });
+    
+    // 监听Selection插件的选择变化事件
+    const selectionPlugin = canvasGraph.value.getPlugin('selection') as Selection;
+    if (selectionPlugin) {
+      selectionPlugin.on('selection:changed', (e: { selected?: any[] }) => {
+        const selectedCells = e.selected || [];
+        // 更新选中状态
+        hasSelectedNodes.value = selectedCells.length > 0;
+      });
+    }
     
     // 节点鼠标悬停事件 - 显示连接桩和节点信息提示
     canvasGraph.value.on('node:mouseenter', ({ node }) => {
@@ -2651,6 +2663,7 @@ function createDataProcessInstance() {
     modalState,
     selectedNode,
     selectedEdge,
+    hasSelectedNodes,
     instructionCategories,
     instructionLoading,
     dataSourceInfoCache,

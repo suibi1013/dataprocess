@@ -77,13 +77,17 @@ class InstructionService:
             print(f"获取指令信息失败: {str(e)}")
             return None
     
-    async def get_instruction_list(self) -> ApiResponse[InstructionListResponse]:
+    async def get_instruction_list(self,get_active:bool=True) -> ApiResponse[InstructionListResponse]:
         """获取指令列表"""
         try:
             # 使用仓储类获取所有激活的分类
-            category_entities = self.category_repo.find_active()
+            category_entities = self.category_repo.find_active()            
             # 使用仓储类获取所有指令项目
-            item_entities = self.item_repo.find_all()
+            item_entities:List[InstructionItem] =[]
+            if get_active:
+                item_entities = self.item_repo.find_active()
+            else:
+                item_entities = self.item_repo.find_all()
             
             # 构建分类和项目的关联关系
             categories = []

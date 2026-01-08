@@ -113,6 +113,15 @@
         </button>
         <button 
           type="button" 
+          class="btn btn-info"
+          @click="debugSelectedNode"
+          :disabled="isExecuting || !hasSelectedNodes"
+        >
+          <el-icon><Bug /></el-icon>
+          调试节点
+        </button>
+        <button 
+          type="button" 
           class="btn btn-success"
           @click="saveProcess"
         >
@@ -143,7 +152,7 @@ import DataPreviewModal from '@/components/DataPreviewModal.vue';
   import ParameterPanel from '@/components/DataProcess/ParameterPanel.vue';
   import type { SheetData, DataSelection } from '@/types/dataExtraction';
   import { ElIcon } from 'element-plus';
-  import { Loading } from '@element-plus/icons-vue';
+  import { Loading, Bug } from '@element-plus/icons-vue';
   import { downloadFile } from '@/utils/fileUtils';
 
 // Props
@@ -173,6 +182,7 @@ const {
   instructionLoading,
   selectedNode: canvasSelectedNode,
   selectedEdge: canvasSelectedEdge,
+  hasSelectedNodes,
   showDataProcessModal,
   hideDataProcessModal,
   resetDataProcessModal,
@@ -181,6 +191,9 @@ const {
   canvasGraph,
   resizeCanvas
 } = useDataProcess();
+
+// 导入数据处理服务
+import { dataProcessService } from '@/services/dataProcessService';
 
 // 使用单例实例中的计算属性，确保状态同步
 const isExecuting = computed(() => modalState.executing);
@@ -927,6 +940,181 @@ const executeProcess = async () => {
       success: false,
       title: '执行失败',
       message: '流程执行失败',
+      details: error instanceof Error ? error.message : '未知错误',
+      finalResult: undefined
+    };
+    showResultModal.value = true;
+  } finally {
+    processing.value = false;
+  }
+};
+
+// 调试选中节点
+const debugSelectedNode = async () => {
+  console.log('debugSelectedNode')
+  // 检查是否有选中的节点
+  const selectedCells = canvasGraph.value.getPlugin('selection')?.getSelectedCells() || [];
+  const selectedNodes = selectedCells.filter(cell => cell.isNode());
+  
+  if (selectedNodes.length === 0) {
+    // 显示错误提示
+    resultModalData.value = {
+      success: false,
+      title: '调试失败',
+      message: '请先选择节点进行调试',
+      details: undefined,
+      finalResult: undefined
+    };
+    showResultModal.value = true;
+    return;
+  }
+
+  // 如果正在执行，则不允许调试
+  if (isExecuting.value) {
+    return;
+  }
+
+  processing.value = true;
+  
+  try {    
+    // 获取所有边
+    const allEdges = canvasGraph.value.getEdges();
+    
+    // 获取选中节点之间的边
+    const selectedNodeIds = new Set(selectedNodes.map(node => node.id));
+    const selectedEdges = allEdges.filter(edge => {
+      const sourceId = edge.getSourceCellId();
+      const targetId = edge.getTargetCellId();
+      // 只包含两个端点都在选中节点中的边
+      return selectedNodeIds.has(sourceId) && selectedNodeIds.has(targetId);
+    });
+    
+    // 创建流程对象
+    const flow = {
+      id: undefined,
+      name: `调试_${Date.now()}`,
+      description: `调试节点组_${Date.now()}`,
+      nodes: selectedNodes.map(node => {
+        const nodeData = node.getData();
+        const position = node.getPosition();
+        
+        return {
+          id: node.id,
+          instructionId: nodeData.instructionId,
+          params: nodeData.params || {},
+          input_types: nodeData.inputTypes || { t: [], e: [] },
+          x: position.x,
+          y: position.y,
+          description: nodeData.description || ''
+        };
+      }),
+      edges: selectedEdges.map(edge => {
+        const edgeData = edge.getData();
+        const edgeLabel = edgeData?.label || '';
+        const logicExpress = edgeData?.logic_express || '';
+        
+        return {
+          id: edge.id,
+          source: edge.getSourceCellId(),
+          target: edge.getTargetCellId(),
+          sourcePort: edge.getSourcePortId(),
+          targetPort: edge.getTargetPortId(),
+          label: edgeLabel,
+          logic_express: logicExpress
+        };
+      }) // 包含选中节点之间的边
+    };
+    console.log("flow:",flow)
+    // 执行流程 - 调用与executeProcess相同的API，但只传递选中的节点
+    const response = await dataProcessService.executeDataProcessFlow(flow);
+    
+    if (response) {
+      let finalResult;
+      
+      // 处理结果数据
+      if (response.data) {
+        // 判断是否为文件流结果
+        const resultData = response.data.result?.final_result || response.data;
+        
+        // 判断是否为文件流：检查是否包含特定的文件流标识字段
+        if (resultData && typeof resultData === 'object' && 
+            ('file_data' in resultData || 'file_content' in resultData) && 
+            ('file_name' in resultData || resultData.filename)) {
+          
+          // 自动下载文件
+          const filename = resultData.file_name || resultData.filename || 'download.dat';
+          const fileData = resultData.file_data || resultData.file_content;
+          
+          // 根据数据类型进行适当的转换和下载
+          try {
+            // 如果是base64编码的数据，需要先解码
+            if (typeof fileData === 'string' && fileData.startsWith('data:')) {
+              // 已经是data URL格式
+              const link = document.createElement('a');
+              link.href = fileData;
+              link.download = filename;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+            } else if (typeof fileData === 'string') {
+              // 假设是base64编码的字符串
+              const binaryString = atob(fileData);
+              const len = binaryString.length;
+              const bytes = new Uint8Array(len);
+              for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+              }
+              downloadFile(bytes.buffer, filename);
+            } else {
+              // 直接下载
+              downloadFile(fileData, filename);
+            }
+            
+            // 不显示文件流数据，而是显示下载提示
+            finalResult = `文件已自动下载: ${filename}`;
+          } catch (error) {
+            console.error('文件下载失败:', error);
+            // 下载失败时显示原始数据
+            finalResult = JSON.stringify(resultData, null, 2);
+          }
+        } else {
+          // 非文件流，正常显示
+          finalResult = JSON.stringify(resultData, null, 2);
+        }
+      }
+      
+      // 设置结果模态框数据
+      resultModalData.value = {
+        success: response.success,
+        title: response.success ? '调试成功' : '调试失败',
+        message: response.message || (response.success ? '节点调试完成！' : '节点调试失败'),
+        details: response.data ? JSON.stringify(response.data, null, 2) : (response.message || undefined),
+        finalResult: finalResult
+      };
+      if (!response.success) {
+        resultModalData.value.finalResult = response.message;
+      }
+    } else {
+      // 如果没有返回结果，使用默认的成功信息
+      resultModalData.value = {
+        success: true,
+        title: '调试成功',
+        message: '节点调试完成！',
+        details: undefined,
+        finalResult: undefined
+      };
+    }
+    
+    showResultModal.value = true;
+    emit('success');
+  } catch (error) {
+    console.error('节点调试失败:', error);
+    
+    // 设置错误模态框数据
+    resultModalData.value = {
+      success: false,
+      title: '调试失败',
+      message: '节点调试失败',
       details: error instanceof Error ? error.message : '未知错误',
       finalResult: undefined
     };

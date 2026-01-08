@@ -66,7 +66,55 @@ export class InstructionService implements InstructionApiService {
       throw error;
     }
   }
-
+  /**
+   * 获取指令分类列表（包含激活的指令数据）
+   */
+  async getInstructionCategoriesWithInstructionsActive(): Promise<ApiResponse<InstructionCategory[]>> {
+    try {
+      // 调用统一的指令接口
+      const response = await httpClient.get<any>(`${this.basePath}/active`);
+      
+      if (response.data && response.data.categories) {
+        // 转换API数据格式为前端使用格式
+        const categories: InstructionCategory[] = response.data.categories.map((apiCategory: any) => {
+          // 转换分类下的指令
+          const instructions: Instruction[] = (apiCategory.items || []).map((apiInstruction: any) => ({
+            id: apiInstruction.id,
+            name: apiInstruction.name,
+            description: apiInstruction.description,
+            category: apiCategory.id,
+            icon: apiInstruction.icon || 'default-icon',
+            params: apiInstruction.params && Array.isArray(apiInstruction.params) && apiInstruction.params.length > 0 
+              ? apiInstruction.params 
+              : this.extractParamsFromScript(apiInstruction.python_script || ''),
+            inputPorts: 1,
+            outputPorts: 1,
+            sort_order: apiInstruction.sort_order || 1,
+            is_active: apiInstruction.is_active !== undefined ? apiInstruction.is_active : true,
+            python_script: apiInstruction.python_script || ''
+          }));
+          
+          return {
+            id: apiCategory.id,
+            name: apiCategory.name,
+            description: apiCategory.description,
+            expanded: true,
+            instructions: instructions
+          };
+        });
+        
+        return {
+          ...response,
+          data: categories
+        };
+      }
+      
+      return response;
+    } catch (error) {
+      console.error('获取指令分类和指令失败:', error);
+      throw error;
+    }
+  }
   /**
    * 获取指令分类列表
    * @deprecated 建议使用 getInstructionCategoriesWithInstructions 方法

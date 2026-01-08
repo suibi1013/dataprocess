@@ -27,7 +27,7 @@ export class HttpClient {
     this.baseURL = baseURL;
     this.instance = axios.create({
       baseURL,
-      timeout: 180000,
+      timeout: 0,// 超时时长，单位毫秒，0表示不超时
       headers: {
         'Content-Type': 'application/json',
       },
