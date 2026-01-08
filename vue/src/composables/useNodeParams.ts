@@ -69,6 +69,7 @@ export function useNodeParams() {
           result_var_name: 'extractedData'
         };
         node.setData(nodeData);
+        
       }
       
       // 更新本地参数状态

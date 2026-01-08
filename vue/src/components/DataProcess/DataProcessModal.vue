@@ -178,7 +178,8 @@ const {
   resetDataProcessModal,
   resetExecutionState,
   modalState,
-  canvasGraph
+  canvasGraph,
+  resizeCanvas
 } = useDataProcess();
 
 // 使用单例实例中的计算属性，确保状态同步
@@ -448,6 +449,22 @@ const handleShowDataPreview = async (previewData) => {
       // 变量选择器显示时，变量列表将通过后端接口获取
     });
 
+// 防抖函数，避免频繁调用resizeCanvas
+const debounce = (func: Function, delay: number) => {
+  let timeoutId: ReturnType<typeof setTimeout>;
+  return (...args: any[]) => {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => func.apply(null, args), delay);
+  };
+};
+
+// 创建防抖后的resizeCanvas函数
+const debouncedResizeCanvas = debounce(() => {
+  if (canvasGraph.value) {
+    resizeCanvas();
+  }
+}, 100);
+
 // 监听弹窗显示状态（优化生命周期管理）
 watch(() => props.visible, async (visible) => {
   try {
@@ -464,6 +481,15 @@ watch(() => props.visible, async (visible) => {
       
       // 标记画布已初始化
       canvasInitialized.value = true;
+      
+      // 添加窗口resize事件监听
+      window.addEventListener('resize', debouncedResizeCanvas);
+      
+      // 添加模态框容器resize事件监听
+      const modalContainer = document.querySelector('.modal-container');
+      if (modalContainer) {
+        modalContainer.addEventListener('resize', debouncedResizeCanvas);
+      }
     } else {
       // 模态框隐藏时清理
       availableColumns.value = [];
@@ -471,10 +497,30 @@ watch(() => props.visible, async (visible) => {
       clearCanvas();
       hideParamsPanel();
       resetDataProcessModal();
+      
+      // 移除窗口resize事件监听
+      window.removeEventListener('resize', debouncedResizeCanvas);
+      
+      // 移除模态框容器resize事件监听
+      const modalContainer = document.querySelector('.modal-container');
+      if (modalContainer) {
+        modalContainer.removeEventListener('resize', debouncedResizeCanvas);
+      }
     }
   } catch (error) {
     console.error('处理模态框可见性变化时出现错误:', error);
   }
+});
+
+// 监听窗口大小变化，调整画布大小
+onMounted(() => {
+  // 组件挂载时添加窗口resize事件监听
+  window.addEventListener('resize', debouncedResizeCanvas);
+});
+
+onUnmounted(() => {
+  // 组件卸载时移除窗口resize事件监听
+  window.removeEventListener('resize', debouncedResizeCanvas);
 });
 
 // datapath类型参数现在作为普通参数处理，不再需要特殊的watch监听器
@@ -543,7 +589,14 @@ const handleEdgeUpdate = (eventData: { edge: any; label: string; logic_express: 
       ]);      
       
       // 更新参数面板状态
-      Object.assign(paramsPanelState, paramsPanel);
+      if (paramsPanel) {
+        // 手动更新各个属性，确保selectedNode和selectedEdge使用markRaw
+        paramsPanelState.visible = paramsPanel.visible;
+        paramsPanelState.collapsed = paramsPanel.collapsed;
+        paramsPanelState.params = paramsPanel.params;
+        paramsPanelState.nodeData = paramsPanel.nodeData;
+        paramsPanelState.paramFormItems = paramsPanel.paramFormItems;
+      }
       
     } catch (error) {
       console.error('❌ 边标签更新失败:', error);
@@ -610,7 +663,9 @@ const handleEdgeSelected = (edge: any) => {
   const currentLogicExpress = edgeData.logic_express || '';
   
   paramsPanelState.selectedNode = null;
+  // 使用markRaw标记X6边实例，避免Vue响应式系统深度监听导致无限递归
   paramsPanelState.selectedEdge = edge;
+  // 使用深拷贝避免循环引用
   paramsPanelState.params = { label: currentLabel, logic_express: currentLogicExpress };
   paramsPanelState.visible = true;
 };
@@ -621,22 +676,25 @@ const handleNodeUpdate = (nodeData: any) => {
   
   const node = canvasSelectedNode.value;
   
+  // 只提取需要的params属性，避免将paramsPanel对象设置到节点数据中导致循环引用
+  const { params } = nodeData;
+  
   // 更新节点数据
   node.setData({
     ...node.getData(),
-    ...nodeData
+    params
   });
   
   // 同时更新paramsPanelState中的params，确保props.paramsPanel.params值正确更新
-  if (nodeData.params && paramsPanelState) {
-    paramsPanelState.params = { ...nodeData.params };
+  if (params && paramsPanelState) {    
+    paramsPanelState.params = nodeData.params;
     
     // 同步更新paramFormItems中的对应项值
     Object.entries(nodeData.params).forEach(([paramName, value]) => {
       const formItem = paramsPanelState.paramFormItems.find(
         item => item.param?.name === paramName || item.name === paramName
       );
-      if (formItem) {
+      if (formItem) {        
         formItem.value = value;
       }
     });

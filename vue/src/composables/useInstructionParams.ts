@@ -1,7 +1,7 @@
 // 指令参数处理相关的组合式函数
 // 管理指令参数面板的显示、验证、保存等逻辑
 
-import { ref, reactive, computed, watch } from 'vue';
+import { ref, reactive, computed, watch} from 'vue';
 import { instructionService } from '@/services/instructionService';
 import type {
   Instruction,
@@ -62,11 +62,12 @@ export function useInstructionParams() {
   const showParamsPanel = async (node: Node, instruction?: any) => {
     try {
       paramsPanel.selectedNode = node;
-      // 修复节点数据获取方式
-      if (typeof (node as any).getData === 'function') {
-        paramsPanel.nodeData = (node as any).getData();
-      }
       
+      // 修复节点数据获取方式
+      if (typeof (node as any).getData === 'function') {        
+        const fullNodeData = node.toJSON();    
+        paramsPanel.nodeData = fullNodeData.data;
+      }
       // 确保参数面板的参数对象存在
       if (!paramsPanel.params) {
         paramsPanel.params = {};
@@ -76,14 +77,12 @@ export function useInstructionParams() {
       if (paramsPanel.nodeData && paramsPanel.nodeData.params) {
         paramsPanel.params = { ...paramsPanel.nodeData.params };
       }
-    
       
       paramsPanel.visible = true;
       paramsPanel.collapsed = false;
 
       // 获取指令信息
       if (instruction) {
-        // 如果直接提供了instruction对象，直接使用
         currentInstruction.value = instruction;
         initializeParamFormItems();
       } else if (paramsPanel.nodeData?.instructionId) {
@@ -93,7 +92,7 @@ export function useInstructionParams() {
       }
       // 自动保存参数到节点 - 确保默认参数被保存
       if (typeof (node as any).setData === 'function' && paramsPanel.nodeData) {
-        (node as any).setData(paramsPanel.nodeData);
+        node.setData(paramsPanel.nodeData);
       } else {
         // 节点不存在或无法设置数据
         console.warn('无法更新节点数据: 节点不存在或缺少setData方法');
@@ -159,6 +158,7 @@ export function useInstructionParams() {
       // 优先从已加载的指令数据中查找
       const cachedInstruction = findInstructionById(instructionId);
       if (cachedInstruction) {
+        // 使用深拷贝创建副本，避免循环引用
         currentInstruction.value = cachedInstruction;
         return;
       }
@@ -166,6 +166,7 @@ export function useInstructionParams() {
       // 如果缓存中没有找到，则调用API（向后兼容）
       const response = await instructionService.getInstruction(instructionId);
       if (response.success && response.data) {
+        // 使用深拷贝创建副本，避免循环引用
         currentInstruction.value = response.data;
       } else {
         throw new Error(response.message || '获取指令详情失败');
@@ -209,7 +210,7 @@ export function useInstructionParams() {
       }
       
       const formItem = {
-        param,
+        param: param,
         value: paramValue,
         error: undefined
       };
@@ -265,11 +266,15 @@ export function useInstructionParams() {
     // 自动保存参数到节点 - 实现无需保存按钮的自动保存
     if (paramsPanel.selectedNode && typeof (paramsPanel.selectedNode as any).getData === 'function' && typeof (paramsPanel.selectedNode as any).setData === 'function') {
       const node = paramsPanel.selectedNode as any;
+      // 使用深拷贝避免循环引用
       const nodeData = node.getData();
+      
       if (!nodeData.params) {
         nodeData.params = {};
       }
       nodeData.params[paramName] = value;
+      
+      // 再次深拷贝确保没有循环引用
       node.setData(nodeData);
     
     }

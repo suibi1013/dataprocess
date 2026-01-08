@@ -10,6 +10,27 @@ declare global {
     createConnection?: (_sourceNodeId: string, _sourcePortId: string, _targetNodeId: string, _targetPortId: string) => string | null;
   }
 }
+
+// 添加全局ResizeObserver错误处理，解决ResizeObserver loop completed with undelivered notifications错误
+if (typeof window !== 'undefined' && window.ResizeObserver) {
+  const originalResizeObserver = window.ResizeObserver;
+  window.ResizeObserver = class ResizeObserver extends originalResizeObserver {
+    // eslint-disable-next-line no-unused-vars
+    constructor(callback: (entries: ResizeObserverEntry[], observer: ResizeObserver) => void) {
+      super((_entries, _observer) => {
+        // 使用requestAnimationFrame避免同步执行导致的循环
+        requestAnimationFrame(() => {
+          try {
+            callback(_entries, _observer);
+          } catch (error) {
+            // 捕获并忽略ResizeObserver循环错误
+            console.warn('ResizeObserver callback error:', error);
+          }
+        });
+      });
+    }
+  };
+}
 import { dataProcessService } from '@/services/dataProcessService';
 import { instructionService } from '@/services/instructionService';
 import type { DataProcessModalState } from '@/types/dataSource';
@@ -381,7 +402,7 @@ function createDataProcessInstance() {
 
       connecting: {
           router: {
-            name: 'orth',
+            name: 'manhattan',
             args: {
               padding: 10,
               startDirections: ['right', 'left', 'top', 'bottom'],
@@ -425,7 +446,7 @@ function createDataProcessInstance() {
                     }
                   },
               router: {
-                name: 'orth',
+                name: 'manhattan',
                 args: {
                   padding: 10,
                   startDirections: ['right', 'left', 'top', 'bottom'],
@@ -454,7 +475,8 @@ function createDataProcessInstance() {
         // 允许拖动边
         edgeMovable: true,
         // 允许移动边上的顶点
-        vertexMovable: true
+        vertexMovable: true,
+        arrowheadMovable: true,
       },
       mousewheel: {
         enabled: true,
@@ -531,6 +553,9 @@ function createDataProcessInstance() {
     );
     bindCanvasEvents();
     initializeCanvasDrop();    
+    // 初始化画布模式为平移模式，因为toggleSelectionMode会切换模式，这里设置为true
+    isRubberbandMode.value = true;
+    toggleSelectionMode();
   };
   const removeAllNodesPorts = () => { 
     // 隐藏所有节点的连接桩 - 解决启用Selection插件后点击空白处连接桩无法隐藏的问题
@@ -997,21 +1022,105 @@ function createDataProcessInstance() {
     });
     // Ctrl+C：复制选中的节点
     canvasGraph.value!.bindKey(['ctrl+c', 'meta+c'], () => {
+      // 检查当前焦点是否在画布区域内，只有焦点在画布内才执行画布相关操作
+      const activeElement = document.activeElement as HTMLElement;
+      if (activeElement) {
+        // 检查焦点是否在画布容器内
+        const isInCanvas = canvasContainer.value && 
+                          (canvasContainer.value.contains(activeElement) || 
+                           activeElement === canvasContainer.value);
+        
+        // 如果焦点不在画布内，则不执行画布复制操作，允许默认的浏览器行为
+        if (!isInCanvas) {
+          return true; // 允许默认浏览器行为（复制文本）
+        }
+      }
+      
       const cells = canvasGraph.value!.getSelectedCells()
       if (cells.length) {
-        // 复制到剪贴板
-        canvasGraph.value!.copy(cells)
+        // 保存原始节点数据，用于恢复
+        const originalDataMap = new Map<string, any>()
+        
+        // 临时清理节点数据，移除可能导致循环引用的属性
+        cells.forEach((cell: any) => {
+          if (cell.isNode() || cell.isEdge()) {
+            const originalData = cell.getData()
+            originalDataMap.set(cell.id, originalData)
+            
+            // 创建一个纯净的节点数据副本，只包含必要的属性
+            cell.setData(originalData)
+          }
+        })
+        
+        try {
+          // 复制到剪贴板
+          canvasGraph.value!.copy(cells)
+        } finally {
+          // 恢复原始节点数据
+          cells.forEach((cell: any) => {
+            if (cell.isNode() || cell.isEdge()) {
+              const originalData = originalDataMap.get(cell.id)
+              if (originalData) {
+                cell.setData(originalData)
+              }
+            }
+          })
+        }
       }
       return false // 阻止默认浏览器行为（如复制文本）
     })
 
     // Ctrl+V：粘贴为新节点
     canvasGraph.value!.bindKey(['ctrl+v', 'meta+v'], () => {
+      // 检查当前焦点是否在画布区域内，只有焦点在画布内才执行画布相关操作
+      const activeElement = document.activeElement as HTMLElement;
+      if (activeElement) {
+        // 检查焦点是否在画布容器内
+        const isInCanvas = canvasContainer.value && 
+                          (canvasContainer.value.contains(activeElement) || 
+                           activeElement === canvasContainer.value);
+        
+        // 如果焦点不在画布内，则不执行画布粘贴操作，允许默认的浏览器行为
+        if (!isInCanvas) {
+          return true; // 允许默认浏览器行为（粘贴文本）
+        }
+      }
+      
       if (!canvasGraph.value!.isClipboardEmpty()) {
         // 粘贴到鼠标位置 or 偏移位置
         const pastedCells = canvasGraph.value!.paste({
           offset: 20, // 每次粘贴向右下偏移 20px，避免重叠
         })
+        
+        // 更新粘贴节点的序号标识
+        pastedCells.forEach((cell: any) => {
+          if (cell.isNode()) {
+            // 为新节点分配新序号
+            const serialNumber = serialCounter.value++;
+            const nodeId = cell.id;
+            
+            // 更新映射字典
+            nodeIdToSerialMap.value.set(nodeId, serialNumber);
+            
+            // 获取原始节点数据
+            const originalData = cell.getData();
+            const instructionName = originalData.label.split('-')[1] || originalData.label;
+            
+            // 生成新的带序号的节点名称
+            const newNodeLabel = `${serialNumber}-${instructionName}`;
+            
+            // 更新节点数据
+            const updatedData = {
+              ...originalData,
+              label: newNodeLabel
+            };
+            cell.setData(updatedData);
+            
+            // 更新节点显示标签
+            cell.attr('label/text', newNodeLabel);
+          }
+        });
+        
         // 可选：自动选中新粘贴的节点
         canvasGraph.value!.cleanSelection()
         canvasGraph.value!.select(pastedCells)
@@ -1021,6 +1130,20 @@ function createDataProcessInstance() {
         
     // 支持Delete键
     canvasGraph.value!.bindKey('delete', () => {
+      // 检查当前焦点是否在画布区域内，只有焦点在画布内才执行画布相关操作
+      const activeElement = document.activeElement as HTMLElement;
+      if (activeElement) {
+        // 检查焦点是否在画布容器内
+        const isInCanvas = canvasContainer.value && 
+                          (canvasContainer.value.contains(activeElement) || 
+                           activeElement === canvasContainer.value);
+        
+        // 如果焦点不在画布内，则不执行画布删除操作
+        if (!isInCanvas) {
+          return true; // 允许默认浏览器行为
+        }
+      }
+      
       const cells = canvasGraph.value!.getSelectedCells()
       if (cells.length) {
         if (window.confirm(`确定要删除选中的${cells.length}个元素吗？`)) {
@@ -1032,6 +1155,20 @@ function createDataProcessInstance() {
     
     // Ctrl+Z：撤销操作
     canvasGraph.value!.bindKey(['ctrl+z', 'meta+z'], () => {
+      // 检查当前焦点是否在画布区域内，只有焦点在画布内才执行画布相关操作
+      const activeElement = document.activeElement as HTMLElement;
+      if (activeElement) {
+        // 检查焦点是否在画布容器内
+        const isInCanvas = canvasContainer.value && 
+                          (canvasContainer.value.contains(activeElement) || 
+                           activeElement === canvasContainer.value);
+        
+        // 如果焦点不在画布内，则不执行画布撤销操作
+        if (!isInCanvas) {
+          return true; // 允许默认浏览器行为
+        }
+      }
+      
       if (canvasGraph.value!.canUndo()) {
         canvasGraph.value!.undo()
       }
@@ -1040,6 +1177,20 @@ function createDataProcessInstance() {
     
     // Ctrl+Y 或 Ctrl+Shift+Z：重做操作
     canvasGraph.value!.bindKey(['ctrl+y', 'meta+y', 'ctrl+shift+z', 'meta+shift+z'], () => {
+      // 检查当前焦点是否在画布区域内，只有焦点在画布内才执行画布相关操作
+      const activeElement = document.activeElement as HTMLElement;
+      if (activeElement) {
+        // 检查焦点是否在画布容器内
+        const isInCanvas = canvasContainer.value && 
+                          (canvasContainer.value.contains(activeElement) || 
+                           activeElement === canvasContainer.value);
+        
+        // 如果焦点不在画布内，则不执行画布重做操作
+        if (!isInCanvas) {
+          return true; // 允许默认浏览器行为
+        }
+      }
+      
       if (canvasGraph.value!.canRedo()) {
         canvasGraph.value!.redo()
       }
@@ -1512,12 +1663,13 @@ function createDataProcessInstance() {
    */
   const showParamsPanel = (node: Node) => {
     const nodeData = node.getData() as CanvasNode;
+    // 使用markRaw标记X6节点实例，避免Vue响应式系统深度监听导致无限递归
     paramsPanel.selectedNode = node;
     paramsPanel.selectedEdge = null;
-    paramsPanel.params = { ...nodeData.params };
+    paramsPanel.params = nodeData.params || {};
     paramsPanel.visible = true;
   };
-
+  
   /**
    * 显示参数面板（边）
    */
@@ -1528,6 +1680,7 @@ function createDataProcessInstance() {
     const currentLogicExpress = edgeData.logic_express || '';
     
     paramsPanel.selectedNode = null;
+    // 使用markRaw标记X6边实例，避免Vue响应式系统深度监听导致无限递归
     paramsPanel.selectedEdge = edge;
     paramsPanel.params = { 
       label: currentLabel, 
@@ -1552,6 +1705,7 @@ function createDataProcessInstance() {
   const saveNodeParams = (params: Record<string, any>) => {
     if (!paramsPanel.selectedNode) return;
     
+    // 使用深拷贝避免循环引用
     const nodeData = paramsPanel.selectedNode.getData() as CanvasNode;
     nodeData.params = { ...params };
     paramsPanel.selectedNode.setData(nodeData);
@@ -1571,7 +1725,7 @@ function createDataProcessInstance() {
     const newLabel = params.label?.trim() || '';
     const newLogicExpress = params.logic_express?.trim() || '';
     
-    // 更新边的数据
+    // 更新边的数据 - 使用深拷贝避免循环引用
     const edgeData = edge.getData() || {};
     if (newLabel) {
       edgeData.label = newLabel;
@@ -1770,7 +1924,7 @@ function createDataProcessInstance() {
           // 直接使用原始参数名称（不再进行格式转换）
           const convertParams = (params: Record<string, any>): Record<string, any> => {
             // 返回原始参数对象的深拷贝，保留用户定义的参数名称
-            return params ? JSON.parse(JSON.stringify(params)) : {};
+            return params ? params : {};
           };
           // 处理输入类型：将inputTypes对象转换为所需的格式
           // {t: [paramName1, paramName2], e: [paramName3, paramName4]}
@@ -2137,7 +2291,7 @@ function createDataProcessInstance() {
                     }
                   },
                 router: {
-                  name: 'orth',
+                  name: 'manhattan',
                   args: {
                     padding: 10,
                     // 支持所有方向的连接，确保箭头方向正确
@@ -2300,7 +2454,7 @@ function createDataProcessInstance() {
           // 直接使用原始参数名称（不再进行格式转换）
           const convertParams = (params: Record<string, any>): Record<string, any> => {
             // 返回原始参数对象的深拷贝，保留用户定义的参数名称
-            return params ? JSON.parse(JSON.stringify(params)) : {};
+            return params ? params : {};
           };
           
           // 处理输入类型：将inputTypes对象转换为所需的格式

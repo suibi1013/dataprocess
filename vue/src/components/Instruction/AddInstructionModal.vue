@@ -100,11 +100,11 @@
             class="form-textarea"
             placeholder="请输入指令描述，简要说明指令的功能和用途（选填）"
             rows="3"
-            maxlength="200"
+            maxlength="300"
             @blur="validateDescription"
           ></textarea>
           <div v-if="errors.description" class="error-message">{{ errors.description }}</div>
-          <div class="char-count">{{ formData.description.length }}/200</div>
+          <div class="char-count">{{ formData.description.length }}/300</div>
         </div>
       </div>
 
@@ -242,14 +242,13 @@ def execute(params):
             </div>
             
             <!-- 数据接口地址 -->
-            <div v-if="param.type === 'select'" class="form-item">
+            <div v-if="param.type === 'select'||param.type === 'select_excelpath'" class="form-item">
               <label class="form-label">option数据或数据请求接口地址</label>
               <input 
                 v-model="param.api_url"
                 type="text"
                 class="form-input"
-                placeholder='请输入option数据或数据请求接口地址，结果示例：[{"value": "a", "label": "选项A"},{"value": "b", "label": "选项B"}]'
-                maxlength="200"
+                placeholder='请输入option数据或数据请求接口地址，结果示例：[{"value": "a", "label": "选项A"},{"value": "b", "label": "选项B"}]'                
               >
             </div>
             
@@ -311,9 +310,9 @@ def handle_click(params):
                 class="form-textarea"
                 placeholder="请输入参数描述"
                 rows="2"
-                maxlength="100"
+                maxlength="200"
               ></textarea>
-              <div class="char-count">{{ param.description?.length || 0 }}/100</div>
+              <div class="char-count">{{ param.description?.length || 0 }}/200</div>
             </div>
           </div>
 
@@ -323,7 +322,6 @@ def handle_click(params):
               ref="addParamButton"
               class="btn btn-sm btn-primary"
               @click="addParameter"
-              :disabled="formData.params.length >= 10"
             >
               <i class="icon-plus"></i> 添加参数
             </button>
@@ -533,8 +531,7 @@ def execute(params):
       formData.sort_order = instruction.sort_order || 1;
       // 正确处理params字段，确保参数设置正确回写
       if (instruction.params && Array.isArray(instruction.params)) {
-        // 深拷贝参数数组，避免引用问题
-        formData.params = JSON.parse(JSON.stringify(instruction.params)).map((param: any) => {
+        formData.params = instruction.params.map((param: any) => {
           // 确保参数对象结构完整
           const cleanParam = {
             name: param.name || '',
@@ -790,7 +787,7 @@ def execute(params):
       }
       
       // 只有下拉单选框需要api_url，其他类型清空
-      if (param.type !== 'select') {
+      if (param.type !== 'select' || param.type !== 'select_excelpath') {
         param.api_url = '';
       }
       

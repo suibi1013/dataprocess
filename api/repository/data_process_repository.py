@@ -159,10 +159,12 @@ class DataProcessRepository(BaseRepository[DataProcess]):
             # 更新流程基本信息
             process_sql = f"""
             UPDATE {self.TABLE_NAME} 
-            SET updated_at = ?
+            SET name = ?, description = ?, updated_at = ?
             WHERE id = ?
             """
             process_params = (
+                process.name,
+                process.description,
                 process.updated_at,
                 process.id
             )

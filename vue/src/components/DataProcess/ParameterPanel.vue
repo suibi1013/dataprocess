@@ -42,7 +42,7 @@
                   @update:model-value="updateEdgeLabel"
                 ></el-input>
                 <el-button 
-                  type="button" 
+                  type="primary" round
                   class="variable-select-btn"
                   @click="onToggleVariableSelector('label', 'string')" 
                   title="选择变量"
@@ -64,7 +64,7 @@
                   @update:model-value="updateEdgeLogicExpress"
                 ></el-input>
                 <el-button 
-                  type="button" 
+                  type="primary" round
                   class="variable-select-btn"
                   @click="onToggleVariableSelector('logic_express', 'string')" 
                   title="选择变量"
@@ -116,7 +116,7 @@
                     </template>
                   </el-input>
                   <el-button 
-                    type="button" 
+                    type="primary" round
                     class="variable-select-btn"
                     @click="onToggleVariableSelector(item.param?.name || item.name, 'number')" 
                     title="选择变量"
@@ -148,7 +148,7 @@
                     </template>
                   </el-input>
                   <el-button 
-                    type="button" 
+                    type="primary" round
                     class="variable-select-btn"
                     @click="onToggleVariableSelector(item.param?.name || item.name, 'string')" 
                     title="选择变量"
@@ -173,10 +173,10 @@
                     :props="{ expandTrigger: 'hover'}"
                     popper-class="custom-cascader-popper"
                   />
-                  <button type="button" class="variable-select-btn" title="选择数据"
+                  <el-button type="success" round class="variable-select-btn" title="选择数据"
                     @click="onHandleManualDataPreview(item.param?.name || item.name)">
                     <el-icon><DocumentChecked /></el-icon>
-                  </button>
+                  </el-button>
                 </div>
 
                 <!-- 开关选择器 (boolean类型) -->
@@ -195,12 +195,12 @@
                     :on-change="(uploadFile) => onHandleFileUpload(item.param?.name || item.name, { target: { files: [uploadFile.raw] } } as any)"
                     accept=".*"
                   >
-                    <el-button type="primary">{{ item.value ? '更换文件' : '选择文件' }}</el-button>
+                    <el-button type="primary" round>{{ item.value ? '更换文件' : '选择文件' }}</el-button>
                   </el-upload>
                   <div v-if="item.value" class="upload-file-info" style="margin-top: 10px;">
                     {{ onGetFileNameFromPath(item.value) }}
                     <el-button 
-                      type="text" 
+                      type="warning" round
                       class="remove-file-btn"
                       @click="updateParamValue(item.param?.name || item.name, null)"
                     >移除</el-button>
@@ -273,7 +273,7 @@
                     </template>
                   </el-input>
                   <el-button 
-                    type="primary" 
+                    type="success" round
                     :loading="executingButtons[item.param?.name || item.name]" 
                     @click="onHandleButtonEventClick(item)"
                     style="margin-left: 8px;"
@@ -348,11 +348,11 @@
                       />
                     </template>
                   </el-input>
-                  <button type="button" class="variable-select-btn"
+                  <el-button type="primary" round class="variable-select-btn"
                     @click="onToggleVariableSelector(item.param?.name || item.name, 'number')" title="选择变量"
                     :data-param-name="item.param?.name || item.name">
                     x
-                  </button>
+                  </el-button>
                 </div>
 
 
@@ -377,11 +377,11 @@
                       />
                     </template>
                   </el-input>
-                  <button type="button" class="variable-select-btn"
+                  <el-button type="primary" round class="variable-select-btn"
                     @click="onToggleVariableSelector(item.param?.name || item.name, 'string')" title="选择变量"
                     :data-param-name="item.param?.name || item.name">
                     x
-                  </button>
+                  </el-button>
                 </div>
 
                 <!-- excel文件路径选择器 (select_excelpath类型) - 使用级联选择器 -->
@@ -399,10 +399,10 @@
                     :props="{ expandTrigger: 'hover'}"
                     popper-class="custom-cascader-popper"
                   />
-                  <button type="button" class="variable-select-btn" :disabled="!item.value" title="选择数据"
+                  <el-button type="success" round class="variable-select-btn" title="选择数据"
                     @click="onHandleManualDataPreview(item.param?.name || item.name)">
                     <el-icon><DocumentChecked /></el-icon>
-                  </button>
+                  </el-button>
                 </div>
 
                 <!-- 开关选择器 (boolean类型) -->
@@ -421,12 +421,12 @@
                     :on-change="(uploadFile) => onHandleFileUpload(item.param?.name || item.name, { target: { files: [uploadFile.raw] } } as any)"
                     accept=".*"
                   >
-                    <el-button type="primary">{{ item.value ? '更换文件' : '选择文件' }}</el-button>
+                    <el-button type="primary" round>{{ item.value ? '更换文件' : '选择文件' }}</el-button>
                   </el-upload>
                   <div v-if="item.value" class="upload-file-info" style="margin-top: 10px;">
                     {{ onGetFileNameFromPath(item.value) }}
                     <el-button 
-                      type="text" 
+                      type="warning" round 
                       class="remove-file-btn"
                       @click="updateParamValue(item.param?.name || item.name, null)"
                     >移除</el-button>
@@ -499,7 +499,7 @@
                     </template>
                   </el-input>
                   <el-button 
-                    type="primary" 
+                    type="success" round 
                     :loading="executingButtons[item.param?.name || item.name]" 
                     @click="onHandleButtonEventClick(item)"
                     style="margin-left: 8px;"
@@ -572,11 +572,11 @@
                       />
                     </template>
                   </el-input>
-                  <button type="button" class="variable-select-btn"
+                  <el-button type="primary" round class="variable-select-btn"
                     @click="onToggleVariableSelector(item.param?.name || item.name, 'number')" title="选择变量"
                     :data-param-name="item.param?.name || item.name">
                     x
-                  </button>
+                  </el-button>
                 </div>
 
 
@@ -601,11 +601,11 @@
                       />
                     </template>
                   </el-input>
-                  <button type="button" class="variable-select-btn"
+                  <el-button type="primary" round class="variable-select-btn"
                     @click="onToggleVariableSelector(item.param?.name || item.name, 'string')" title="选择变量"
                     :data-param-name="item.param?.name || item.name">
                     x
-                  </button>
+                  </el-button>
                 </div>
 
                 <!-- excel文件路径选择器 (select_excelpath类型) - 使用级联选择器 -->
@@ -623,10 +623,10 @@
                     :props="{ expandTrigger: 'hover'}"
                     popper-class="custom-cascader-popper"
                   />
-                  <button type="button" class="variable-select-btn" :disabled="!item.value" title="选择数据"
+                  <el-button type="success" round class="variable-select-btn" :disabled="!item.value" title="选择数据"
                     @click="onHandleManualDataPreview(item.param?.name || item.name)">
                     <el-icon><DocumentChecked /></el-icon>
-                  </button>
+                  </el-button>
                 </div>
 
                 <!-- 开关选择器 (boolean类型) -->
@@ -645,12 +645,12 @@
                     :on-change="(uploadFile) => onHandleFileUpload(item.param?.name || item.name, { target: { files: [uploadFile.raw] } } as any)"
                     accept=".*"
                   >
-                    <el-button type="primary">{{ item.value ? '更换文件' : '选择文件' }}</el-button>
+                    <el-button type="primary" round>{{ item.value ? '更换文件' : '选择文件' }}</el-button>
                   </el-upload>
                   <div v-if="item.value" class="upload-file-info" style="margin-top: 10px;">
                     {{ onGetFileNameFromPath(item.value) }}
                     <el-button 
-                      type="text" 
+                      type="warning" round 
                       class="remove-file-btn"
                       @click="updateParamValue(item.param?.name || item.name, null)"
                     >移除</el-button>
@@ -723,7 +723,7 @@
                     </template>
                   </el-input>
                   <el-button 
-                    type="primary" 
+                    type="success" round 
                     :loading="executingButtons[item.param?.name || item.name]" 
                     @click="onHandleButtonEventClick(item)"
                     style="margin-left: 8px;"
@@ -792,7 +792,7 @@
 <script setup lang="ts">
 import { VideoPlay, DocumentChecked } from '@element-plus/icons-vue';
 import { ElNotification } from 'element-plus';
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch} from 'vue';
 import VariableSelector from './VariableSelector.vue';
 import { useDataProcess } from '@/composables/useDataProcess';
 import { instructionService } from '@/services/instructionService';
@@ -865,7 +865,7 @@ const onGetProcessVariables = async (selectedNode: any) => {
           // 处理节点名称：如果没有名称则使用默认名称，对于重复名称添加索引
           let nodeName = node.node_name || `未命名节点${index}`;
           
-          // 确保变量数组存在，并深拷贝避免循环引用
+          // 确保变量数组存在
           const variables = node.variables ? [...node.variables].map(v => ({ ...v })) : [];
           
           // 为每个节点生成唯一键，避免重复节点名称覆盖
@@ -1271,10 +1271,16 @@ const initFormItemOptions = (item: any) => {
       // 直接使用api_url数组作为options数据
       dynamicOptions.value[paramName] = api_url;
     } else if (typeof api_url === 'string') {
+      // 先清理字符串，移除所有可能存在的反引号和空格
+      let cleanUrl = api_url.trim();
+      // 移除所有反引号，不仅仅是开头和结尾的
+      cleanUrl = cleanUrl.replace(/`/g, '');
+      // 再次清理可能产生的多余空格
+      cleanUrl = cleanUrl.trim();
       // 尝试将字符串解析为JSON，看是否是数组格式的options数据
       try {
         // 先尝试标准JSON解析
-        const parsedData = JSON.parse(api_url);
+        const parsedData = JSON.parse(cleanUrl);
         if (Array.isArray(parsedData)) {
           // 如果解析成功且是数组，则作为options数据使用
           dynamicOptions.value[paramName] = parsedData;
@@ -1284,7 +1290,7 @@ const initFormItemOptions = (item: any) => {
         // 标准JSON解析失败，尝试处理单引号格式的JSON字符串
         try {
           // 替换单引号为双引号，然后再解析
-          const normalizedJson = api_url.replace(/'/g, '"');
+          const normalizedJson = cleanUrl.replace(/'/g, '"');
           const parsedData = JSON.parse(normalizedJson);
           if (Array.isArray(parsedData)) {
             // 如果解析成功且是数组，则作为options数据使用
@@ -1293,12 +1299,11 @@ const initFormItemOptions = (item: any) => {
           }
         } catch (secondError) {
           // 两种解析都失败，说明不是JSON格式的数组数据，继续作为API接口处理
-          console.log('JSON解析失败，作为API接口处理:', secondError);
+          // console.log('JSON解析失败，作为API接口处理:', secondError);
         }
-      }
-      
+      }      
       // 如果是普通字符串则作为API请求接口
-      fetchOptionsByApiUrl(paramName, api_url);
+      fetchOptionsByApiUrl(paramName, cleanUrl);
     }
   }
 };
