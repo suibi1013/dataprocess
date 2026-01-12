@@ -591,7 +591,8 @@ export default defineComponent({
       showInstallDependenciesDialog,
       dependenciesInput,
       handleCloseInstallDialog,
-      handleConfirmInstall
+      handleConfirmInstall,
+      loadAllData
     };
   }
 });

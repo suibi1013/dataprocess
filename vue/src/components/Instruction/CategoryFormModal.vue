@@ -67,7 +67,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, reactive, watch } from 'vue';
+import { defineComponent, ref, reactive, watch, computed } from 'vue';
 import Modal from '@/components/Common/Modal.vue';
 import type { InstructionCategory } from '@/types/instruction';
 import { instructionService } from '@/services/instructionService';
@@ -107,6 +107,9 @@ export default defineComponent({
     const localVisible = ref(props.visible);
     const loading = ref(false);
     const errors = reactive<ErrorState>({});
+    
+    // 计算当前是否处于编辑模式
+    const editingCategory = computed(() => props.category);
     
     // 同步外部visible变化到本地状态
     watch(() => props.visible, (newValue) => {
@@ -249,6 +252,7 @@ export default defineComponent({
       loading,
       errors,
       formData,
+      editingCategory,
       validateName,
       handleSave,
       handleCancel,
