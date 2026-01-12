@@ -336,6 +336,7 @@
                     class="form-input"
                     style="padding: 0px;"
                     @input="updateParamValue(item.param?.name || item.name, $event)"
+                    disabled
                   >
                     <template #prefix>
                       <!-- 使用 img 标签显示本地图标 -->
@@ -345,14 +346,15 @@
                         class="input-type-toggle-icon" 
                         @click="toggleInputType(item.param?.name || item.name)" 
                         title="切换输入类型（表达式/文本）" 
+                        disabled
                       />
                     </template>
                   </el-input>
-                  <el-button type="primary" round class="variable-select-btn"
+                  <!-- <el-button type="primary" round class="variable-select-btn"
                     @click="onToggleVariableSelector(item.param?.name || item.name, 'number')" title="选择变量"
                     :data-param-name="item.param?.name || item.name">
                     x
-                  </el-button>
+                  </el-button> -->
                 </div>
 
 
@@ -366,6 +368,7 @@
                     class="form-input"
                     style="padding: 0px;"
                     @input="updateParamValue(item.param?.name || item.name, $event)"
+                    disabled
                   >
                     <template #prefix>
                       <img 
@@ -374,14 +377,15 @@
                         class="input-type-toggle-icon" 
                         @click="toggleInputType(item.param?.name || item.name)" 
                         title="切换输入类型（表达式/文本）" 
+                        disabled
                       />
                     </template>
                   </el-input>
-                  <el-button type="primary" round class="variable-select-btn"
+                  <!-- <el-button type="primary" round class="variable-select-btn"
                     @click="onToggleVariableSelector(item.param?.name || item.name, 'string')" title="选择变量"
                     :data-param-name="item.param?.name || item.name">
                     x
-                  </el-button>
+                  </el-button> -->
                 </div>
 
                 <!-- excel文件路径选择器 (select_excelpath类型) - 使用级联选择器 -->
@@ -398,11 +402,12 @@
                     separator="/"
                     :props="{ expandTrigger: 'hover'}"
                     popper-class="custom-cascader-popper"
+                    disabled
                   />
-                  <el-button type="success" round class="variable-select-btn" title="选择数据"
+                  <!-- <el-button type="success" round class="variable-select-btn" title="选择数据"
                     @click="onHandleManualDataPreview(item.param?.name || item.name)">
                     <el-icon><DocumentChecked /></el-icon>
-                  </el-button>
+                  </el-button> -->
                 </div>
 
                 <!-- 开关选择器 (boolean类型) -->
@@ -410,6 +415,7 @@
                   <el-switch 
                     v-model="item.value"
                     @change="updateParamValue(item.param?.name || item.name, $event)"
+                    disabled
                   ></el-switch>
                 </div>
 
@@ -420,17 +426,18 @@
                     :auto-upload="false"
                     :on-change="(uploadFile) => onHandleFileUpload(item.param?.name || item.name, { target: { files: [uploadFile.raw] } } as any)"
                     accept=".*"
+                    disabled
                   >
-                    <el-button type="primary" round>{{ item.value ? '更换文件' : '选择文件' }}</el-button>
+                    <!-- <el-button type="primary" round>{{ item.value ? '更换文件' : '选择文件' }}</el-button> -->
                   </el-upload>
-                  <div v-if="item.value" class="upload-file-info" style="margin-top: 10px;">
+                  <!-- <div v-if="item.value" class="upload-file-info" style="margin-top: 10px;">
                     {{ onGetFileNameFromPath(item.value) }}
                     <el-button 
                       type="warning" round 
                       class="remove-file-btn"
                       @click="updateParamValue(item.param?.name || item.name, null)"
                     >移除</el-button>
-                  </div>
+                  </div> -->
                 </div>
 
                 <!-- 下拉选择框 -->
@@ -441,6 +448,7 @@
                     :loading="loadingOptions[item.param?.name || item.name]"
                     @update:model-value="updateParamValue(item.param?.name || item.name, $event)"
                     @dropdown-click="() => initFormItemOptions(item)">
+                    disabled
                     <el-option value="">请选择{{ item.param?.label || item.label }}</el-option>
                     <!-- 优先使用动态获取的options，如果没有则使用item自带的options -->
                     <template v-if="dynamicOptions[item.param?.name || item.name] && dynamicOptions[item.param?.name || item.name].length > 0">
@@ -464,6 +472,7 @@
                     :model-value="item.value"
                     @update:model-value="updateParamValue(item.param?.name || item.name, $event)"
                     placeholder="请选择列"
+                    disabled
                   >
                     <el-option v-for="column in availableColumns" :key="column" :value="column" :label="column"></el-option>
                   </el-select>
@@ -472,6 +481,7 @@
                     <el-checkbox-group 
                       v-model="item.value" 
                       @change="(values) => updateParamValue(item.param?.name || item.name, values)"
+                      disabled
                     >
                       <el-checkbox v-for="column in availableColumns" :key="column" :label="column"></el-checkbox>
                     </el-checkbox-group>
@@ -486,6 +496,7 @@
                     :placeholder="item.param?.placeholder || item.placeholder || '请输入' + (item.param?.label || item.label)" 
                     class="form-input" 
                     @input="updateParamValue(item.param?.name || item.name, $event)"
+                    disabled
                   >
                     <template #prefix>
                       <!-- 使用 img 标签显示本地图标 -->
@@ -495,17 +506,18 @@
                         class="input-type-toggle-icon" 
                         @click="toggleInputType(item.param?.name || item.name)" 
                         title="切换输入类型（表达式/文本）" 
+                        disabled
                       />
                     </template>
                   </el-input>
-                  <el-button 
+                  <!-- <el-button 
                     type="success" round 
                     :loading="executingButtons[item.param?.name || item.name]" 
                     @click="onHandleButtonEventClick(item)"
                     style="margin-left: 8px;"
                   >
                     {{ item.param?.label || item.label }}
-                  </el-button>
+                  </el-button> -->
                 </div>
                 
                 <!-- 文本域 -->
@@ -516,6 +528,7 @@
                         class="input-type-toggle-icon" 
                         @click="toggleInputType(item.param?.name || item.name)" 
                         title="切换输入类型（表达式/文本）" 
+                        disabled
                       />
                   <el-input 
                     type="textarea"
@@ -524,6 +537,7 @@
                     v-model="item.value"
                     @input="updateParamValue(item.param?.name || item.name, $event)"
                     :rows="3"
+                    disabled
                   ></el-input>
                 </div>
 

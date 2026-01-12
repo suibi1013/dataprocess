@@ -360,7 +360,7 @@ function createDataProcessInstance() {
         // canvasGraph.value?.zoomTo(1);
         // canvasGraph.value?.centerContent();
         canvasGraph.value.resize(rect.width, rect.height);
-        canvasGraph.value.centerContent()
+        canvasGraph.value.positionContent('top-left',{ padding: { left: 50,top: 50 } })
       }
     }, 200);
   };
