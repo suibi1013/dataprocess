@@ -125,7 +125,7 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue';
-import { ElSelect, ElOption, ElButton, ElInputNumber, ElInput, ElAlert, ElIcon } from 'element-plus';
+import { ElSelect, ElOption, ElButton, ElInputNumber, ElInput, ElAlert } from 'element-plus';
 import { VideoPlay } from '@element-plus/icons-vue';
 import { useNodeParams } from '@/composables/useNodeParams';
 import { useDataProcess } from '@/composables/useDataProcess';

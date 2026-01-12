@@ -117,7 +117,7 @@
           @click="debugSelectedNode"
           :disabled="isExecuting || !hasSelectedNodes"
         >
-          <el-icon><Bug /></el-icon>
+          <el-icon><HelpFilled /></el-icon>
           调试节点
         </button>
         <button 
@@ -151,8 +151,6 @@ import DataPreviewModal from '@/components/DataPreviewModal.vue';
   import ProcessCanvas from '@/components/DataProcess/ProcessCanvas.vue';
   import ParameterPanel from '@/components/DataProcess/ParameterPanel.vue';
   import type { SheetData, DataSelection } from '@/types/dataExtraction';
-  import { ElIcon } from 'element-plus';
-  import { Loading, Bug } from '@element-plus/icons-vue';
   import { downloadFile } from '@/utils/fileUtils';
 
 // Props
@@ -1204,11 +1202,13 @@ const toggleMaximize = () => {
 // 切换指令面板折叠状态
 const toggleInstructionPanel = () => {
   isInstructionPanelCollapsed.value = !isInstructionPanelCollapsed.value;
+  debouncedResizeCanvas();
 };
 
 // 切换参数面板折叠状态
 const toggleParameterPanel = () => {
   isParameterPanelCollapsed.value = !isParameterPanelCollapsed.value;
+  debouncedResizeCanvas();
 };
 
 // 查找指令信息

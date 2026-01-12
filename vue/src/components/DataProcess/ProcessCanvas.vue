@@ -3,31 +3,6 @@
     <!-- 画布顶部工具栏 -->
     <div class="canvas-toolbar">
       <div class="toolbar-group">
-        <button class="toolbar-btn" @click="zoomIn" title="放大">
-          <el-icon>
-            <ZoomIn />
-          </el-icon>
-        </button>
-        <button class="toolbar-btn" @click="zoomOut" title="缩小">
-          <el-icon>
-            <ZoomOut />
-          </el-icon>
-        </button>
-        <button class="toolbar-btn" @click="resetZoom" title="重置缩放">
-          <el-icon>
-            <Refresh />
-          </el-icon>
-        </button>
-      </div>
-      <div class="toolbar-group">
-        <button class="toolbar-btn" @click="undo" title="撤销 (Ctrl+Z)">
-          <el-icon><RefreshLeft /></el-icon>
-        </button>
-        <button class="toolbar-btn" @click="redo" title="重做 (Ctrl+Y)">
-          <el-icon><RefreshRight /></el-icon>
-        </button>
-      </div>
-      <div class="toolbar-group">
         <button 
           class="toolbar-btn" 
           @click="handleToggleSelectionMode" 
@@ -85,9 +60,7 @@
 </template>
 
 <script setup lang="ts">
-import { ElIcon, ElDialog, ElForm, ElFormItem, ElInput, ElButton } from 'element-plus';
 import { onMounted, watch, computed ,onUnmounted} from 'vue';
-import { ZoomIn, ZoomOut, Refresh } from '@element-plus/icons-vue';
 import { useDataProcess } from '@/composables/useDataProcess';
 
 // Props
@@ -115,9 +88,7 @@ const {
   showNodeTooltips,
   toggleNodeTooltips,
   toggleSelectionMode,
-  isRubberbandMode,
-  undo,
-  redo
+  isRubberbandMode
 } = useDataProcess();
 
 // 切换选择模式（框选/平移）
@@ -188,29 +159,6 @@ watch(() => props.canvasInitialized, (initialized) => {
   }
 });
 
-// 放大
-const zoomIn = () => {
-  if (canvasGraph.value) {
-    const currentScale = canvasGraph.value.zoom();
-    canvasGraph.value.zoomTo(currentScale + 0.1);
-  }
-};
-
-// 缩小
-const zoomOut = () => {
-  if (canvasGraph.value) {
-    const currentScale = canvasGraph.value.zoom();
-    canvasGraph.value.zoomTo(currentScale - 0.1);
-  }
-};
-
-// 重置缩放
-const resetZoom = () => {
-  if (canvasGraph.value) {
-    canvasGraph.value.zoomTo(1);
-    canvasGraph.value.centerContent();
-  }
-};
 </script>
 
 <style scoped>
