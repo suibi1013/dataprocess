@@ -58,6 +58,17 @@
     },
     "linux": {
       "target": "AppImage"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "installerIcon": "icon-resources/icon.ico",
+      "uninstallerIcon": "icon-resources/icon.ico",
+      "installerHeaderIcon": "icon-resources/icon.ico",
+      "shortcutName": "数据流程可视化工具"
     }
   },
   "dependencies": {

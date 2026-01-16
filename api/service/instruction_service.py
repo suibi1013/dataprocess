@@ -862,7 +862,49 @@ class InstructionService:
         """
         try:
             # 获取依赖包安装目录
-            install_target = sysconfig.get_path("purelib")
+            # 检查是否在Electron打包环境中运行
+            is_packed = hasattr(sys, '_MEIPASS') or 'app.asar' in __file__ or 'app.asar' in sys.executable
+            
+            if is_packed:
+                # 在打包环境中，Python解释器位于resources/python-embed目录下
+                # 我们需要找到resources/site-packages目录
+                # 获取Python解释器的路径
+                python_exe_path = os.path.abspath(sys.executable)
+                print(f"Python解释器路径: {python_exe_path}")
+                
+                # 打包后的结构：
+                # 应用安装目录/
+                #   ├── resources/
+                #   │   ├── python-embed/
+                #   │   │   └── python.exe
+                #   │   └── site-packages/
+                #   └── other files
+                
+                # 从python.exe路径向上找到resources目录
+                # python_exe_path = 应用安装目录/resources/python-embed/python.exe
+                python_embed_dir = os.path.dirname(python_exe_path)
+                print(f"python-embed目录: {python_embed_dir}")
+                
+                resources_dir = os.path.dirname(python_embed_dir)
+                print(f"resources目录: {resources_dir}")
+                
+                # site-packages目录位于resources目录下
+                install_target = os.path.join(resources_dir, "site-packages")
+                print(f"计算得到的site-packages目录: {install_target}")
+            else:
+                # 在开发环境中，使用sys.path中的site-packages路径
+                install_target = None
+                for path in sys.path:
+                    if "site-packages" in path and "python-embed" not in path:
+                        install_target = path
+                        break
+                
+                # 如果没有找到合适的site-packages路径，则使用当前目录下的site-packages
+                if not install_target:
+                    # 获取当前脚本目录
+                    current_dir = os.path.dirname(os.path.abspath(__file__))
+                    # 向上找到项目根目录，然后定位到site-packages
+                    install_target = os.path.join(current_dir, "../../site-packages")
             
             # 确保安装目录存在
             os.makedirs(install_target, exist_ok=True)

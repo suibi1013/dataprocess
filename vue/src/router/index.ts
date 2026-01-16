@@ -4,8 +4,6 @@ import Home from '../views/Home.vue'
 import About from '../views/About.vue'
 import Template from '../views/Template.vue'
 import DataSource from '../views/DataSource.vue'
-import TemplateTest from '../views/TemplateTest.vue'
-import TemplateEditorView from '../views/TemplateEditor.vue'
 import DataProcess from '../views/DataProcess.vue'
 
 // 定义路由配置
@@ -21,12 +19,6 @@ const routes: Array<RouteRecordRaw> = [
     name: 'Template', 
     component: Template,
     meta: { title: '模板管理' }
-  },
-  {
-    path: '/template/editor',
-    name: 'template-editor',
-    component: TemplateEditorView,
-    props: (route) => ({ templateId: route.query.template })
   },
   {
     path: '/datasource',
@@ -51,12 +43,6 @@ const routes: Array<RouteRecordRaw> = [
     name: 'DataProcess',
     component: DataProcess,
     meta: { title: '流程管理' }
-  },
-  {
-    path: '/template-test',
-    name: 'TemplateTest',
-    component: TemplateTest,
-    meta: { title: '模板测试' }
   }
 ]
 

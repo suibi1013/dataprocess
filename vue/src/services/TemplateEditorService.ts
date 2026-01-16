@@ -7,6 +7,8 @@ import type { ApiResponse } from '@/types';
 // 定义PPT配置类型
 export interface PPTConfig {
   file_path?: string;
+  filename?: string;
+  templateName?: string;
   total_slides?: number;
   slide_width?: number;
   slide_height?: number;
@@ -84,7 +86,7 @@ export interface Element {
  * 模板编辑器服务类
  */
 export class TemplateEditorService {
-  private readonly basePath = '/templates';
+  private readonly basePath = '/template';
   
   /**
    * 加载模板配置
@@ -92,7 +94,7 @@ export class TemplateEditorService {
    */
   async loadTemplateConfig(templateId: string): Promise<ApiResponse<PPTConfig>> {
     try {
-      const response = await httpClient.get<PPTConfig>('/ppt/config/load', {
+      const response = await httpClient.get<PPTConfig>('/template/config/load', {
           config_id: templateId
       });      
       // 根据返回格式调整数据
@@ -161,8 +163,8 @@ export class TemplateEditorService {
    */
   async saveTemplateConfig(templateId: string, config: PPTConfig): Promise<ApiResponse<PPTConfig>> {
     try {
-      // 调用 /api/ppt/config/update 接口来更新模板配置
-      const response = await httpClient.post<PPTConfig>('/ppt/config/update', {
+      // 调用 /api/template/config/update 接口来更新模板配置
+      const response = await httpClient.post<PPTConfig>('/template/config/update', {
         template_id: templateId,
         config_data: config
       });

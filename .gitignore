@@ -1,8 +1,9 @@
 **/__pycache__/
 /api/config_infos/uploads
-/api/config_infos/templates
+/api/config_infos/template
 /api/config_infos/data_sources
 /api/config_infos/data_processes
 /vue/node_modules
 /vue/dist
 /deploy/build-ready
+/deploy/build_ready

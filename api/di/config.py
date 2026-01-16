@@ -48,7 +48,7 @@ def auto_register_services(container):
                         # 使用会话模式注册服务
                         container.register_session(cls, cls)
             except Exception as e:
-                print(f"✗ 自动注册服务失败 {module_name}: {str(e)}")
+                print(f"自动注册服务失败 {module_name}: {str(e)}")
 
 
 def auto_register_repositories(container):
@@ -78,7 +78,7 @@ def auto_register_repositories(container):
                         # 使用单例模式注册仓储
                         container.register_singleton(cls, cls)
             except Exception as e:
-                print(f"✗ 自动注册仓储失败 {module_name}: {str(e)}")
+                print(f"自动注册仓储失败 {module_name}: {str(e)}")
 
 
 def configure_dependencies():

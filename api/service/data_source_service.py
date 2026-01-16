@@ -301,9 +301,9 @@ class DataSourceservice:
                     if file_path and os.path.exists(file_path):
                         try:
                             os.remove(file_path)
-                            print(f"✅ Excel文件已删除: {file_path}")
+                            print(f"Excel文件已删除: {file_path}")
                         except Exception as e:
-                            print(f"⚠️ 删除Excel文件时出错: {str(e)}")
+                            print(f"删除Excel文件时出错: {str(e)}")
                             # 即使文件删除失败，也继续删除数据源记录
             
             # 删除数据源记录
@@ -365,7 +365,7 @@ class DataSourceservice:
             )
                 
         except Exception as e:
-            print(f"❌ 获取数据源数据失败: {str(e)}")
+            print(f"获取数据源数据失败: {str(e)}")
             traceback.print_exc()
             return ApiResponse(
                 success=False,
@@ -404,7 +404,7 @@ class DataSourceservice:
             )
                 
         except Exception as e:
-            print(f"❌ 获取数据源范围数据失败: {str(e)}")
+            print(f"获取数据源范围数据失败: {str(e)}")
             traceback.print_exc()
             return ApiResponse(
                 success=False,
@@ -464,7 +464,7 @@ class DataSourceservice:
             )
                 
         except Exception as e:
-            print(f"❌ 通过文件路径获取数据源数据失败: {str(e)}")
+            print(f"通过文件路径获取数据源数据失败: {str(e)}")
             traceback.print_exc()
             return ApiResponse(
                 success=False,
@@ -502,7 +502,7 @@ class DataSourceservice:
                 else:
                     file_path = os.path.join(self.excel_files_folder, config.file_path)
                 
-                print(f"🔍 尝试读取Excel文件: {config.file_path} -> {file_path}")
+                print(f"尝试读取Excel文件: {config.file_path} -> {file_path}")
                 
                 # 调用ExcelHelper读取Excel文件
                 file_result = await ExcelHelper.read_excel_file(file_path, sheet_name, limit)
@@ -538,7 +538,7 @@ class DataSourceservice:
                             'displayed_rows': sheet_data['displayed_rows']
                         }
                 else:
-                    print(f"❌ 读取文件 {file_path} 失败: {file_result.get('message', '未知错误')}")
+                    print(f"读取文件 {file_path} 失败: {file_result.get('message', '未知错误')}")
                     continue
             
             if not result_data['files']:
@@ -555,7 +555,7 @@ class DataSourceservice:
             }
             
         except Exception as e:
-            print(f"❌ 读取Excel数据失败: {str(e)}")
+            print(f"读取Excel数据失败: {str(e)}")
             traceback.print_exc()
             return {
                 'success': False,
@@ -598,7 +598,7 @@ class DataSourceservice:
             }
             
         except Exception as e:
-            print(f"❌ 获取API数据失败: {str(e)}")
+            print(f"获取API数据失败: {str(e)}")
             return {
                 'success': False,
                 'message': f'获取API数据失败: {str(e)}',
@@ -642,7 +642,7 @@ class DataSourceservice:
             return result_data
             
         except Exception as e:
-            print(f"❌ 读取Excel范围数据失败: {str(e)}")
+            print(f"读取Excel范围数据失败: {str(e)}")
             traceback.print_exc()
             return {
                 'success': False,

@@ -62,5 +62,5 @@ class Fileservice:
                 return True
             return False
         except Exception as e:
-            print(f"❌ 删除文件失败: {str(e)}")
+            print(f"删除文件失败: {str(e)}")
             return False

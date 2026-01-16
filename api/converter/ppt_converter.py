@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-PPT转HTML转换器 - 集成配置编辑功能
+PPT转HTML转换器 - 集成模板配置功能
 在生成的HTML页面中嵌入配置项显示和编辑功能
 """
 
@@ -61,7 +61,7 @@ class MsoShapeType(IntEnum):
     msoUnknown            = 0    # 未知类型
 
 class PPTConverterWithEditor(BaseConverter):
-    """集成配置编辑功能的PPT转换器"""
+    """集成模板配置功能的PPT转换器"""
     
     def __init__(self):
         self.ppt_app = None
@@ -70,7 +70,7 @@ class PPTConverterWithEditor(BaseConverter):
     
     def convert_ppt_to_html_with_editor(self, ppt_path: str, output_html: str = None, config_file: str = None):
         """
-        转换PPT为HTML并集成配置编辑功能
+        转换PPT为HTML并集成模板配置功能
         
         Args:
             ppt_path: PPT文件路径
@@ -78,10 +78,10 @@ class PPTConverterWithEditor(BaseConverter):
             config_file: 配置文件路径
         """
         try:
-            print("🎯 开始PPT转换流程（集成配置编辑功能）...")
+            print("开始PPT转换流程（集成模板配置功能）...")
             
             # 阶段1: 解析PPT配置
-            print("\n📋 阶段1: 解析PPT配置...")
+            print("\n 阶段1: 解析PPT配置...")
             self.config = self._parse_ppt_config(ppt_path)            
             
             # 保存配置文件
@@ -89,25 +89,25 @@ class PPTConverterWithEditor(BaseConverter):
                 self._save_config(config_file)
             
             # 阶段2: 关闭PPT文件
-            print("\n🔒 阶段2: 关闭PPT文件...")
+            print("\n 阶段2: 关闭PPT文件...")
             self._close_ppt()
             
-            # 阶段3: 生成带编辑器的HTML
-            print("\n🎨 阶段3: 生成带配置编辑器的HTML...")
+            # 阶段3: 生成HTML
+            print("\n 阶段3: 生成HTML...")
             if not output_html:
                 output_html = ppt_path.replace('.pptx', '_with_editor.html').replace('.ppt', '_with_editor.html')
             
             self._generate_html_with_editor(output_html)
             
-            print(f"\n✅ 转换完成!")
-            print(f"📄 HTML文件: {output_html}")
+            print(f"\n 转换完成!")
+            print(f"HTML文件: {output_html}")
             if config_file:
-                print(f"⚙️ 配置文件: {config_file}")
+                print(f"配置文件: {config_file}")
             
             return output_html
             
         except Exception as e:
-            print(f"❌ 转换失败: {str(e)}")
+            print(f"转换失败: {str(e)}")
             self._close_ppt()
             raise
     
@@ -118,7 +118,7 @@ class PPTConverterWithEditor(BaseConverter):
             if not os.path.exists(ppt_path):
                 raise FileNotFoundError(f"PPT文件不存在: {ppt_path}")
             
-            print(f"📂 正在打开PPT文件: {ppt_path}")
+            print(f"正在打开PPT文件: {ppt_path}")
             
             # 打开PPT应用
             self.ppt_app = win32com.client.Dispatch("PowerPoint.Application")
@@ -128,29 +128,29 @@ class PPTConverterWithEditor(BaseConverter):
             
             # 打开演示文稿
             abs_path = os.path.abspath(ppt_path)
-            print(f"📖 正在读取演示文稿...")
+            print(f"正在读取演示文稿...")
             # self.presentation = self.ppt_app.Presentations.Open(abs_path, ReadOnly=True, Untitled=True, WithWindow=False)
             self.presentation = self.ppt_app.Presentations.Open(abs_path)
             
             # 获取基本信息
-            print(f"📏 正在获取基本信息...")
+            print(f"正在获取基本信息...")
             slide_width = float(self.presentation.PageSetup.SlideWidth)
             slide_height = float(self.presentation.PageSetup.SlideHeight)
             total_slides = int(self.presentation.Slides.Count)
             
-            print(f"📊 PPT信息: {total_slides}张幻灯片, 尺寸: {slide_width:.1f}x{slide_height:.1f}")
+            print(f"PPT信息: {total_slides}张幻灯片, 尺寸: {slide_width:.1f}x{slide_height:.1f}")
             
             # 解析所有幻灯片
             slides = []
             for i in range(1, total_slides + 1):
                 try:
-                    print(f"🔍 正在解析第 {i}/{total_slides} 张幻灯片...")
+                    print(f"正在解析第 {i}/{total_slides} 张幻灯片...")
                     slide = self.presentation.Slides(i)                    
                     self.ppt_app.ActiveWindow.View.GotoSlide(i)
                     slide_config = self._parse_slide_config(slide, i-1, slide_width, slide_height)
                     slides.append(slide_config)
                 except Exception as e:
-                    print(f"⚠️ 解析第 {i} 张幻灯片失败: {str(e)}")
+                    print(f"解析第 {i} 张幻灯片失败: {str(e)}")
                     # 创建一个空的幻灯片配置
                     slides.append(SlideConfig(
                         slide_index=i-1,
@@ -170,7 +170,7 @@ class PPTConverterWithEditor(BaseConverter):
             )
             
         except Exception as e:
-            print(f"❌ 解析PPT配置失败: {str(e)}")
+            print(f"解析PPT配置失败: {str(e)}")
             # 确保清理资源
             self._close_ppt()
             raise
@@ -195,7 +195,7 @@ class PPTConverterWithEditor(BaseConverter):
             
             try:
                 shapes_count = slide.Shapes.Count
-                print(f"  📦 发现 {shapes_count} 个元素")
+                print(f"发现 {shapes_count} 个元素")
                 
                 for j in range(1, shapes_count + 1):
                     try:
@@ -204,15 +204,15 @@ class PPTConverterWithEditor(BaseConverter):
                         if element:
                             elements.append(element)
                     except Exception as e:
-                        print(f"    ⚠️ 解析第 {j} 个元素失败: {str(e)}")
+                        print(f"解析第 {j} 个元素失败: {str(e)}")
                         continue
                         
             except Exception as e:
-                print(f"  ⚠️ 获取幻灯片元素失败: {str(e)}")
+                print(f"获取幻灯片元素失败: {str(e)}")
             
             # 如果检测到背景图片元素，更新背景信息
             if background_image_element and background_image_element.data.image_data:
-                print(f"    ✅ 将图片元素设置为背景: {background_image_element.element_id}")
+                print(f"将图片元素设置为背景: {background_image_element.element_id}")
                 background = {"type": "image", "value": background_image_element.data.image_data}
             
             # 确保background是字符串格式，符合SlideConfig的要求
@@ -235,7 +235,7 @@ class PPTConverterWithEditor(BaseConverter):
             )
             
         except Exception as e:
-            print(f"⚠️ 解析幻灯片配置失败: {str(e)}")
+            print(f"解析幻灯片配置失败: {str(e)}")
             return SlideConfig(
                 slide_index=slide_index,
                 width=width,
@@ -253,7 +253,7 @@ class PPTConverterWithEditor(BaseConverter):
             # 更准确的元素类型判断
             element_type:MsoShapeType = self._parse_element_type(shape)
             if element_type == MsoShapeType.msoUnknown:
-                print(f"    ⚠️ 未识别的元素类型，请检查代码")
+                print(f"未识别的元素类型，请检查代码")
                 return None
 
             # 位置信息 - 添加调试输出
@@ -263,19 +263,19 @@ class PPTConverterWithEditor(BaseConverter):
                 width = float(shape.Width)
                 height = float(shape.Height)
                 
-                print(f"    📏 位置信息 - Left: {left}, Top: {top}, Width: {width}, Height: {height}")
+                print(f"位置信息 - Left: {left}, Top: {top}, Width: {width}, Height: {height}")
                 
                 # 检查异常值
                 if height == 0.0:
-                    print(f"    ⚠️ 发现高度为0的元素!")
-                    print(f"    元素名称: {shape.Name}")
-                    print(f"    元素类型: {shape.Type}")
-                    print(f"    是否有文本: {hasattr(shape, 'TextFrame') and shape.TextFrame.HasText}")
+                    print(f"发现高度为0的元素!")
+                    print(f"元素名称: {shape.Name}")
+                    print(f"元素类型: {shape.Type}")
+                    print(f"是否有文本: {hasattr(shape, 'TextFrame') and shape.TextFrame.HasText}")
                     if hasattr(shape, 'TextFrame') and shape.TextFrame.HasText:
-                        print(f"    文本内容: {shape.TextFrame.TextRange.Text[:50]}...")
+                        print(f"文本内容: {shape.TextFrame.TextRange.Text[:50]}...")
                 
                 if width == 0.0:
-                    print(f"    ⚠️ 发现宽度为0的元素!")
+                    print(f"发现宽度为0的元素!")
                 
                 position = ElementPosition(
                     left=left,
@@ -284,7 +284,7 @@ class PPTConverterWithEditor(BaseConverter):
                     height=height
                 )
             except Exception as e:
-                print(f"    ❌ 获取位置信息失败: {str(e)}")
+                print(f"获取位置信息失败: {str(e)}")
                 # 使用默认值
                 position = ElementPosition(
                     left=0.0,
@@ -307,14 +307,14 @@ class PPTConverterWithEditor(BaseConverter):
             )
             
         except Exception as e:
-            print(f"⚠️ 解析元素失败: {str(e)}")
+            print(f"解析元素失败: {str(e)}")
             return None
     def _parse_element_type(self, shape) -> MsoShapeType:
         """更准确地确定元素类型，基于MsoShapeType枚举"""
         try:
             shape_type = getattr(shape, 'Type', 0)
             shape_name = getattr(shape, 'Name', '').lower()
-            print(f"    🔍 判断元素类型 - 形状类型: {shape_type}, 名称: {shape_name}")
+            print(f"判断元素类型 - 形状类型: {shape_type}, 名称: {shape_name}")
             
             element_type:MsoShapeType = MsoShapeType(shape_type) if shape_type in MsoShapeType._value2member_map_ else MsoShapeType.msoUnknown
             
@@ -324,38 +324,19 @@ class PPTConverterWithEditor(BaseConverter):
                     ole_format = shape.OLEFormat
                     if hasattr(ole_format, 'ProgID'):
                         prog_id = str(ole_format.ProgID).lower()
-                        print(f"    🔍 发现OLE对象: {prog_id}")
+                        print(f"发现OLE对象: {prog_id}")
                         if 'excel' in prog_id and ('worksheet' in prog_id or 'sheet' in prog_id):
-                            print(f"    ✅ 识别为Excel嵌入表格")                            
+                            print(f"识别为Excel嵌入表格")                            
                 else:
                     element_type= MsoShapeType.msoUnknown         
             
             # 检查是否是自由形状
             if element_type == MsoShapeType.msoFreeform:  # 5 - msoFreeform
-                print(f"    🔍 Freeform形状，进行特殊检查...")                
-                # # 检查是否包含表格相关属性
-                # for attr_name in ['Table', 'table', 'TABLE']:
-                #     if hasattr(shape, attr_name):
-                #         try:
-                #             table_obj = getattr(shape, attr_name)
-                #             if table_obj is not None:
-                #                 print(f"    ✅ Freeform中发现{attr_name}属性，识别为隐藏表格")
-                #                 return "hidden_table"
-                #         except Exception as e:
-                #             print(f"    ⚠️ Freeform {attr_name}属性检查失败: {str(e)}")
-                
-                # # 根据名称判断是否为表格
-                # table_keywords = ['table', 'excel', 'worksheet', '表格', '工作表', 'grid', 'data']
-                # if any(keyword in shape_name for keyword in table_keywords):
-                #     print(f"    ✅ Freeform根据名称识别为表格: {shape_name}")
-                #     return "name_inferred_table"
-                
-                # print(f"    ✅ 识别为自由形状")
-                # return "freeform"
+                print(f"Freeform形状，进行特殊检查...")        
                         
             return element_type
         except Exception as e:
-            print(f"    ⚠️ 元素类型判断失败: {str(e)}")
+            print(f"元素类型判断失败: {str(e)}")
             return MsoShapeType.msoUnknown
     
     def _safe_hasattr(self, obj, attr_name: str) -> bool:
@@ -363,7 +344,7 @@ class PPTConverterWithEditor(BaseConverter):
         try:
             return hasattr(obj, attr_name)
         except Exception as e:
-            print(f"    ⚠️ 检查属性 '{attr_name}' 时发生COM异常: {str(e)}")
+            print(f"检查属性 '{attr_name}' 时发生COM异常: {str(e)}")
             return False
 
     def _extract_element_style(self, shape,element_type) -> ElementStyle:
@@ -434,7 +415,7 @@ class PPTConverterWithEditor(BaseConverter):
                 style.border = self._extract_border_style(shape.Line)
                 
         except Exception as e:
-            print(f"⚠️ 提取样式失败: {str(e)}")
+            print(f"提取样式失败: {str(e)}")
         
         return style
     
@@ -445,27 +426,23 @@ class PPTConverterWithEditor(BaseConverter):
         try:
             # 文本框（msoTextBox=17）或  自动形状（msoAutoShape=1）
             if element_type == MsoShapeType.msoTextBox or element_type ==MsoShapeType.msoAutoShape:
-                print(f"    📊 处理文本框...")                
+                print(f"处理文本框...")                
                 text_content = self._extract_text_content(shape)
                 if text_content:
                     data.text_content = text_content
-                    print(f"    📝 提取文本内容: {text_content[:50]}...")
+                    print(f"提取文本内容: {text_content[:50]}...")
                 else:
-                    print(f"    ⚠️ 提取文本内容失败")
+                    print(f"提取文本内容失败")
                     data.text_content = ""
             # 图片（msoPicture=13）
             elif element_type == MsoShapeType.msoPicture:            
-                print(f"    🖼️ 确认为图片元素，正在提取图片数据...")
+                print(f"确认为图片元素，正在提取图片数据...")
                 image_data = self._extract_image_data(shape)
                 if image_data:
                     data.image_data = image_data
                     data.original_image_data = image_data
-                    print(f"    ✅ 图片数据提取成功")
-                else:
-                    print(f"    ⚠️ 图片数据提取失败")  
             # 标准表格（msoTable=19）
             elif element_type == MsoShapeType.msoTable:
-                print(f"    📊 处理标准表格...")
                 if hasattr(shape, 'Table') and shape.Table is not None:
                     table_result = self._extract_table_data(shape.Table)
                     # 检查返回值是否为新的数据结构
@@ -476,16 +453,9 @@ class PPTConverterWithEditor(BaseConverter):
                             # 保存行高和列宽信息
                             data.table_row_heights = table_result.get('row_heights', [])
                             data.table_col_widths = table_result.get('col_widths', [])
-                            print(f"    ✅ 标准表格数据提取完成，行数: {len(table_data)}")
-                            print(f"    📋 表格数据预览: {table_data[:2] if len(table_data) > 0 else 'Empty'}")
-                            print(f"    📏 提取到行高信息: {len(data.table_row_heights)}行")
-                            print(f"    📏 提取到列宽信息: {len(data.table_col_widths)}列")
-                        else:
-                            print(f"    ⚠️ 标准表格数据为空")
                     # 兼容旧的数据结构
                     elif table_result and len(table_result) > 0:
                         data.table_data = table_result
-                        print(f"    ✅ 标准表格数据提取完成，行数: {len(table_result)}")
                     # 静默处理表格数据
                 # OLE嵌入表格（msoEmbeddedOLEObject=7）
             elif element_type == MsoShapeType.msoEmbeddedOLEObject:
@@ -500,12 +470,14 @@ class PPTConverterWithEditor(BaseConverter):
                             ole_format.Activate()  
                             time.sleep(1)
                             active_cell =ole_object.Application.ActiveCell
+                            sheet_name = active_cell.Worksheet.Name
                             cell_address = active_cell.Address
                             cell_row = active_cell.Row
                             cell_column = active_cell.Column
                             
                             # 存储活动单元格信息
                             data.active_cell = {
+                                'sheet_name': sheet_name,
                                 'address': cell_address,
                                 'row': cell_row,
                                 'column': cell_column
@@ -519,32 +491,20 @@ class PPTConverterWithEditor(BaseConverter):
                                     # 对于单工作表情况，也保持向后兼容填充table_data
                                     if len(ole_data['sheets']) == 1:
                                         data.table_data = ole_data['sheets'][0]['data']
-                                    print(f"    ✅ OLE嵌入表格多工作表数据提取成功，工作表数量: {len(ole_data['sheets'])}")
                                 else:
                                     # 兼容旧格式，单工作表直接赋值给table_data
                                     data.table_data = ole_data
-                                    print(f"    ✅ OLE嵌入表格数据提取成功，行数: {len(ole_data)}")
-                            else:
-                                print(f"    ⚠️ OLE嵌入表格数据为空")
                             
                     except Exception as ole_e:
-                        print(f"    ⚠️ OLE嵌入表格数据提取失败: {str(ole_e)}")
-                        import traceback
-                        print(f"    📋 详细错误: {traceback.format_exc()}")           
+                        print(f"OLE嵌入表格数据提取失败: {str(ole_e)}")         
             # 图表 (msoChart = 3)
             elif element_type == MsoShapeType.msoChart:
-                print(f"    📊 发现图表类型，正在提取数据...")
                 if hasattr(shape, 'Chart'):
                     data.chart_data = self._extract_chart_data_with_style(shape.Chart)
-                    print(f"    ✅ 图表数据提取成功")
-                else:
-                    print(f"    ⚠️ 图表对象无Chart属性")
-            else:
-                print(f"    ℹ️ 不支持的元素类型，跳过数据提取")
 
                 
         except Exception as e:
-            print(f"⚠️ 提取元素数据失败: {str(e)}")
+            print(f"提取元素数据失败: {str(e)}")
         
         return data
 
@@ -553,7 +513,6 @@ class PPTConverterWithEditor(BaseConverter):
         try:
             # 首先检查chart对象是否有效
             if not chart:
-                print("    ⚠️ 图表对象为空，使用默认数据")
                 return self._create_default_chart_data()
             
             # 创建基础图表数据结构
@@ -593,13 +552,8 @@ class PPTConverterWithEditor(BaseConverter):
                             if title_text:
                                 chart_data["options"]["plugins"]["title"]["display"] = True
                                 chart_data["options"]["plugins"]["title"]["text"] = title_text
-                                print(f"    📊 图表标题: {title_text}")
-                        else:
-                            print("    📊 图表无标题文本")
-                else:
-                    print("    📊 图表无标题")
             except Exception as e:
-                print(f"    ⚠️ 获取图表标题失败: {str(e)}")
+                print(f"获取图表标题失败: {str(e)}")
             
             # 尝试获取图例设置
             try:
@@ -624,14 +578,12 @@ class PPTConverterWithEditor(BaseConverter):
                                     "width": legend_width,
                                     "height": legend_height
                                 }
-                                print(f"    📊 图例位置和大小: left={legend_left}, top={legend_top}, width={legend_width}, height={legend_height}")
                             except Exception as size_e:
-                                print(f"    ⚠️ 获取图例位置和大小失败: {str(size_e)}")
+                                print(f"获取图例位置和大小失败: {str(size_e)}")
                 else:
                     chart_data["options"]["plugins"]["legend"]["display"] = False
-                    print("    📊 图表无图例")
             except Exception as e:
-                print(f"    ⚠️ 获取图例设置失败: {str(e)}")
+                print(f"获取图例设置失败: {str(e)}")
             
             # 尝试获取绘图区信息
             try:
@@ -653,19 +605,15 @@ class PPTConverterWithEditor(BaseConverter):
                                 "width": plot_width,
                                 "height": plot_height
                             }
-                            print(f"    📊 绘图区位置和大小: left={plot_left}, top={plot_top}, width={plot_width}, height={plot_height}")
                         except Exception as size_e:
-                            print(f"    ⚠️ 获取绘图区位置和大小失败: {str(size_e)}")
-                else:
-                    print("    📊 图表无绘图区信息")
+                            print(f"获取绘图区位置和大小失败: {str(size_e)}")
             except Exception as e:
-                print(f"    ⚠️ 获取绘图区信息失败: {str(e)}")
+                print(f"获取绘图区信息失败: {str(e)}")
             
             # 尝试获取图表类型
             try:
                 if hasattr(chart, 'ChartType'):
                     chart_type = chart.ChartType
-                    print(f"    📊 图表类型代码: {chart_type}")
                     
                     # 根据PowerPoint图表类型映射到Chart.js类型
                     type_mapping = {
@@ -787,7 +735,6 @@ class PPTConverterWithEditor(BaseConverter):
                                        93, 94, 96, 97, 100, 101, 103, 104, 107, 108, 110, 111]
                         
                         if chart_type in stacked_types:
-                            print(f"    📊 检测到堆叠图表类型: {chart_type}")
                             # 为堆叠图表添加特殊配置
                             if chart_data["type"] == "bar":
                                 chart_data["options"]["scales"]["x"] = {"stacked": True}
@@ -800,25 +747,20 @@ class PPTConverterWithEditor(BaseConverter):
                         # 为100%堆叠图表添加特殊配置
                         percent_stacked_types = [53, 56, 59, 62, 64, 67, 77, 79, 94, 97, 101, 104, 108, 111]
                         if chart_type in percent_stacked_types:
-                            print(f"    📊 检测到100%堆叠图表类型: {chart_type}")
                             if chart_data["type"] == "bar":
                                 chart_data["options"]["scales"]["y"]["max"] = 100
-                                chart_data["options"]["plugins"]["title"]["text"] = f"100%堆叠柱状图 (类型: {chart_type})"
-                        
-                        print(f"    📊 映射图表类型: {chart_data['type']} (PowerPoint类型: {chart_type})")
+                                chart_data["options"]["plugins"]["title"]["text"] = f"100%堆叠柱状图 (类型: {chart_type})"                        
                     else:
-                        print(f"    ⚠️ 未知图表类型: {chart_type}，使用默认柱状图")
                         chart_data["type"] = "bar"
                         chart_data["options"]["plugins"]["title"]["text"] = f"未知图表类型 (类型: {chart_type})"
             except Exception as e:
-                print(f"    ⚠️ 获取图表类型失败: {str(e)}")
+                print(f"获取图表类型失败: {str(e)}")
             
             # 尝试提取图表数据
             try:
                 if hasattr(chart, 'SeriesCollection'):
                     series_collection = chart.SeriesCollection()
                     series_count = series_collection.Count
-                    print(f"    📊 发现 {series_count} 个数据系列")
                     
                     # 提取标签（类别）
                     if series_count > 0:
@@ -828,7 +770,6 @@ class PPTConverterWithEditor(BaseConverter):
                                 x_values = first_series.XValues
                                 if x_values:
                                     chart_data["data"]["labels"] = [str(val) for val in x_values]
-                                    print(f"    📊 提取到 {len(chart_data['data']['labels'])} 个标签")
                             except:
                                 pass
                     
@@ -843,7 +784,6 @@ class PPTConverterWithEditor(BaseConverter):
                                         category_names = x_axis.CategoryNames
                                         if category_names:
                                             chart_data["data"]["labels"] = [str(name) for name in category_names]
-                                            print(f"    📊 从轴标签提取到 {len(chart_data['data']['labels'])} 个标签")
                         except:
                             pass
                     
@@ -867,9 +807,8 @@ class PPTConverterWithEditor(BaseConverter):
                                         chart_data["options"]["scales"]["x"]["grid"] = {
                                             "display": bool(x_axis.HasMajorGridlines)
                                         }
-                                        print(f"    📊 X轴主要网格线显示状态: {x_axis.HasMajorGridlines}")
                                     except Exception as e:
-                                        print(f"    ⚠️ 获取X轴网格线状态失败: {str(e)}")
+                                        print(f"获取X轴网格线状态失败: {str(e)}")
                                 
                                 # 提取X轴刻度线显示状态
                                 if hasattr(x_axis, 'TickLabelPosition'):
@@ -878,7 +817,6 @@ class PPTConverterWithEditor(BaseConverter):
                                         chart_data["options"]["scales"]["x"]["ticks"] = {
                                             "display": x_axis.TickLabelPosition != 0
                                         }
-                                        print(f"    📊 X轴刻度线显示状态: {x_axis.TickLabelPosition != 0}")
                                     except Exception as e:
                                         pass
                             
@@ -905,11 +843,10 @@ class PPTConverterWithEditor(BaseConverter):
                                         chart_data["options"]["scales"]["y"]["ticks"] = {
                                             "display": y_axis.TickLabelPosition != 0
                                         }
-                                        print(f"    📊 Y轴刻度线显示状态: {y_axis.TickLabelPosition != 0}")
                                     except Exception as e:
-                                        print(f"    ⚠️ 获取Y轴刻度线状态失败: {str(e)}")
+                                        print(f"获取Y轴刻度线状态失败: {str(e)}")
                     except Exception as e:
-                        print(f"    ⚠️ 提取坐标轴刻度线信息失败: {str(e)}")
+                        print(f"提取坐标轴刻度线信息失败: {str(e)}")
                     
                     # 如果仍然没有标签，创建默认标签
                     if not chart_data["data"]["labels"]:
@@ -947,24 +884,18 @@ class PPTConverterWithEditor(BaseConverter):
                             }
                             
                             chart_data["data"]["datasets"].append(dataset)
-                            print(f"    📊 添加数据系列: {series_name}, 数据点: {len(values)}, 颜色: {series_color}")
-                            
                         except Exception as e:
-                            print(f"    ⚠️ 处理第 {i+1} 个系列失败: {str(e)}")
                             continue
             except Exception as e:
-                print(f"    ⚠️ 提取图表数据失败: {str(e)}")
+                print(f"提取图表数据失败: {str(e)}")
             
             # 如果没有提取到任何数据系列，使用默认数据
             if not chart_data["data"]["datasets"]:
-                print("    📊 未提取到数据系列，使用默认数据")
                 return self._create_default_chart_data()
             
-            print(f"    ✅ 图表数据提取完成: {len(chart_data['data']['datasets'])} 个系列")
             return chart_data
             
         except Exception as e:
-            print(f"    ❌ 图表数据提取失败: {str(e)}")
             return self._create_default_chart_data()
     
     def _create_default_chart_data(self):
@@ -1039,7 +970,6 @@ class PPTConverterWithEditor(BaseConverter):
             return default_colors[index % len(default_colors)]
             
         except Exception as e:
-            print(f"    ⚠️ 提取系列颜色失败: {str(e)}")
             # 返回默认颜色
             default_colors = ["#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0", "#9966FF", "#FF9F40"]
             return default_colors[index % len(default_colors)]
@@ -1079,7 +1009,7 @@ class PPTConverterWithEditor(BaseConverter):
                                     if text_content:
                                         return text_content
                 except Exception as e:
-                    print(f"    ⚠️ 占位符文本提取失败: {str(e)}")
+                    print(f"占位符文本提取失败: {str(e)}")
             
             # 方法4: 遍历TextFrame中的段落（处理复杂文本）
             if hasattr(shape, 'TextFrame') and shape.TextFrame:
@@ -1097,20 +1027,16 @@ class PPTConverterWithEditor(BaseConverter):
                         if all_text:
                             return '\n'.join(all_text)
                 except Exception as e:
-                    print(f"    ⚠️ 段落文本提取失败: {str(e)}")
+                    print(f"段落文本提取失败: {str(e)}")
             
         except Exception as e:
-            print(f"    ⚠️ 文本提取过程出错: {str(e)}")
+            print(f"文本提取过程出错: {str(e)}")
         
         return text_content
     
     def _extract_ole_table_data(self, ole_object):
         """提取OLE嵌入的Excel表格数据，支持多个工作表"""
-        try:
-            print(f"    🔍 开始提取OLE Excel表格数据...")
-            print(f"    📋 OLE对象类型: {type(ole_object)}")
-            print(f"    📋 OLE对象属性: {[attr for attr in dir(ole_object) if not attr.startswith('_')][:10]}")
-            
+        try:            
             result = {'sheets': []}
             
             # 尝试获取所有工作表
@@ -1118,14 +1044,11 @@ class PPTConverterWithEditor(BaseConverter):
             if hasattr(ole_object, 'Worksheets'):
                 worksheets = ole_object.Worksheets
                 worksheets_count = worksheets.Count
-                print(f"    📊 发现 {worksheets_count} 个工作表")
             else:
-                print(f"    ⚠️ 无法访问工作表集合，尝试单个工作表")
                 # 回退到原有逻辑
                 if hasattr(ole_object, 'ActiveSheet'):
                     worksheet = ole_object.ActiveSheet
                     sheet_name = getattr(worksheet, 'Name', 'ActiveSheet')
-                    print(f"    🔍 使用ActiveSheet: {sheet_name}")
                     sheet_data = self._extract_single_worksheet_data(worksheet, sheet_name)
                     if sheet_data and len(sheet_data['data']) > 0:
                         result['sheets'].append({
@@ -1135,29 +1058,22 @@ class PPTConverterWithEditor(BaseConverter):
                             'col_widths': sheet_data['col_widths'],
                             'merged_cells': sheet_data['merged_cells']
                         })
-                        print(f"    ✅ 成功提取单个工作表数据: {sheet_name}")
                         # 对于单个工作表，保持向后兼容，直接返回数据而不是对象
                         if worksheets_count is None or worksheets_count == 1:
                             return sheet_data
                         return result
                     else:
-                        print(f"    ⚠️ 单个工作表无有效数据")
                         return None
                 else:
-                    print(f"    ❌ 既没有Worksheets也没有ActiveSheet属性")
                     # 尝试其他可能的属性
                     if hasattr(ole_object, 'Workbook'):
                         workbook = ole_object.Workbook
-                        print(f"    🔍 尝试通过Workbook访问工作表")
                         if hasattr(workbook, 'Worksheets'):
                             worksheets = workbook.Worksheets
                             worksheets_count = worksheets.Count
-                            print(f"    📊 通过Workbook发现 {worksheets_count} 个工作表")
                         else:
-                            print(f"    ❌ Workbook也没有Worksheets属性")
                             return None
                     else:
-                        print(f"    ❌ 也没有Workbook属性")
                         return None
             
             # 遍历所有工作表，查找包含数据的工作表
@@ -1165,7 +1081,6 @@ class PPTConverterWithEditor(BaseConverter):
                 try:
                     worksheet = worksheets.Item(sheet_index)
                     sheet_name = getattr(worksheet, 'Name', f'Sheet{sheet_index}')
-                    print(f"    🔍 检查工作表 {sheet_index}: {sheet_name}")
                     
                     # 检查工作表是否有数据
                     if hasattr(worksheet, 'UsedRange'):
@@ -1175,9 +1090,7 @@ class PPTConverterWithEditor(BaseConverter):
                             cols_count = used_range.Columns.Count
                             
                             # 只处理有实际数据的工作表（至少1行1列）
-                            if rows_count > 0 and cols_count > 0:
-                                print(f"    ✅ 工作表 '{sheet_name}' 包含数据: {rows_count}x{cols_count}")
-                                
+                            if rows_count > 0 and cols_count > 0:                                
                                 # 提取该工作表的数据
                                 sheet_data = self._extract_single_worksheet_data(worksheet, sheet_name)
                                 if sheet_data and len(sheet_data['data']) > 0:
@@ -1188,22 +1101,12 @@ class PPTConverterWithEditor(BaseConverter):
                                         'col_widths': sheet_data['col_widths'],
                                         'merged_cells': sheet_data['merged_cells']
                                     })
-                            else:
-                                print(f"    ⚠️ 工作表 '{sheet_name}' 无有效数据: {rows_count}x{cols_count}")
-                        else:
-                            print(f"    ⚠️ 工作表 '{sheet_name}' 无UsedRange")
-                    else:
-                        print(f"    ⚠️ 工作表 '{sheet_name}' 无UsedRange属性")
-                        
                 except Exception as sheet_e:
-                    print(f"    ⚠️ 处理工作表 {sheet_index} 失败: {str(sheet_e)}")
                     continue
             
             # 汇总结果
             if result['sheets']:
-                print(f"    ✅ 成功提取多工作表数据，工作表数量: {len(result['sheets'])}")
                 for sheet in result['sheets']:
-                    print(f"      - {sheet['name']}: {len(sheet['data'])} 行数据")
                 # 对于单个工作表，保持向后兼容，直接返回数据而不是对象
                 if len(result['sheets']) == 1:
                     return result['sheets'][0]['data']
@@ -1230,8 +1133,6 @@ class PPTConverterWithEditor(BaseConverter):
             rows_count = end_row - start_row + 1
             cols_count = end_col - start_col + 1
             
-            print(f"    📊 读取范围: A1:{chr(64+end_col)}{end_row}")
-            
             table_data = []
             row_heights = []
             col_widths = []
@@ -1243,7 +1144,6 @@ class PPTConverterWithEditor(BaseConverter):
                     height = worksheet.Rows(row).Height
                     row_heights.append(height)
                 except Exception as e:
-                    print(f"    ⚠️ 提取行 {row} 高度失败: {str(e)}")
                     row_heights.append(15)  # 默认行高
             
             # 提取列宽 - 从第1列开始
@@ -1252,7 +1152,6 @@ class PPTConverterWithEditor(BaseConverter):
                     width = worksheet.Columns(col).Width
                     col_widths.append(width)
                 except Exception as e:
-                    print(f"    ⚠️ 提取列 {col} 宽度失败: {str(e)}")
                     col_widths.append(8.43)  # 默认列宽
             
             # 提取合并单元格信息
@@ -1280,7 +1179,7 @@ class PPTConverterWithEditor(BaseConverter):
                                 "colspan": end_col_merge - start_col_merge + 1
                             })
             except Exception as e:
-                print(f"    ⚠️ 提取合并单元格信息失败: {str(e)}")
+                print(f"提取合并单元格信息失败: {str(e)}")
             
             # 提取实际数据 - 从A1开始
             for row in range(start_row, end_row + 1):
@@ -1406,7 +1305,6 @@ class PPTConverterWithEditor(BaseConverter):
                         })
                         
                     except Exception as cell_e:
-                        print(f"    ⚠️ 提取单元格 ({row},{col}) 失败: {str(cell_e)}")
                         row_data.append({
                             "text": "",
                             "background_color": "#ffffff",
@@ -1426,12 +1324,9 @@ class PPTConverterWithEditor(BaseConverter):
                 "col_widths": col_widths,
                 "merged_cells": merged_cells
             }
-            
-            print(f"    ✅ 工作表 '{sheet_name}' 数据提取完成: {len(table_data)} 行, {len(row_heights)} 行高, {len(col_widths)} 列宽, {len(merged_cells)} 个合并单元格")
             return result
             
         except Exception as e:
-            print(f"    ⚠️ 提取工作表 '{sheet_name}' 数据失败: {str(e)}")
             return {
                 "data": [],
                 "row_heights": [],
@@ -1439,7 +1334,7 @@ class PPTConverterWithEditor(BaseConverter):
                 "merged_cells": []
             }
     def _generate_html_with_editor(self, convert_ppt_to_html: str):
-        """生成带配置编辑器的HTML"""
+        """生成模板配置的HTML"""
         html_content = self._build_html_with_editor()
         
         with open(convert_ppt_to_html, 'w', encoding='utf-8') as f:
@@ -1471,7 +1366,6 @@ class PPTConverterWithEditor(BaseConverter):
             return html
             
         except Exception as e:
-            print(f"⚠️ 读取模板文件失败: {str(e)}")
             return self._build_fallback_html()
     
     def _build_fallback_html(self) -> str:
@@ -1518,18 +1412,14 @@ class PPTConverterWithEditor(BaseConverter):
                 # 方法1: 尝试获取填充
                 if hasattr(background, 'Fill') and background.Fill:
                     fill = background.Fill
-                    if hasattr(fill, 'Type'):
-                        print(f"    🎨 背景填充类型: {fill.Type}")
-                        
+                    if hasattr(fill, 'Type'):                        
                         # 检查填充类型
                         if fill.Type == 1:  # msoFillSolid - 纯色填充
                             if hasattr(fill, 'ForeColor'):
                                 color = self._get_color_rgb(fill.ForeColor)
                                 if color and color != "#000000":  # 如果不是默认的黑色
-                                    print(f"    🎨 提取到纯色背景: {color}")
                                     bg_info= {"type": "color", "value": color}
                         elif fill.Type == 5:  # msoFillPicture - 图片填充
-                            print("    🖼️ 检测到背景图片")
                             # 尝试提取背景图片
                             background_image = self._extract_background_image(fill, slide)
                             if background_image:
@@ -1548,7 +1438,7 @@ class PPTConverterWithEditor(BaseConverter):
                                 if hasattr(fill, 'UserPicture'):
                                     bg_info['image'] = "background_image"  # 占位符
                             except Exception as e:
-                                print(f"    ⚠️ 提取背景图片失败: {str(e)}")
+                                print(f"提取背景图片失败: {str(e)}")
                         
                         # 检查透明度
                         if hasattr(fill, 'Transparency'):
@@ -1561,7 +1451,6 @@ class PPTConverterWithEditor(BaseConverter):
             # 如果都失败了，返回白色作为默认背景
             return bg_info
         except Exception as e:
-            print(f"    ⚠️ 提取背景失败: {str(e)}")
             return bg_info
     
     def _extract_background_image(self, fill, slide):
@@ -1573,7 +1462,7 @@ class PPTConverterWithEditor(BaseConverter):
             
             # 方法1: 尝试通过TextureOffsetX等属性获取图片
             if hasattr(fill, 'TextureName'):
-                print(f"    🖼️ 背景图片名称: {fill.TextureName}")
+                print(f"背景图片名称: {fill.TextureName}")
             
             # 方法2: 尝试导出整个幻灯片然后提取背景
             # 这是一个变通方法，因为PowerPoint COM API对背景图片的直接访问有限
@@ -1592,25 +1481,22 @@ class PPTConverterWithEditor(BaseConverter):
                 # 清理临时文件
                 os.unlink(temp_path)
                 
-                print("    ✅ 成功提取背景图片")
                 return f"data:image/png;base64,{image_data}"
                 
             except Exception as e:
-                print(f"    ⚠️ 导出幻灯片图片失败: {str(e)}")
+                print(f"导出幻灯片图片失败: {str(e)}")
             
             # 方法3: 尝试通过UserPicture属性
             if hasattr(fill, 'UserPicture'):
                 try:
                     user_picture = fill.UserPicture
-                    print(f"    🖼️ 找到UserPicture: {user_picture}")
                     # 这里可能需要进一步处理
                 except Exception as e:
-                    print(f"    ⚠️ 获取UserPicture失败: {str(e)}")
+                    print(f"获取UserPicture失败: {str(e)}")
             
             return None
             
         except Exception as e:
-            print(f"    ⚠️ 提取背景图片失败: {str(e)}")
             return None
 
     def _get_color_rgb(self, color_obj):
@@ -1622,7 +1508,6 @@ class PPTConverterWithEditor(BaseConverter):
                 g = (rgb >> 8) & 255
                 b = (rgb >> 16) & 255
                 color_hex = f"#{r:02x}{g:02x}{b:02x}"
-                print(f"    🎨 提取颜色成功: {color_hex}")
                 return color_hex
             elif hasattr(color_obj, 'Value'):
                 # 尝试从Value属性获取颜色
@@ -1633,11 +1518,9 @@ class PPTConverterWithEditor(BaseConverter):
                     g = (value >> 8) & 255
                     b = (value >> 16) & 255
                     color_hex = f"#{r:02x}{g:02x}{b:02x}"
-                    print(f"    🎨 从Value提取颜色: {color_hex}")
                     return color_hex
-            print(f"    ⚠️ 颜色对象没有RGB属性: {dir(color_obj)}")
         except Exception as e:
-            print(f"    ⚠️ 提取颜色RGB失败: {str(e)}")
+            print(f"提取颜色RGB失败: {str(e)}")
         # 默认返回透明色而不是白色，以便区分提取失败和真正的白色
         return "transparent"
     def _convert_excel_color_to_hex(self, color_value):
@@ -1675,9 +1558,7 @@ class PPTConverterWithEditor(BaseConverter):
             try:
                 rows_count = int(table.Rows.Count)
                 cols_count = int(table.Columns.Count)
-                print(f"    🔍 表格尺寸: {rows_count}x{cols_count}")
             except Exception as e:
-                print(f"    ⚠️ 无法获取表格尺寸: {str(e)}")
                 return []
             
             # 提取行高信息
@@ -1690,11 +1571,9 @@ class PPTConverterWithEditor(BaseConverter):
                         row_height = getattr(row, 'Height', 15)
                         row_heights.append(float(row_height))
                     except Exception as e:
-                        print(f"    ⚠️ 获取行高失败 (行 {i}): {str(e)}")
                         row_heights.append(15)  # 默认行高
-                print(f"    ✅ 提取行高信息完成: {len(row_heights)}行")
             except Exception as e:
-                print(f"    ⚠️ 提取行高信息失败: {str(e)}")
+                print(f"提取行高信息失败: {str(e)}")
             
             # 提取列宽信息
             col_widths = []
@@ -1706,18 +1585,15 @@ class PPTConverterWithEditor(BaseConverter):
                         col_width = getattr(column, 'Width', 72)
                         col_widths.append(float(col_width))
                     except Exception as e:
-                        print(f"    ⚠️ 获取列宽失败 (列 {i}): {str(e)}")
                         col_widths.append(72)  # 默认列宽
-                print(f"    ✅ 提取列宽信息完成: {len(col_widths)}列")
             except Exception as e:
-                print(f"    ⚠️ 提取列宽信息失败: {str(e)}")
+                print(f"提取列宽信息失败: {str(e)}")
             
             # 创建一个矩阵来跟踪合并单元格
             merged_cells = {}  # 存储合并单元格信息 {(row, col): {'colspan': x, 'rowspan': y}}
             processed_cells = set()  # 已处理的单元格位置
             
             # 检测合并单元格的改进方法
-            print(f"    🔍 开始检测合并单元格")
             
             for row_idx in range(1, rows_count + 1):
                 for col_idx in range(1, cols_count + 1):
@@ -1767,7 +1643,6 @@ class PPTConverterWithEditor(BaseConverter):
                                 # 如果文本相同且不为空，可能是合并的单元格
                                 if current_text and check_text == current_text:
                                     colspan += 1
-                                    print(f"    🔍 检测到可能的水平合并: ({row_idx},{col_idx}) -> ({row_idx},{check_col})")
                                     processed_cells.add((row_idx, check_col))
                                 else:
                                     break
@@ -1794,7 +1669,6 @@ class PPTConverterWithEditor(BaseConverter):
                                 # 如果文本相同且不为空，可能是合并的单元格
                                 if current_text and check_text == current_text:
                                     rowspan += 1
-                                    print(f"    🔍 检测到可能的垂直合并: ({row_idx},{col_idx}) -> ({check_row},{col_idx})")
                                 else:
                                     break
                             except:
@@ -1844,7 +1718,6 @@ class PPTConverterWithEditor(BaseConverter):
                             merge_info = merged_cells[(row_idx, col_idx)]
                             cell_data["colspan"] = merge_info['colspan']
                             cell_data["rowspan"] = merge_info['rowspan']
-                            print(f"    📋 添加合并单元格属性: ({row_idx},{col_idx}) colspan={merge_info['colspan']} rowspan={merge_info['rowspan']}")
                         
                         # 安全地提取单元格文本和样式
                         try:
@@ -1869,7 +1742,6 @@ class PPTConverterWithEditor(BaseConverter):
                                                 color_rgb = self._get_color_rgb(fill.ForeColor)
                                                 if color_rgb and color_rgb != "#000000":
                                                     cell_data["background_color"] = color_rgb
-                                                    print(f"    🎨 单元格({row_idx},{col_idx})背景色: {color_rgb}")
                                 
                                 # 提取文本颜色和字体样式
                                 if hasattr(shape, 'TextFrame') and shape.TextFrame:
@@ -1885,7 +1757,6 @@ class PPTConverterWithEditor(BaseConverter):
                                             3: 'right',     # msoAnchorBoth
                                         }
                                         cell_data["horizontal_align"] = horizontal_align_map.get(horizontal_anchor, 'left')
-                                        print(f"    📐 单元格({row_idx},{col_idx})水平对齐: {cell_data['horizontal_align']}")
                                     
                                     if hasattr(text_frame, 'VerticalAnchor'):
                                         vertical_anchor = getattr(text_frame, 'VerticalAnchor', 0)
@@ -1896,7 +1767,6 @@ class PPTConverterWithEditor(BaseConverter):
                                             3: 'bottom',    # msoAnchorBottom
                                         }
                                         cell_data["vertical_align"] = vertical_align_map.get(vertical_anchor, 'top')
-                                        print(f"    📐 单元格({row_idx},{col_idx})垂直对齐: {cell_data['vertical_align']}")
                                     
                                     if hasattr(text_frame, 'TextRange') and text_frame.TextRange:
                                         text_range = text_frame.TextRange
@@ -1966,51 +1836,32 @@ class PPTConverterWithEditor(BaseConverter):
     def _extract_image_data(self, shape):
         """提取图片数据"""
         try:
-            import tempfile
-            import base64
-            import os
-            
-            print(f"    🔄 开始导出图片...")
-            print(f"    🔍 形状信息: Type={getattr(shape, 'Type', 'N/A')}, Name={getattr(shape, 'Name', 'N/A')}")
-            
             # 检查形状是否有PictureFormat属性
             has_picture_format = hasattr(shape, 'PictureFormat') and shape.PictureFormat
-            print(f"    📷 PictureFormat可用: {has_picture_format}")
             
             # 检查形状是否有OLEFormat属性
             has_ole_format = hasattr(shape, 'OLEFormat') and shape.OLEFormat
-            print(f"    📋 OLEFormat可用: {has_ole_format}")
             
             # 方法1: 尝试直接导出图片
-            print(f"    🔄 尝试方法1: 直接导出图片")
             image_data = self._try_export_image(shape)
             if image_data:
-                print(f"    ✅ 方法1成功: 图片数据长度 {len(image_data)} 字符")
                 return image_data
             
             # 方法2: 尝试从PictureFormat获取图片
-            print(f"    🔄 尝试方法2: 从PictureFormat获取")
             image_data = self._try_extract_from_picture_format(shape)
             if image_data:
-                print(f"    ✅ 方法2成功: 图片数据长度 {len(image_data)} 字符")
                 return image_data
             
             # 方法3: 尝试从OLE对象获取图片
-            print(f"    🔄 尝试方法3: 从OLE对象获取")
             image_data = self._try_extract_from_ole_object(shape)
             if image_data:
-                print(f"    ✅ 方法3成功: 图片数据长度 {len(image_data)} 字符")
                 return image_data
             
-            print(f"    ❌ 所有图片提取方法都失败")
-            print(f"    🔄 返回占位符图片（1x1透明像素）")
             # 返回占位符图片（1x1透明像素）
             placeholder = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
             return placeholder
             
         except Exception as e:
-            print(f"    ⚠️ 提取图片数据失败: {str(e)}")
-            print(f"    🔄 返回占位符图片（异常情况）")
             # 返回占位符图片（1x1透明像素）
             placeholder = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
             return placeholder
@@ -2038,16 +1889,12 @@ class PPTConverterWithEditor(BaseConverter):
             exported = False
             for format_code, format_name in export_formats:
                 try:
-                    print(f"    📤 尝试导出为 {format_name} 格式...")
                     shape.Export(temp_path, format_code)
                     
                     # 检查文件是否成功创建且有内容
                     if os.path.exists(temp_path) and os.path.getsize(temp_path) > 0:
-                        print(f"    ✅ 成功导出为 {format_name} 格式")
                         exported = True
                         break
-                    else:
-                        print(f"    ⚠️ {format_name} 格式导出失败或文件为空")
                 except Exception as e:
                     pass
                     continue
@@ -2071,32 +1918,27 @@ class PPTConverterWithEditor(BaseConverter):
         try:
             if hasattr(shape, 'PictureFormat') and shape.PictureFormat:
                 picture_format = shape.PictureFormat
-                print(f"    🔍 尝试从PictureFormat获取图片...")
                 
                 # 尝试获取图片文件名
                 if hasattr(picture_format, 'Filename'):
                     filename = picture_format.Filename
-                    print(f"    📁 图片文件名: {filename}")
                 
                 # 尝试复制到剪贴板然后获取
                 if hasattr(shape, 'Copy'):
                     try:
                         shape.Copy()
-                        print(f"    📋 图片已复制到剪贴板")
                         
                         # 尝试从剪贴板获取图片数据
                         clipboard_data = self._try_get_from_clipboard()
                         if clipboard_data:
-                            print(f"    ✅ 从剪贴板获取图片成功")
                             return clipboard_data
                             
                     except Exception as copy_e:
-                        print(f"    ⚠️ 复制图片失败: {str(copy_e)}")
+                        print(f"复制图片失败: {str(copy_e)}")
                 
             return None
             
         except Exception as e:
-            print(f"    ⚠️ 从PictureFormat提取图片失败: {str(e)}")
             return None
 
     def _try_get_from_clipboard(self):
@@ -2107,16 +1949,12 @@ class PPTConverterWithEditor(BaseConverter):
             import io
             import base64
             
-            print(f"    🔄 尝试从剪贴板获取图片...")
-            
             # 打开剪贴板
             win32clipboard.OpenClipboard()
             
             try:
                 # 检查剪贴板中是否有图片数据
-                if win32clipboard.IsClipboardFormatAvailable(win32clipboard.CF_DIB):
-                    print(f"    📋 剪贴板中发现DIB格式图片")
-                    
+                if win32clipboard.IsClipboardFormatAvailable(win32clipboard.CF_DIB):                    
                     # 获取DIB数据
                     dib_data = win32clipboard.GetClipboardData(win32clipboard.CF_DIB)
                     
@@ -2134,18 +1972,13 @@ class PPTConverterWithEditor(BaseConverter):
                         img_bytes = output_buffer.getvalue()
                         
                         image_data = base64.b64encode(img_bytes).decode('utf-8')
-                        print(f"    ✅ 剪贴板图片转换成功，大小: {len(image_data)} 字符")
                         return f"data:image/png;base64,{image_data}"
                         
                     except Exception as img_e:
-                        print(f"    ⚠️ DIB数据转换失败: {str(img_e)}")
+                        print(f"DIB数据转换失败: {str(img_e)}")
                 
                 elif win32clipboard.IsClipboardFormatAvailable(win32clipboard.CF_BITMAP):
-                    print(f"    📋 剪贴板中发现BITMAP格式图片")
-                    # 可以尝试处理BITMAP格式，但比较复杂
-                    
-                else:
-                    print(f"    ❌ 剪贴板中没有图片数据")
+                    print(f"剪贴板中发现BITMAP格式图片")            
                     
             finally:
                 win32clipboard.CloseClipboard()
@@ -2153,10 +1986,8 @@ class PPTConverterWithEditor(BaseConverter):
             return None
             
         except ImportError:
-            print(f"    ⚠️ 缺少win32clipboard或PIL库，无法从剪贴板获取图片")
             return None
         except Exception as e:
-            print(f"    ⚠️ 从剪贴板获取图片失败: {str(e)}")
             try:
                 win32clipboard.CloseClipboard()
             except:
@@ -2168,22 +1999,18 @@ class PPTConverterWithEditor(BaseConverter):
         try:
             if hasattr(shape, 'OLEFormat') and shape.OLEFormat:
                 ole_format = shape.OLEFormat
-                print(f"    🔍 尝试从OLE对象获取图片...")
                 
                 if hasattr(ole_format, 'ProgID'):
                     prog_id = str(ole_format.ProgID).lower()
-                    print(f"    📋 OLE程序ID: {prog_id}")
                     
                     # 检查是否是图片相关的OLE对象
                     if any(img_type in prog_id for img_type in ['paint', 'image', 'picture', 'photo']):
-                        print(f"    🖼️ 发现图片类型的OLE对象")
                         # 尝试导出OLE对象
                         return self._try_export_image(shape)
                 
             return None
             
         except Exception as e:
-            print(f"    ⚠️ 从OLE对象提取图片失败: {str(e)}")
             return None
 
     
@@ -2197,25 +2024,22 @@ class PPTConverterWithEditor(BaseConverter):
         """安全关闭PPT应用"""
         try:
             if self.presentation:
-                print("🔒 正在关闭演示文稿...")
                 try:
                     self.presentation.Close(SaveChanges=0)
                 except Exception as e:
-                    print(f"⚠️ 关闭演示文稿时出错: {str(e)}")
+                    print(f"关闭演示文稿时出错: {str(e)}")
                 finally:
                     self.presentation = None
             
             if self.ppt_app:
-                print("🔒 正在关闭PowerPoint应用...")
                 try:
                     # 尝试退出应用
                     self.ppt_app.Quit()
                 except Exception as e:
-                    print(f"⚠️ 退出PowerPoint时出错: {str(e)}")
+                    print(f"退出PowerPoint时出错: {str(e)}")
                 finally:
                     self.ppt_app = None
                     
         except Exception as e:
-            print(f"⚠️ 清理资源时出错: {str(e)}")
             self.presentation = None
             self.ppt_app = None

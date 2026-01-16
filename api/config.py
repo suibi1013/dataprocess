@@ -33,10 +33,6 @@ class AppConfig:
     
     # 数据库信息
     DB_PATH: str = os.path.join(BASE_DIR, 'database.db')
-
-    # 应用信息
-    SERVICE_NAME: str = 'PPT Upload Server'
-    VERSION: str = '2.0.0'
     
     def __post_init__(self):
         if self.ALLOWED_EXTENSIONS is None:

@@ -264,7 +264,6 @@ class DataProcessService(BaseService):
                     return Result.fail("保存流程失败，请稍后重试")
                 
         except Exception as e:
-            print(f"❌ 保存数据处理流程失败: {str(e)}")
             return Result.fail(f"保存流程失败: {str(e)}")
     
     async def get_data_process_flow(self, flow_id: str) -> Result[DataProcessFlow]:
@@ -313,7 +312,6 @@ class DataProcessService(BaseService):
             return Result.success(flow)
             
         except Exception as e:
-            print(f"❌ 获取数据处理流程失败: {str(e)}")
             return Result.fail(f"获取流程失败: {str(e)}")
     
 
@@ -366,7 +364,6 @@ class DataProcessService(BaseService):
             return Result.success(flow_list)
             
         except Exception as e:
-            print(f"❌ 获取所有数据处理流程失败: {str(e)}")
             return Result.fail(f"获取流程失败: {str(e)}")
             
     async def delete_data_process_flow(self, flow_id: str) -> Result[bool]:
@@ -392,7 +389,6 @@ class DataProcessService(BaseService):
                 return Result.fail("删除流程失败，请稍后重试")
                 
         except Exception as e:
-            print(f"❌ 删除数据处理流程失败: {str(e)}")
             return Result.fail(f"删除流程失败: {str(e)}")
     def get_flow_execution_order(self, flow: DataProcessFlow, start_node_id: str) -> List[str]:
         """
@@ -530,7 +526,6 @@ class DataProcessService(BaseService):
             return Result.success(before_nodes)
             
         except Exception as e:
-            print(f"❌ 获取前置节点信息失败: {str(e)}")
             return Result.fail(f"获取前置节点信息失败: {str(e)}")
     
 
@@ -577,7 +572,6 @@ class DataProcessService(BaseService):
             # 使用仓储保存执行记录
             return self.execution_record_repo.add(exec_record)
         except Exception as e:
-            print(f"❌ 记录执行结果失败: {str(e)}")
             return False
     
     async def execute_data_process_flow(self, flow: DataProcessFlow, start_node_id: str, end_node_ids: List[str] = None) -> Result[Dict[str, Any]]:
@@ -624,7 +618,6 @@ class DataProcessService(BaseService):
                 await asyncio.sleep(0.01)
                 # 检查是否需要终止执行
                 if execution_terminator.should_terminate(flow.id):
-                    print(f"流程 {flow.id} 收到终止信号，正在终止执行...")
                     failure_node_info = {
                         "node_id": current_node_id,
                         "instruction_id": node_map[current_node_id].instructionId if current_node_id in node_map else "",
@@ -635,7 +628,6 @@ class DataProcessService(BaseService):
                     # 设置流程状态为终止
                     execution_terminator.set_flow_status(flow.id, execution_terminator.STATUS_TERMINATED)
                     break
-                print(f"当前执行节点: {current_node_id}")
                 # 如果当前节点不是结束节点，或没有执行过，就继续执行
                 actual_execution_order.append(current_node_id)
                 try:
@@ -668,9 +660,6 @@ class DataProcessService(BaseService):
                                             result = process_results[ref_key]
                                         else:
                                             result = result.replace(placeholder, str(process_results[ref_key]))
-                                        print(f"  - 解析变量 {param_name} 中的 {{node_id.var_name}} -> {ref_key} = {process_results[ref_key]}")
-                                    else:
-                                        print(f"  - 变量 {ref_key} 未找到")
                             
                             resolved_params[param_name] = result
                         else:
@@ -719,8 +708,7 @@ class DataProcessService(BaseService):
                     # 保存输入参数
                     for param_name, param_value in input_params.items():
                         temp_key = f"{current_node_id}.{param_name}"
-                        process_results[temp_key] = param_value
-                        print(f"  - 保存输入参数 {temp_key} = {param_value}")                  
+                        process_results[temp_key] = param_value              
                     # 回写参数
                     if back_param_name:  # 回写参数
                         temp_key=current_node.params.get(back_param_name,'')
@@ -730,18 +718,15 @@ class DataProcessService(BaseService):
                     if output_param_name:
                         temp_key = f"{current_node_id}.{output_param_name}"
                         process_results[temp_key] = execution_result
-                        print(f"  - 保存输出参数 {temp_key} = {execution_result}")
                     
                     # 检查当前节点是否有出边
                     if current_node_id not in edges_info:
-                        print(f"当前节点 {current_node_id} 没有出边，流程结束")
                         break
                     
                     # 获取下一个节点
                     next_node_id = self.find_next_node_id(current_node_id,output_param_name, edges_info, process_results)
 
                     if current_node_id ==next_node_id:
-                        print(f"出现死循环，流程结束")
                         break
                     # 更新下一个节点为当前节点
                     current_node_id = next_node_id
@@ -755,7 +740,6 @@ class DataProcessService(BaseService):
                         "error_message": str(e),
                         "error_type": type(e).__name__
                     }
-                    print(f"❌ 节点 {current_node_id} 执行失败: {str(e)}")
                     # 设置流程状态为失败
                     execution_terminator.set_flow_status(flow.id, execution_terminator.STATUS_FAILED)
                     break
@@ -837,9 +821,7 @@ class DataProcessService(BaseService):
             else:
                 return Result.success(final_result)
             
-        except Exception as e:
-            print(f"❌ 执行数据处理流程失败: {str(e)}")
-            
+        except Exception as e:            
             # 构建错误结果，确保所有数据都能被序列化
             error_process_results = CommonUtils.deep_serialize(process_results)
             
@@ -899,7 +881,7 @@ class DataProcessService(BaseService):
                             if ref_key in process_results:
                                 placeholder = f"{{{{{match}}}}}"
                                 resolved_logic_express = resolved_logic_express.replace(placeholder, str(process_results[ref_key]))
-                                print(f"  - 解析边标签中的变量: {{node_id.var_name}} -> {ref_key} = {process_results[ref_key]}")
+                                print(f"解析边标签中的变量: {{node_id.var_name}} -> {ref_key} = {process_results[ref_key]}")
                 
                 # 构建条件表达式并评估
                 try:
@@ -919,7 +901,7 @@ class DataProcessService(BaseService):
                         resolved_logic_express.startswith('>=') or resolved_logic_express.startswith('<='):
                         # 构建完整的表达式
                         expr = f"value {resolved_logic_express}"
-                        print(f"  - 执行条件表达式: {expr}")
+                        print(f"执行条件表达式: {expr}")
                         condition_satisfied = eval(expr, {}, context)
                     else:
                         try:             
@@ -929,17 +911,17 @@ class DataProcessService(BaseService):
                             # 直接比较值
                             if 'value' in context:
                                 condition_satisfied = str(context['value']) == resolved_logic_express
-                                print(f"  - 直接比较: 值 '{context['value']}' {'==' if condition_satisfied else '!='} 标签 '{resolved_logic_express}'")
+                                print(f"直接比较: 值 '{context['value']}' {'==' if condition_satisfied else '!='} 标签 '{resolved_logic_express}'")
                             else:
                                 condition_satisfied = False
-                                print(f"  - 无法比较: 当前节点没有输出值或表达式错误 ({str(e)})")
+                                print(f"无法比较: 当前节点没有输出值或表达式错误 ({str(e)})")
                     
                     if condition_satisfied:
                         return target_node_id
                     else:
-                        print(f"  - 条件不满足，跳过目标节点 {target_node_id}")
+                        print(f"条件不满足，跳过目标节点 {target_node_id}")
                 except Exception as e:
-                    print(f"  - 条件表达式解析错误: {str(e)}")
+                    print(f"条件表达式解析错误: {str(e)}")
         
         # 如果没有找到满足条件的下一个节点，结束流程
         if not found_next_node:
@@ -994,7 +976,6 @@ class DataProcessService(BaseService):
             return await self.execute_data_process_flow(flow, start_node.id, end_node_ids)
             
         except Exception as e:
-            print(f"❌ 根据ID执行数据处理流程失败: {str(e)}")
             return Result.fail(f"执行流程失败: {str(e)}")
     
     async def get_execution_history(self, flow_id: str = None) -> Result[List[Dict[str, Any]]]:
@@ -1041,5 +1022,4 @@ class DataProcessService(BaseService):
             
             return Result.success(history)
         except Exception as e:
-            print(f"❌ 获取执行历史失败: {str(e)}")
             return Result.fail(f"获取执行历史失败: {str(e)}")

@@ -32,7 +32,7 @@
             class="nav-link"
             :class="{ active: $route.name === 'Template' }"
           >
-            PPT模板
+            模板管理
           </router-link>
         </li>
         <li class="nav-item">

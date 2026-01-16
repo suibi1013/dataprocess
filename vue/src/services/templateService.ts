@@ -9,14 +9,14 @@ import type { Template, CreateTemplateRequest, UpdateTemplateRequest } from '@/t
  * 模板API服务类
  */
 export class TemplateService implements TemplateApiService {
-  private readonly basePath = '/templates';
+  private readonly basePath = '/template';
 
   /**
    * 获取模板列表
    */
   async getTemplates(): Promise<ApiResponse<Template[]>> {
     try {
-      const response = await httpClient.get<Template[]>(this.basePath);
+      const response = await httpClient.get<Template[]>(`${this.basePath}/list`);
       
       // 检查响应格式，如果是后端返回的格式(templates字段)，转换为前端期望的格式(data字段)
       if (response && typeof response === 'object') {
@@ -72,7 +72,7 @@ export class TemplateService implements TemplateApiService {
         formData.append('ppt_file', data.file);
         
         // 使用上传接口
-        return await httpClient.upload(`ppt/upload`, formData);
+        return await httpClient.upload(`template/upload`, formData);
       } else {
         // 仅创建模板元数据
         return await httpClient.post<Template>(this.basePath, data);
@@ -154,7 +154,7 @@ export class TemplateService implements TemplateApiService {
    */
   async saveTemplateConfig(config: any, filename: string): Promise<ApiResponse<any>> {
     try {
-      return await httpClient.post('/ppt/config/save', {
+      return await httpClient.post('/template/config/save', {
         filename,
         config
       });

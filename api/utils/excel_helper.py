@@ -68,7 +68,7 @@ class ExcelHelper:
                 elif weight == 4:  # xlThick
                     border_info['width'] = 5
         except Exception as e:
-            print(f"⚠️ 解析边框样式时出错: {str(e)}")
+            print(f"解析边框样式时出错: {str(e)}")
         
         return border_info
     
@@ -92,7 +92,7 @@ class ExcelHelper:
                                 'col_count': merged_area.Columns.Count
                             })
         except Exception as e:
-            print(f"⚠️ 获取合并单元格信息时出错: {str(e)}")
+            print(f"获取合并单元格信息时出错: {str(e)}")
         
         return merged_cells
     
@@ -183,7 +183,7 @@ class ExcelHelper:
                     'width': border.width if hasattr(border, 'width') else 0
                 }
         except Exception as e:
-            print(f"⚠️ 获取单元格样式信息时出错: {str(e)}")
+            print(f"获取单元格样式信息时出错: {str(e)}")
         
         return style_info
     
@@ -311,9 +311,9 @@ class ExcelHelper:
                         style_info['is_merged'] = True
                         style_info['merge_range'] = merge_area.Address
             except Exception as e:
-                print(f"⚠️ 获取单元格详细信息时出错: {str(e)}")
+                print(f"获取单元格详细信息时出错: {str(e)}")
         except Exception as e:
-            print(f"⚠️ 获取单元格样式信息时出错: {str(e)}")
+            print(f"获取单元格样式信息时出错: {str(e)}")
         
         return style_info
     
@@ -387,9 +387,9 @@ class ExcelHelper:
         app = None
         workbook = None
         try:
-            print(f"🚀 启动Excel应用程序读取范围数据...")
+            print(f"启动Excel应用程序读取范围数据...")
             app = xw.App(visible=False, add_book=False)
-            print(f"📂 打开Excel文件: {file_path}")
+            print(f"打开Excel文件: {file_path}")
             workbook = app.books.open(file_path)
             
             # 获取指定的工作表
@@ -402,7 +402,7 @@ class ExcelHelper:
                 worksheet = workbook.sheets[0]
                 sheet_name = worksheet.name
             
-            print(f"📄 读取工作表: {sheet_name}")
+            print(f"读取工作表: {sheet_name}")
             
             # 如果没有指定范围，读取整个工作表的数据
             if not cell_range:
@@ -467,19 +467,17 @@ class ExcelHelper:
             return result
             
         except Exception as e:
-            print(f"❌ 读取Excel范围数据失败: {str(e)}")
+            print(f"读取Excel范围数据失败: {str(e)}")
             raise e
         finally:
             # 确保Excel应用程序正确关闭
             try:
                 if workbook is not None:
-                    print(f"🔒 关闭工作簿...")
                     workbook.close()
                 if app is not None:
-                    print(f"🔒 关闭Excel应用程序...")
                     app.quit()
             except Exception as cleanup_error:
-                print(f"⚠️ 清理Excel应用程序时出错: {str(cleanup_error)}")
+                print(f"清理Excel应用程序时出错: {str(cleanup_error)}")
     
     @staticmethod
     async def read_excel_file(file_path: str, sheet_name: str = None, limit: int = 100) -> Dict[str, Any]:
@@ -522,10 +520,7 @@ class ExcelHelper:
             }
             
             # 使用xlwings读取Excel文件
-            print(f"🔍 尝试读取Excel文件: {file_path}")
-            print(f"🚀 启动Excel应用程序...")
             app = xw.App(visible=False, add_book=False)
-            print(f"📂 打开Excel文件: {file_path}")
             workbook = app.books.open(file_path)
             sheet_names = [sheet.name for sheet in workbook.sheets]
             
@@ -584,8 +579,6 @@ class ExcelHelper:
                 
             
         except Exception as e:
-            print(f"❌ 读取Excel文件时发生异常: {str(e)}")
-            print(f"📋 异常详情: {traceback.format_exc()}")
             return {
                 'success': False,
                 'message': f'读取Excel文件时发生异常: {str(e)}',
@@ -597,12 +590,12 @@ class ExcelHelper:
                 try:
                     workbook.close()
                 except Exception as close_error:
-                    print(f"⚠️ 关闭工作簿时出错: {str(close_error)}")
+                    print(f"关闭工作簿时出错: {str(close_error)}")
             
             if app:
                 try:
                     app.quit()
                 except Exception as quit_error:
-                    print(f"⚠️ 退出Excel应用程序时出错: {str(quit_error)}")
+                    print(f"退出Excel应用程序时出错: {str(quit_error)}")
         
         

@@ -19,7 +19,7 @@ class BaseService:
         Args:
             message: 日志消息
         """
-        print(f"ℹ️ [{self.service_name}] {message}")
+        print(f"[{self.service_name}] {message}")
     
     def _log_error(self, message: str):
         """记录错误日志
@@ -27,7 +27,7 @@ class BaseService:
         Args:
             message: 日志消息
         """
-        print(f"❌ [{self.service_name}] {message}")
+        print(f"[{self.service_name}] {message}")
     
     def _log_success(self, message: str):
         """记录成功日志
@@ -35,4 +35,4 @@ class BaseService:
         Args:
             message: 日志消息
         """
-        print(f"✅ [{self.service_name}] {message}")
+        print(f"[{self.service_name}] {message}")
