@@ -7,3 +7,4 @@
 /vue/dist
 /deploy/build-ready
 /deploy/build_ready
+/deploy/build-scripts/build_all.log
