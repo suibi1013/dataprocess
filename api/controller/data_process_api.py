@@ -535,8 +535,9 @@ async def execute_data_process_flow_by_id(
         result_data = execution_result.data if execution_result.success else None
         error_msg = execution_result.error if not execution_result.success else None
         
-        # 记录到执行历史
-        data_process_service.record_execution_result(
+        # 记录到执行历史（异步执行）
+        import asyncio
+        await asyncio.to_thread(data_process_service.record_execution_result,
             flow_id=flow_id,
             flow_name=flow.name,
             execution_result=result_data,
@@ -573,7 +574,7 @@ async def execute_data_process_flow_by_id(
         try:
             flow_result = await data_process_service.get_data_process_flow(flow_id)
             if flow_result.success:
-                data_process_service.record_execution_result(
+                await asyncio.to_thread(data_process_service.record_execution_result,
                     flow_id=flow_id,
                     flow_name=flow_result.data.name,
                     execution_result=None,

@@ -4,6 +4,7 @@
 数据模板信息实体类
 """
 
+from optparse import Option
 from typing import Optional
 from pydantic import BaseModel, Field
 
@@ -12,9 +13,10 @@ class TemplateInfo(BaseModel):
     """数据模板信息实体类"""
     id: str = Field(..., description="模板ID")
     template_name: str = Field(..., description="模板名称")
-    filename: str = Field(..., description="文件名")
+    file_name: str = Field(..., description="文件名")
     total_slides: int = Field(..., description="幻灯片总数")
     file_path: str = Field(..., description="文件路径")
+    file_size: Optional[int] = Field(None, description="文件大小")
     slide_width: int = Field(..., description="幻灯片宽度")
     slide_height: int = Field(..., description="幻灯片高度")
     created_at: str = Field(..., description="创建时间")

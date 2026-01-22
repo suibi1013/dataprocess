@@ -70,10 +70,10 @@ class ConfigManager:
         return config.MAX_FILE_SIZE // (1024 * 1024)
     
     @staticmethod
-    def is_allowed_file(filename: str) -> bool:
+    def is_allowed_file(file_name: str) -> bool:
         """检查文件是否允许上传"""
-        if not filename or '.' not in filename:
+        if not file_name or '.' not in file_name:
             return False
         
-        ext = filename.rsplit('.', 1)[1].lower()
+        ext = file_name.rsplit('.', 1)[1].lower()
         return ext in config.ALLOWED_EXTENSIONS

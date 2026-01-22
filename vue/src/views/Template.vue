@@ -72,7 +72,6 @@ async function loadTemplateList() {
       const response = await templateService.getTemplates()
       if (response.success && response.data && response.data.length > 0) {
         templates.value = response.data
-        localStorage.setItem('templates', JSON.stringify(templates.value));
       }
     } catch (apiError) {
       console.error('API请求失败，但已使用默认模板:', apiError);
@@ -95,28 +94,24 @@ async function handleUpload(templateName: string, file: File) {
     // 调用API上传文件并创建模板
     const response = await templateService.createTemplate(createRequest)
     
-    if (response.success && response.config) {
-      // 成功获取到模板数据
-      const newTemplate: Template = response.config
-      
+    if (response.success && response.data) {
       try {
         // 构建配置数据
         const configData = {
-          templateName: templateName,
-          filename: file.name,
-          createTime: newTemplate.createTime,
-          slides: response.config?.slides || [],
-          slide_width: response.config?.slide_width || 800,
-          slide_height: response.config?.slide_height || 600,
-          total_slides: response.config?.total_slides || 0,
-          file_path: response.file_unique || ''
+          template_name: templateName,
+          file_name: file.name,
+          file_size: file.size,
+          file_path: response.data.file_path || '',
+          create_time: response.data.create_time,
+          slides: response.data.slides || [],
+          slide_width: response.data.slide_width || 800,
+          slide_height: response.data.slide_height || 600,
+          total_slides: response.data.total_slides || 0,
+          id: response.data.template_unique_id || '',
         };
         
         // 保存配置到服务器
-        await templateService.saveTemplateConfig(configData, response.file_unique || '')
-        
-        // 保存处理后的文件名供后续检查配置更新使用
-        sessionStorage.setItem('pptFilename', response.file_unique || '')
+        await templateService.saveTemplateConfig(configData)
         
         // 刷新模板管理列表
         loadTemplateList()
@@ -155,9 +150,8 @@ async function deleteTemplate(templateId: string) {
     try {
       const response = await templateService.deleteTemplate(templateId)
       if (response.success) {
-        // 从列表中删除
-        templates.value = templates.value.filter(t => t.id !== templateId)
-        localStorage.setItem('templates', JSON.stringify(templates.value))
+        // 刷新模板管理列表
+        loadTemplateList()
       }
     } catch (error) {
       console.error('删除模板失败:', error)

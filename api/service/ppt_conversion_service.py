@@ -36,14 +36,14 @@ class PPTConversionservice:
             
             # 检查转换是否成功（如果返回了HTML路径且文件存在）
             if result_html and os.path.exists(result_html):
-                # 尝试读取配置文件获取slides_count
-                slides_count = 0
+                # 尝试读取配置文件获取total_slides
+                total_slides = 0
                 config_data = None
                 try:
                     if os.path.exists(config_file):
                         with open(config_file, 'r', encoding='utf-8') as f:
                             config_data = json.load(f)
-                            slides_count = config_data.get('total_slides', 0)
+                            total_slides = config_data.get('total_slides', 0)
                     else:
                         print(f"配置文件不存在: {config_file}")
                 except Exception as e:
@@ -52,7 +52,7 @@ class PPTConversionservice:
                 return {
                     'success': True,
                     'convert_ppt_to_html': result_html,
-                    'slides_count': slides_count,
+                    'total_slides': total_slides,
                     'message': 'PPT解析和转换成功',
                     'config': config_data
                 }

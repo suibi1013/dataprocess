@@ -17,7 +17,7 @@ import os
 import importlib
 import inspect
 from .container import get_container
-from repository.base_repository import SQLiteConnectionPool
+from repository.base_repository import AsyncSQLiteConnectionPool
 from pathlib import Path
 from config import config
 
@@ -31,11 +31,11 @@ def auto_register_services(container):
     service_dir = os.path.join(current_dir, "..", "service")
     
     # 遍历service目录
-    for filename in os.listdir(service_dir):
+    for file_name in os.listdir(service_dir):
         # 只处理以_service.py为后缀的文件
-        if filename.endswith("_service.py"):
+        if file_name.endswith("_service.py"):
             # 获取模块名
-            module_name = f"service.{filename[:-3]}"  # 移除.py后缀
+            module_name = f"service.{file_name[:-3]}"  # 移除.py后缀
             
             try:
                 # 动态导入模块
@@ -61,11 +61,11 @@ def auto_register_repositories(container):
     repo_dir = os.path.join(current_dir, "..", "repository")
     
     # 遍历repository目录
-    for filename in os.listdir(repo_dir):
+    for file_name in os.listdir(repo_dir):
         # 只处理以_repository.py为后缀的文件
-        if filename.endswith("_repository.py"):
+        if file_name.endswith("_repository.py"):
             # 获取模块名
-            module_name = f"repository.{filename[:-3]}"  # 移除.py后缀
+            module_name = f"repository.{file_name[:-3]}"  # 移除.py后缀
             
             try:
                 # 动态导入模块
@@ -87,8 +87,8 @@ def configure_dependencies():
     
     # 注册数据库连接池（单例模式）
     db_path = config.DB_PATH
-    db_pool = SQLiteConnectionPool(db_path, max_connections=10)
-    container.register_instance(SQLiteConnectionPool, db_pool)
+    db_pool = AsyncSQLiteConnectionPool(db_path, max_connections=10)
+    container.register_instance(AsyncSQLiteConnectionPool, db_pool)
     
     # 自动注册仓储层依赖（单例模式）
     auto_register_repositories(container)

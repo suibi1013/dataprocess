@@ -6,7 +6,7 @@
 """
 
 from typing import List, Optional
-from repository.base_repository import BaseRepository, SQLiteConnectionPool
+from repository.base_repository import BaseRepository, AsyncSQLiteConnectionPool
 from entity.process_edge import ProcessEdge
 
 
@@ -15,18 +15,17 @@ class ProcessEdgeRepository(BaseRepository[ProcessEdge]):
     
     TABLE_NAME = "process_edges"
     
-    def __init__(self, db_pool: SQLiteConnectionPool):
+    def __init__(self, db_pool: AsyncSQLiteConnectionPool):
         """初始化流程边信息仓储类
         
         Args:
-            db_pool: SQLite连接池实例
+            db_pool: SQLite连接池实例（异步）
         """
         super().__init__(db_pool)
-        # 初始化表结构
-        self._init_table()
+        # 初始化表结构将在异步任务中执行
     
-    def _init_table(self):
-        """初始化流程边表结构"""
+    async def _init_table(self):
+        """初始化流程边表结构（异步）"""
         create_table_sql = f"""
         CREATE TABLE IF NOT EXISTS {self.TABLE_NAME} (
             id TEXT PRIMARY KEY,
@@ -37,10 +36,10 @@ class ProcessEdgeRepository(BaseRepository[ProcessEdge]):
             logic_express TEXT,
         )
         """
-        self.execute_non_query(create_table_sql)
+        await self.execute_non_query(create_table_sql)
     
-    def add(self, edge: ProcessEdge, flow_id: str) -> bool:
-        """添加流程边
+    async def add(self, edge: ProcessEdge, flow_id: str) -> bool:
+        """添加流程边（异步）
         
         Args:
             edge: 流程边实体
@@ -57,10 +56,10 @@ class ProcessEdgeRepository(BaseRepository[ProcessEdge]):
             "label": edge.label,
             "logic_express": edge.logic_express
         }
-        return self.insert(self.TABLE_NAME, data)
+        return await self.insert(self.TABLE_NAME, data)
     
-    def update(self, edge: ProcessEdge) -> bool:
-        """更新流程边
+    async def update(self, edge: ProcessEdge) -> bool:
+        """更新流程边（异步）
         
         Args:
             edge: 流程边实体
@@ -74,10 +73,10 @@ class ProcessEdgeRepository(BaseRepository[ProcessEdge]):
             "label": edge.label,
             "logic_express": edge.logic_express
         }
-        return super().update(self.TABLE_NAME, data, "id = ?", (edge.id,))
+        return await super().update(self.TABLE_NAME, data, "id = ?", (edge.id,))
     
-    def delete(self, id: str) -> bool:
-        """删除流程边
+    async def delete(self, id: str) -> bool:
+        """删除流程边（异步）
         
         Args:
             id: 流程边ID
@@ -85,10 +84,10 @@ class ProcessEdgeRepository(BaseRepository[ProcessEdge]):
         Returns:
             bool: 删除是否成功
         """
-        return super().delete(self.TABLE_NAME, "id = ?", (id,))
+        return await super().delete(self.TABLE_NAME, "id = ?", (id,))
     
-    def delete_by_flow_id(self, flow_id: str) -> bool:
-        """根据流程ID删除所有边
+    async def delete_by_flow_id(self, flow_id: str) -> bool:
+        """根据流程ID删除所有边（异步）
         
         Args:
             flow_id: 流程ID
@@ -96,10 +95,10 @@ class ProcessEdgeRepository(BaseRepository[ProcessEdge]):
         Returns:
             bool: 删除是否成功
         """
-        return super().delete(self.TABLE_NAME, "flow_id = ?", (flow_id,))
+        return await super().delete(self.TABLE_NAME, "flow_id = ?", (flow_id,))
     
-    def find_by_id(self, id: str) -> Optional[ProcessEdge]:
-        """根据ID查找流程边
+    async def find_by_id(self, id: str) -> Optional[ProcessEdge]:
+        """根据ID查找流程边（异步）
         
         Args:
             id: 流程边ID
@@ -107,13 +106,13 @@ class ProcessEdgeRepository(BaseRepository[ProcessEdge]):
         Returns:
             Optional[ProcessEdge]: 流程边实体，如果不存在则返回None
         """
-        result = super().find_by_id(self.TABLE_NAME, id)
+        result = await super().find_by_id(self.TABLE_NAME, id)
         if result:
             return self.dict_to_model(result, ProcessEdge)
         return None
     
-    def find_by_flow_id(self, flow_id: str) -> List[ProcessEdge]:
-        """根据流程ID查找所有边
+    async def find_by_flow_id(self, flow_id: str) -> List[ProcessEdge]:
+        """根据流程ID查找所有边（异步）
         
         Args:
             flow_id: 流程ID
@@ -121,6 +120,6 @@ class ProcessEdgeRepository(BaseRepository[ProcessEdge]):
         Returns:
             List[ProcessEdge]: 流程边列表
         """
-        results = super().find_all(self.TABLE_NAME, "flow_id = ?", (flow_id,))
+        results = await super().find_all(self.TABLE_NAME, "flow_id = ?", (flow_id,))
         edges = [self.dict_to_model(result, ProcessEdge) for result in results]
         return edges

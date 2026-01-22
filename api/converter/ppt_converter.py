@@ -14,7 +14,7 @@ from typing import List, Dict, Any, Optional, Union
 import win32com.client
 
 # 导入数据传输对象
-from dto.ppt_dto import (
+from dto.template_dto import (
     ElementPosition, ElementStyle, ElementData, 
     PPTElement, SlideConfig, PPTConfig
 )
@@ -1106,7 +1106,6 @@ class PPTConverterWithEditor(BaseConverter):
             
             # 汇总结果
             if result['sheets']:
-                for sheet in result['sheets']:
                 # 对于单个工作表，保持向后兼容，直接返回数据而不是对象
                 if len(result['sheets']) == 1:
                     return result['sheets'][0]['data']
@@ -1921,7 +1920,7 @@ class PPTConverterWithEditor(BaseConverter):
                 
                 # 尝试获取图片文件名
                 if hasattr(picture_format, 'Filename'):
-                    filename = picture_format.Filename
+                    file_name = picture_format.Filename
                 
                 # 尝试复制到剪贴板然后获取
                 if hasattr(shape, 'Copy'):
@@ -2025,7 +2024,8 @@ class PPTConverterWithEditor(BaseConverter):
         try:
             if self.presentation:
                 try:
-                    self.presentation.Close(SaveChanges=0)
+                    self.presentation.Saved = True
+                    self.presentation.Close()
                 except Exception as e:
                     print(f"关闭演示文稿时出错: {str(e)}")
                 finally:

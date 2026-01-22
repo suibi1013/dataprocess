@@ -6,7 +6,7 @@
 """
 
 from typing import List, Optional
-from repository.base_repository import BaseRepository, SQLiteConnectionPool
+from repository.base_repository import BaseRepository, AsyncSQLiteConnectionPool
 from entity.instruction_parameter import InstructionParameter
 
 
@@ -15,18 +15,17 @@ class InstructionParameterRepository(BaseRepository[InstructionParameter]):
     
     TABLE_NAME = "instruction_parameters"
     
-    def __init__(self, db_pool: SQLiteConnectionPool):
+    def __init__(self, db_pool: AsyncSQLiteConnectionPool):
         """初始化指令参数仓储类
         
         Args:
-            db_pool: SQLite连接池实例
+            db_pool: SQLite连接池实例（异步）
         """
         super().__init__(db_pool)
-        # 初始化表结构
-        self._init_table()
+        # 初始化表结构将在异步任务中执行
     
-    def _init_table(self):
-        """初始化指令参数字表结构"""
+    async def _init_table(self):
+        """初始化指令参数字表结构（异步）"""
         create_table_sql = f"""
         CREATE TABLE IF NOT EXISTS {self.TABLE_NAME} (
             id TEXT PRIMARY KEY,
@@ -43,10 +42,10 @@ class InstructionParameterRepository(BaseRepository[InstructionParameter]):
             FOREIGN KEY (instruction_id) REFERENCES instruction_items(id) ON DELETE CASCADE
         )
         """
-        self.execute_non_query(create_table_sql)
+        await self.execute_non_query(create_table_sql)
     
-    def add(self, instruction_id: str, param: InstructionParameter) -> bool:
-        """添加指令参数
+    async def add(self, instruction_id: str, param: InstructionParameter) -> bool:
+        """添加指令参数（异步）
         
         Args:
             instruction_id: 指令ID
@@ -74,10 +73,10 @@ class InstructionParameterRepository(BaseRepository[InstructionParameter]):
             "api_url": param.api_url,
             "event_script": param.event_script
         }
-        return self.insert(self.TABLE_NAME, data)
+        return await self.insert(self.TABLE_NAME, data)
     
-    def add_batch(self, instruction_id: str, params: List[InstructionParameter]) -> bool:
-        """批量添加指令参数
+    async def add_batch(self, instruction_id: str, params: List[InstructionParameter]) -> bool:
+        """批量添加指令参数（异步）
         
         Args:
             instruction_id: 指令ID
@@ -111,10 +110,10 @@ class InstructionParameterRepository(BaseRepository[InstructionParameter]):
             }
             data_list.append(data)
         
-        return self.insert_batch(self.TABLE_NAME, data_list)
+        return await self.insert_batch(self.TABLE_NAME, data_list)
     
-    def update(self, param: InstructionParameter) -> bool:
-        """更新指令参数
+    async def update(self, param: InstructionParameter) -> bool:
+        """更新指令参数（异步）
         
         Args:
             param: 指令参数实体
@@ -133,10 +132,10 @@ class InstructionParameterRepository(BaseRepository[InstructionParameter]):
             "api_url": param.api_url,
             "event_script": param.event_script
         }
-        return super().update(self.TABLE_NAME, data, "id = ?", (param.id,))
+        return await super().update(self.TABLE_NAME, data, "id = ?", (param.id,))
     
-    def delete(self, id: str) -> bool:
-        """删除指令参数
+    async def delete(self, id: str) -> bool:
+        """删除指令参数（异步）
         
         Args:
             id: 指令参数ID
@@ -144,10 +143,10 @@ class InstructionParameterRepository(BaseRepository[InstructionParameter]):
         Returns:
             bool: 删除是否成功
         """
-        return super().delete(self.TABLE_NAME, "id = ?", (id,))
+        return await super().delete(self.TABLE_NAME, "id = ?", (id,))
     
-    def delete_by_instruction_id(self, instruction_id: str) -> bool:
-        """根据指令ID删除所有相关参数
+    async def delete_by_instruction_id(self, instruction_id: str) -> bool:
+        """根据指令ID删除所有相关参数（异步）
         
         Args:
             instruction_id: 指令ID
@@ -155,10 +154,10 @@ class InstructionParameterRepository(BaseRepository[InstructionParameter]):
         Returns:
             bool: 删除是否成功
         """
-        return super().delete(self.TABLE_NAME, "instruction_id = ?", (instruction_id,))
+        return await super().delete(self.TABLE_NAME, "instruction_id = ?", (instruction_id,))
     
-    def find_by_id(self, id: str) -> Optional[InstructionParameter]:
-        """根据ID查找指令参数
+    async def find_by_id(self, id: str) -> Optional[InstructionParameter]:
+        """根据ID查找指令参数（异步）
         
         Args:
             id: 指令参数ID
@@ -166,7 +165,7 @@ class InstructionParameterRepository(BaseRepository[InstructionParameter]):
         Returns:
             Optional[InstructionParameter]: 指令参数实体，如果不存在则返回None
         """
-        result = super().find_by_id(self.TABLE_NAME, id)
+        result = await super().find_by_id(self.TABLE_NAME, id)
         if result:
             # 确保id字段是字符串类型
             result["id"] = str(result["id"])
@@ -174,8 +173,8 @@ class InstructionParameterRepository(BaseRepository[InstructionParameter]):
             return self.dict_to_model(result, InstructionParameter)
         return None
     
-    def find_by_instruction_id(self, instruction_id: str) -> List[InstructionParameter]:
-        """根据指令ID查找所有参数
+    async def find_by_instruction_id(self, instruction_id: str) -> List[InstructionParameter]:
+        """根据指令ID查找所有参数（异步）
         
         Args:
             instruction_id: 指令ID
@@ -183,7 +182,7 @@ class InstructionParameterRepository(BaseRepository[InstructionParameter]):
         Returns:
             List[InstructionParameter]: 指令参数列表
         """
-        results = super().find_all(self.TABLE_NAME, "instruction_id = ?", (instruction_id,))
+        results = await super().find_all(self.TABLE_NAME, "instruction_id = ?", (instruction_id,))
         params = []
         for result in results:
             # 确保id字段是字符串类型
@@ -192,13 +191,13 @@ class InstructionParameterRepository(BaseRepository[InstructionParameter]):
             params.append(self.dict_to_model(result, InstructionParameter))
         return params
     
-    def find_all(self) -> List[InstructionParameter]:
-        """查找所有指令参数
+    async def find_all(self) -> List[InstructionParameter]:
+        """查找所有指令参数（异步）
         
         Returns:
             List[InstructionParameter]: 指令参数列表
         """
-        results = super().find_all(self.TABLE_NAME)
+        results = await super().find_all(self.TABLE_NAME)
         params = []
         for result in results:
             # 确保id字段是字符串类型

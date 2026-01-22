@@ -1,8 +1,5 @@
 import os
-import uuid
-from datetime import datetime
 from typing import Optional, List, Tuple, Dict, Any
-from werkzeug.utils import secure_filename
 
 from config import config
 
@@ -20,17 +17,17 @@ class Fileservice:
         os.makedirs(self.upload_folder, exist_ok=True)
         os.makedirs(self.data_source_folder, exist_ok=True)
     
-    def validate_file(self, filename: str, allowed_extensions: List[str]) -> bool:
+    def validate_file(self, file_name: str, allowed_extensions: List[str]) -> bool:
         """验证文件"""
-        if not filename:
+        if not file_name:
             return False
         
-        file_ext = '.' + filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
+        file_ext = '.' + file_name.rsplit('.', 1)[-1].lower() if '.' in file_name else ''
         return file_ext in allowed_extensions
     
-    def validate_file_with_size(self, filename: str, file_size: int, allowed_extensions: List[str]) -> Tuple[bool, str]:
+    def validate_file_with_size(self, file_name: str, file_size: int, allowed_extensions: List[str]) -> Tuple[bool, str]:
         """验证文件和大小"""
-        if not filename:
+        if not file_name:
             return False, "文件名不能为空"
         
         if file_size <= 0:
@@ -39,28 +36,34 @@ class Fileservice:
         if file_size > self.max_file_size:
             return False, f"文件大小超过限制（{self.max_file_size // (1024*1024)}MB）"
         
-        file_ext = '.' + filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
+        file_ext = '.' + file_name.rsplit('.', 1)[-1].lower() if '.' in file_name else ''
         if file_ext not in allowed_extensions:
             return False, "不支持的文件类型"
         
         return True, ""
     
-    async def save_uploaded_file(self, file_data: bytes, filename: str, upload_folder: str) -> str:
-        """保存上传文件"""
-        file_path = os.path.join(upload_folder, filename)
+    async def save_uploaded_file(self, file_data: bytes, file_path: str) -> str:
+        """保存上传文件"""        
+        # 使用线程池异步执行文件写入操作
+        import asyncio
+        def write_file():
+            with open(file_path, 'wb') as f:
+                f.write(file_data)
+            return file_path
         
-        with open(file_path, 'wb') as f:
-            f.write(file_data)
-        
-        return file_path
+        return await asyncio.to_thread(write_file)
     
-    def delete_file(self, file_path: str) -> bool:
+    async def delete_file(self, file_path: str) -> bool:
         """删除文件"""
         try:
-            if os.path.exists(file_path):
-                os.remove(file_path)
-                return True
-            return False
+            import asyncio
+            def remove_file():
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                    return True
+                return False
+            
+            return await asyncio.to_thread(remove_file)
         except Exception as e:
             print(f"删除文件失败: {str(e)}")
             return False

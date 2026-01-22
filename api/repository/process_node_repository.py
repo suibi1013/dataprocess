@@ -7,7 +7,7 @@
 
 import json
 from typing import List, Optional
-from repository.base_repository import BaseRepository, SQLiteConnectionPool
+from repository.base_repository import BaseRepository, AsyncSQLiteConnectionPool
 from entity.process_node import ProcessNode
 
 
@@ -16,18 +16,17 @@ class ProcessNodeRepository(BaseRepository[ProcessNode]):
     
     TABLE_NAME = "process_nodes"
     
-    def __init__(self, db_pool: SQLiteConnectionPool):
+    def __init__(self, db_pool: AsyncSQLiteConnectionPool):
         """初始化流程节点信息仓储类
         
         Args:
-            db_pool: SQLite连接池实例
+            db_pool: SQLite连接池实例（异步）
         """
         super().__init__(db_pool)
-        # 初始化表结构
-        self._init_table()
+        # 初始化表结构将在异步任务中执行
     
-    def _init_table(self):
-        """初始化流程节点表结构"""
+    async def _init_table(self):
+        """初始化流程节点表结构（异步）"""
         # 先创建表（如果不存在）
         create_table_sql = f"""
         CREATE TABLE IF NOT EXISTS {self.TABLE_NAME} (
@@ -42,23 +41,23 @@ class ProcessNodeRepository(BaseRepository[ProcessNode]):
             input_types TEXT DEFAULT '{{}}'
         )
         """
-        self.execute_non_query(create_table_sql)
+        await self.execute_non_query(create_table_sql)
         
         # 检查是否需要添加intput_types字段（如果表已存在但没有该字段）
         check_column_sql = f"""
         PRAGMA table_info({self.TABLE_NAME})
         """
-        columns = self.execute_query(check_column_sql)
+        columns = await self.execute_query(check_column_sql)
         has_intput_types = any(col[1] == 'input_types' for col in columns)
         
         if not has_intput_types:
             alter_table_sql = f"""
             ALTER TABLE {self.TABLE_NAME} ADD COLUMN input_types TEXT DEFAULT '{{}}'
             """
-            self.execute_non_query(alter_table_sql)
+            await self.execute_non_query(alter_table_sql)
     
-    def add(self, node: ProcessNode, flow_id: str) -> bool:
-        """添加流程节点
+    async def add(self, node: ProcessNode, flow_id: str) -> bool:
+        """添加流程节点（异步）
         
         Args:
             node: 流程节点实体
@@ -82,10 +81,10 @@ class ProcessNodeRepository(BaseRepository[ProcessNode]):
             "params": params_json,
             "input_types": intput_types_json
         }
-        return self.insert(self.TABLE_NAME, data)
+        return await self.insert(self.TABLE_NAME, data)
     
-    def update(self, node: ProcessNode) -> bool:
-        """更新流程节点
+    async def update(self, node: ProcessNode) -> bool:
+        """更新流程节点（异步）
         
         Args:
             node: 流程节点实体
@@ -106,10 +105,10 @@ class ProcessNodeRepository(BaseRepository[ProcessNode]):
             "params": params_json,
             "input_types": intput_types_json
         }
-        return super().update(self.TABLE_NAME, data, "id = ?", (node.id,))
+        return await super().update(self.TABLE_NAME, data, "id = ?", (node.id,))
     
-    def delete(self, id: str) -> bool:
-        """删除流程节点
+    async def delete(self, id: str) -> bool:
+        """删除流程节点（异步）
         
         Args:
             id: 流程节点ID
@@ -117,10 +116,10 @@ class ProcessNodeRepository(BaseRepository[ProcessNode]):
         Returns:
             bool: 删除是否成功
         """
-        return super().delete(self.TABLE_NAME, "id = ?", (id,))
+        return await super().delete(self.TABLE_NAME, "id = ?", (id,))
     
-    def delete_by_flow_id(self, flow_id: str) -> bool:
-        """根据流程ID删除所有节点
+    async def delete_by_flow_id(self, flow_id: str) -> bool:
+        """根据流程ID删除所有节点（异步）
         
         Args:
             flow_id: 流程ID
@@ -128,10 +127,10 @@ class ProcessNodeRepository(BaseRepository[ProcessNode]):
         Returns:
             bool: 删除是否成功
         """
-        return super().delete(self.TABLE_NAME, "flow_id = ?", (flow_id,))
+        return await super().delete(self.TABLE_NAME, "flow_id = ?", (flow_id,))
     
-    def find_by_id(self, id: str) -> Optional[ProcessNode]:
-        """根据ID查找流程节点
+    async def find_by_id(self, id: str) -> Optional[ProcessNode]:
+        """根据ID查找流程节点（异步）
         
         Args:
             id: 流程节点ID
@@ -139,7 +138,7 @@ class ProcessNodeRepository(BaseRepository[ProcessNode]):
         Returns:
             Optional[ProcessNode]: 流程节点实体，如果不存在则返回None
         """
-        result = super().find_by_id(self.TABLE_NAME, id)
+        result = await super().find_by_id(self.TABLE_NAME, id)
         if result:
             # 安全解析参数JSON字符串
             if result["params"]:
@@ -165,8 +164,8 @@ class ProcessNodeRepository(BaseRepository[ProcessNode]):
             return self.dict_to_model(result, ProcessNode)
         return None
     
-    def find_by_flow_id(self, flow_id: str) -> List[ProcessNode]:
-        """根据流程ID查找所有节点
+    async def find_by_flow_id(self, flow_id: str) -> List[ProcessNode]:
+        """根据流程ID查找所有节点（异步）
         
         Args:
             flow_id: 流程ID
@@ -174,7 +173,7 @@ class ProcessNodeRepository(BaseRepository[ProcessNode]):
         Returns:
             List[ProcessNode]: 流程节点列表
         """
-        results = super().find_all(self.TABLE_NAME, "flow_id = ?", (flow_id,))
+        results = await super().find_all(self.TABLE_NAME, "flow_id = ?", (flow_id,))
         nodes = []
         for result in results:
             # 安全解析参数JSON字符串

@@ -4,13 +4,24 @@ import threading
 
 class CommonUtils:
     @staticmethod
+    def generate_unique_id():
+        """
+        生成一个唯一的ID，用于数据库数据行唯一标识。        
+        Args:
+            None        
+        Returns:
+            str: 生成的唯一ID
+        """
+        import uuid        
+        # 生成唯一ID
+        id = uuid.uuid4()
+        return str(id)
+    @staticmethod
     def generate_unique_code(text: str):        
         """
-        根据文本生成稳定的标识码（不可逆）。
-        
+        根据文本生成稳定的标识码（不可逆）。        
         Args:
-            text (str): 字符串文本（可以包含中文）
-        
+            text (str): 字符串文本（可以包含中文）        
         Returns:
             str: 32位十六进制的MD5标识码
         """
@@ -30,11 +41,9 @@ class CommonUtils:
     @staticmethod
     def encode_text_to_code(text: str) -> str:
         """
-        将文本编码为Base64字符串（可逆）。
-        
+        将文本编码为Base64字符串（可逆）。        
         Args:
-            text (str): 原始文本
-        
+            text (str): 原始文本        
         Returns:
             str: Base64编码后的字符串
         """

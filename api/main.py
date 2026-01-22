@@ -19,7 +19,7 @@ import time
 
 # 导入依赖注入相关模块
 from di.config import configure_dependencies
-from controller.template_api import api_router as template_api_router, static_router as static_router
+from controller.template_api import api_router as template_api_router
 from controller.data_source_api import router as datasource_router
 from controller.instruction_api import router as instruction_router
 from controller.data_process_api import router as data_process_router
@@ -60,7 +60,6 @@ async def log_requests(request: Request, call_next):
 
 # 注册路由
 app.include_router(template_api_router)
-app.include_router(static_router)
 app.include_router(datasource_router)
 app.include_router(instruction_router)
 app.include_router(data_process_router)

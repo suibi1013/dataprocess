@@ -7,7 +7,7 @@
 
 import json
 from typing import List, Optional
-from repository.base_repository import BaseRepository, SQLiteConnectionPool
+from repository.base_repository import BaseRepository, AsyncSQLiteConnectionPool
 from entity.instruction_item import InstructionItem
 from entity.instruction_parameter import InstructionParameter
 
@@ -17,18 +17,17 @@ class InstructionItemRepository(BaseRepository[InstructionItem]):
     
     TABLE_NAME = "instruction_items"
     
-    def __init__(self, db_pool: SQLiteConnectionPool):
+    def __init__(self, db_pool: AsyncSQLiteConnectionPool):
         """初始化指令信息仓储类
         
         Args:
-            db_pool: SQLite连接池实例
+            db_pool: SQLite连接池实例（异步）
         """
         super().__init__(db_pool)
-        # 初始化表结构
-        self._init_table()
+        # 初始化表结构将在异步任务中执行
     
-    def _init_table(self):
-        """初始化指令信息表结构"""
+    async def _init_table(self):
+        """初始化指令信息表结构（异步）"""
         create_table_sql = f"""
         CREATE TABLE IF NOT EXISTS {self.TABLE_NAME} (
             id TEXT PRIMARY KEY,
@@ -44,10 +43,10 @@ class InstructionItemRepository(BaseRepository[InstructionItem]):
             FOREIGN KEY (category_id) REFERENCES instruction_categories(id)
         )
         """
-        self.execute_non_query(create_table_sql)
+        await self.execute_non_query(create_table_sql)
     
-    def add(self, item: InstructionItem) -> bool:
-        """添加指令信息
+    async def add(self, item: InstructionItem) -> bool:
+        """添加指令信息（异步）
         
         Args:
             item: 指令信息实体
@@ -67,10 +66,10 @@ class InstructionItemRepository(BaseRepository[InstructionItem]):
             "created_at": item.created_at,
             "updated_at": item.updated_at
         }
-        return self.insert(self.TABLE_NAME, data)
+        return await self.insert(self.TABLE_NAME, data)
     
-    def update(self, item: InstructionItem) -> bool:
-        """更新指令信息
+    async def update(self, item: InstructionItem) -> bool:
+        """更新指令信息（异步）
         
         Args:
             item: 指令信息实体
@@ -88,10 +87,10 @@ class InstructionItemRepository(BaseRepository[InstructionItem]):
             "is_active": 1 if item.is_active else 0,
             "updated_at": item.updated_at
         }
-        return super().update(self.TABLE_NAME, data, "id = ?", (item.id,))
+        return await super().update(self.TABLE_NAME, data, "id = ?", (item.id,))
     
-    def delete(self, id: str) -> bool:
-        """删除指令信息
+    async def delete(self, id: str) -> bool:
+        """删除指令信息（异步）
         
         Args:
             id: 指令信息ID
@@ -99,10 +98,10 @@ class InstructionItemRepository(BaseRepository[InstructionItem]):
         Returns:
             bool: 删除是否成功
         """
-        return super().delete(self.TABLE_NAME, "id = ?", (id,))
+        return await super().delete(self.TABLE_NAME, "id = ?", (id,))
     
-    def find_by_id(self, id: str) -> Optional[InstructionItem]:
-        """根据ID查找指令信息
+    async def find_by_id(self, id: str) -> Optional[InstructionItem]:
+        """根据ID查找指令信息（异步）
         
         Args:
             id: 指令信息ID
@@ -110,25 +109,25 @@ class InstructionItemRepository(BaseRepository[InstructionItem]):
         Returns:
             Optional[InstructionItem]: 指令信息实体，如果不存在则返回None
         """
-        result = super().find_by_id(self.TABLE_NAME, id)
+        result = await super().find_by_id(self.TABLE_NAME, id)
         if result:
             return self._convert_result_to_item(result)
         return None
     
-    def find_all(self) -> List[InstructionItem]:
-        """查找所有指令信息
+    async def find_all(self) -> List[InstructionItem]:
+        """查找所有指令信息（异步）
         
         Returns:
             List[InstructionItem]: 指令信息列表
         """
-        results = super().find_all(self.TABLE_NAME)
+        results = await super().find_all(self.TABLE_NAME)
         items = [self._convert_result_to_item(result) for result in results]
         # 按排序顺序排序
         items.sort(key=lambda x: x.sort_order)
         return items
     
-    def find_by_category(self, category_id: str) -> List[InstructionItem]:
-        """根据分类ID查找指令信息
+    async def find_by_category(self, category_id: str) -> List[InstructionItem]:
+        """根据分类ID查找指令信息（异步）
         
         Args:
             category_id: 分类ID
@@ -136,19 +135,19 @@ class InstructionItemRepository(BaseRepository[InstructionItem]):
         Returns:
             List[InstructionItem]: 指令信息列表
         """
-        results = super().find_all(self.TABLE_NAME, "category_id = ?", (category_id,))
+        results = await super().find_all(self.TABLE_NAME, "category_id = ?", (category_id,))
         items = [self._convert_result_to_item(result) for result in results]
         # 按排序顺序排序
         items.sort(key=lambda x: x.sort_order)
         return items
     
-    def find_active(self) -> List[InstructionItem]:
-        """查找所有激活的指令信息
+    async def find_active(self) -> List[InstructionItem]:
+        """查找所有激活的指令信息（异步）
         
         Returns:
             List[InstructionItem]: 激活的指令信息列表
         """
-        results = super().find_all(self.TABLE_NAME, "is_active = 1")
+        results = await super().find_all(self.TABLE_NAME, "is_active = 1")
         items = [self._convert_result_to_item(result) for result in results]
         # 按排序顺序排序
         items.sort(key=lambda x: x.sort_order)

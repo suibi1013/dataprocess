@@ -7,7 +7,7 @@
 
 import json
 from typing import List, Optional
-from repository.base_repository import BaseRepository, SQLiteConnectionPool
+from repository.base_repository import BaseRepository, AsyncSQLiteConnectionPool
 from entity.template_slide import TemplateSlide
 
 
@@ -16,18 +16,17 @@ class TemplateSlideRepository(BaseRepository[TemplateSlide]):
     
     TABLE_NAME = "template_slides"
     
-    def __init__(self, db_pool: SQLiteConnectionPool):
+    def __init__(self, db_pool: AsyncSQLiteConnectionPool):
         """初始化数据模板页面配置仓储类
         
         Args:
-            db_pool: SQLite连接池实例
+            db_pool: SQLite连接池实例（异步）
         """
         super().__init__(db_pool)
-        # 初始化表结构
-        self._init_table()
+        # 初始化表结构将在异步任务中执行
     
-    def _init_table(self):
-        """初始化数据模板页面配置表结构"""
+    async def _init_table(self):
+        """初始化数据模板页面配置表结构（异步）"""
         create_table_sql = f"""
         CREATE TABLE IF NOT EXISTS {self.TABLE_NAME} (
             id TEXT PRIMARY KEY,
@@ -42,10 +41,10 @@ class TemplateSlideRepository(BaseRepository[TemplateSlide]):
             FOREIGN KEY (template_id) REFERENCES template_infos(id) ON DELETE CASCADE
         )
         """
-        self.execute_non_query(create_table_sql)
+        await self.execute_non_query(create_table_sql)
     
-    def add(self, template_slide: TemplateSlide) -> bool:
-        """添加数据模板页面配置
+    async def add(self, template_slide: TemplateSlide) -> bool:
+        """添加数据模板页面配置（异步）
         
         Args:
             template_slide: 数据模板页面配置实体
@@ -67,10 +66,10 @@ class TemplateSlideRepository(BaseRepository[TemplateSlide]):
             "created_at": template_slide.created_at,
             "updated_at": template_slide.updated_at
         }
-        return self.insert(self.TABLE_NAME, data)
+        return await self.insert(self.TABLE_NAME, data)
     
-    def update(self, template_slide: TemplateSlide) -> bool:
-        """更新数据模板页面配置
+    async def update(self, template_slide: TemplateSlide) -> bool:
+        """更新数据模板页面配置（异步）
         
         Args:
             template_slide: 数据模板页面配置实体
@@ -90,10 +89,10 @@ class TemplateSlideRepository(BaseRepository[TemplateSlide]):
             "elements": elements_json,
             "updated_at": template_slide.updated_at
         }
-        return super().update(self.TABLE_NAME, data, "id = ?", (template_slide.id,))
+        return await super().update(self.TABLE_NAME, data, "id = ?", (template_slide.id,))
     
-    def delete(self, id: str) -> bool:
-        """删除数据模板页面配置
+    async def delete(self, id: str) -> bool:
+        """删除数据模板页面配置（异步）
         
         Args:
             id: 数据模板页面配置ID
@@ -101,10 +100,10 @@ class TemplateSlideRepository(BaseRepository[TemplateSlide]):
         Returns:
             bool: 删除是否成功
         """
-        return super().delete(self.TABLE_NAME, "id = ?", (id,))
+        return await super().delete(self.TABLE_NAME, "id = ?", (id,))
     
-    def delete_by_template_id(self, template_id: str) -> bool:
-        """根据模板ID删除所有数据模板页面配置
+    async def delete_by_template_id(self, template_id: str) -> bool:
+        """根据模板ID删除所有数据模板页面配置（异步）
         
         Args:
             template_id: 模板ID
@@ -112,10 +111,10 @@ class TemplateSlideRepository(BaseRepository[TemplateSlide]):
         Returns:
             bool: 删除是否成功
         """
-        return super().delete(self.TABLE_NAME, "template_id = ?", (template_id,))
+        return await super().delete(self.TABLE_NAME, "template_id = ?", (template_id,))
     
-    def find_by_id(self, id: str) -> Optional[TemplateSlide]:
-        """根据ID查找数据模板页面配置
+    async def find_by_id(self, id: str) -> Optional[TemplateSlide]:
+        """根据ID查找数据模板页面配置（异步）
         
         Args:
             id: 数据模板页面配置ID
@@ -123,13 +122,13 @@ class TemplateSlideRepository(BaseRepository[TemplateSlide]):
         Returns:
             Optional[TemplateSlide]: 数据模板页面配置实体，如果不存在则返回None
         """
-        result = super().find_by_id(self.TABLE_NAME, id)
+        result = await super().find_by_id(self.TABLE_NAME, id)
         if result:
             return self._convert_result_to_slide(result)
         return None
     
-    def find_by_template_id(self, template_id: str) -> List[TemplateSlide]:
-        """根据模板ID查找所有数据模板页面配置
+    async def find_by_template_id(self, template_id: str) -> List[TemplateSlide]:
+        """根据模板ID查找所有数据模板页面配置（异步）
         
         Args:
             template_id: 模板ID
@@ -137,11 +136,11 @@ class TemplateSlideRepository(BaseRepository[TemplateSlide]):
         Returns:
             List[TemplateSlide]: 数据模板页面配置列表
         """
-        results = super().find_all(self.TABLE_NAME, "template_id = ?", (template_id,))
+        results = await super().find_all(self.TABLE_NAME, "template_id = ?", (template_id,))
         return [self._convert_result_to_slide(result) for result in results]
     
-    def find_by_template_id_and_index(self, template_id: str, slide_index: int) -> Optional[TemplateSlide]:
-        """根据模板ID和幻灯片索引查找数据模板页面配置
+    async def find_by_template_id_and_index(self, template_id: str, slide_index: int) -> Optional[TemplateSlide]:
+        """根据模板ID和幻灯片索引查找数据模板页面配置（异步）
         
         Args:
             template_id: 模板ID
@@ -150,7 +149,7 @@ class TemplateSlideRepository(BaseRepository[TemplateSlide]):
         Returns:
             Optional[TemplateSlide]: 数据模板页面配置实体，如果不存在则返回None
         """
-        results = super().find_all(
+        results = await super().find_all(
             self.TABLE_NAME, 
             "template_id = ? AND slide_index = ?", 
             (template_id, slide_index)
@@ -159,13 +158,13 @@ class TemplateSlideRepository(BaseRepository[TemplateSlide]):
             return self._convert_result_to_slide(results[0])
         return None
     
-    def find_all(self) -> List[TemplateSlide]:
-        """查找所有数据模板页面配置
+    async def find_all(self) -> List[TemplateSlide]:
+        """查找所有数据模板页面配置（异步）
         
         Returns:
             List[TemplateSlide]: 数据模板页面配置列表
         """
-        results = super().find_all(self.TABLE_NAME)
+        results = await super().find_all(self.TABLE_NAME)
         return [self._convert_result_to_slide(result) for result in results]
     
     def _convert_result_to_slide(self, result: dict) -> TemplateSlide:

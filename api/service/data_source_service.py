@@ -161,8 +161,8 @@ class DataSourceservice:
             # 创建DTO对象
             data_source_dto = create_data_source_from_dict(data_source.model_dump())
             
-            # 保存数据源
-            if self.data_source_repo.add(data_source):
+            # 保存数据源（异步执行）
+            if await self.data_source_repo.add(data_source):
                 return ApiResponse(
                     success=True,
                     message='数据源创建成功',
@@ -185,7 +185,8 @@ class DataSourceservice:
     async def get_data_source(self, data_source_id: str) -> ApiResponse:
         """获取数据源"""
         try:
-            data_source = self.data_source_repo.find_by_id(data_source_id)
+            # 获取数据源（异步执行）
+            data_source = await self.data_source_repo.find_by_id(data_source_id)
             if data_source:
                 # 转换为DTO对象
                 data_source_dto = create_data_source_from_dict(data_source.model_dump())
@@ -210,7 +211,8 @@ class DataSourceservice:
     async def get_user_data_sources(self) -> ApiResponse[List[DataSourceConfigUnion]]:
         """获取用户数据源列表"""
         try:
-            data_sources = self.data_source_repo.find_all()
+            # 获取所有数据源（异步执行）
+            data_sources = await self.data_source_repo.find_all()
             # 转换为DTO对象列表
             data_sources_dto = [create_data_source_from_dict(ds.model_dump()) for ds in data_sources]
             return ApiResponse(
@@ -231,7 +233,8 @@ class DataSourceservice:
     async def update_data_source(self, data_source_id: str, data: Dict[str, Any]) -> ApiResponse:
         """更新数据源"""
         try:
-            data_source = self.data_source_repo.find_by_id(data_source_id)
+            # 获取数据源（异步执行）
+            data_source = await self.data_source_repo.find_by_id(data_source_id)
             if not data_source:
                 return ApiResponse(
                     success=False,
@@ -251,7 +254,8 @@ class DataSourceservice:
             
             data_source.updated_time = datetime.now().isoformat()
             
-            if self.data_source_repo.update(data_source):
+            # 更新数据源（异步执行）
+            if await self.data_source_repo.update(data_source):
                 # 转换为DTO对象
                 data_source_dto = create_data_source_from_dict(data_source.model_dump())
                 return ApiResponse(
@@ -276,8 +280,8 @@ class DataSourceservice:
     async def delete_data_source(self, data_source_id: str) -> ApiResponse[bool]:
         """删除数据源"""
         try:
-            # 获取要删除的数据源信息
-            data_source = self.data_source_repo.find_by_id(data_source_id)
+            # 获取要删除的数据源信息（异步执行）
+            data_source = await self.data_source_repo.find_by_id(data_source_id)
             if not data_source:
                 return ApiResponse(
                     success=False,
@@ -298,16 +302,20 @@ class DataSourceservice:
                 
                 for file_info in file_list:
                     file_path = file_info.get('file_path')
-                    if file_path and os.path.exists(file_path):
-                        try:
-                            os.remove(file_path)
-                            print(f"Excel文件已删除: {file_path}")
-                        except Exception as e:
-                            print(f"删除Excel文件时出错: {str(e)}")
-                            # 即使文件删除失败，也继续删除数据源记录
+                    if file_path:
+                        # 检查文件是否存在并删除（异步执行）
+                        def remove_file():
+                            if os.path.exists(file_path):
+                                try:
+                                    os.remove(file_path)
+                                    print(f"Excel文件已删除: {file_path}")
+                                except Exception as e:
+                                    print(f"删除Excel文件时出错: {str(e)}")
+                        
+                        await asyncio.to_thread(remove_file)
             
-            # 删除数据源记录
-            if self.data_source_repo.delete(data_source_id):
+            # 删除数据源记录（异步执行）
+            if await self.data_source_repo.delete(data_source_id):
                 return ApiResponse(
                     success=True,
                     message='数据源删除成功',
@@ -329,8 +337,8 @@ class DataSourceservice:
     async def get_data_source_data(self, data_source_id: str, sheet_name: str = None, limit: int = 100) -> ApiResponse[Dict[str, Any]]:
         """获取数据源数据"""
         try:
-            # 获取数据源信息
-            data_source = self.data_source_repo.find_by_id(data_source_id)
+            # 获取数据源信息（异步执行）
+            data_source = await self.data_source_repo.find_by_id(data_source_id)
             if not data_source:
                 return ApiResponse(
                     success=False,
@@ -376,8 +384,8 @@ class DataSourceservice:
     async def get_data_source_range(self, data_source_id: str, sheet_name: str = None, cell_range: str = None) -> ApiResponse[Dict[str, Any]]:
         """获取数据源指定范围的数据"""
         try:
-            # 获取数据源信息
-            data_source = self.data_source_repo.find_by_id(data_source_id)
+            # 获取数据源信息（异步执行）
+            data_source = await self.data_source_repo.find_by_id(data_source_id)
             if not data_source:
                 return ApiResponse(
                     success=False,
@@ -439,15 +447,15 @@ class DataSourceservice:
             # 构建结果数据
             result_data = {
                 'files': [{
-                    'filename': os.path.basename(file_path),
+                    'file_name': os.path.basename(file_path),
                     'file_path': file_path,
-                    'original_filename': os.path.basename(file_path),
+                    'original_file_name': os.path.basename(file_path),
                     'sheets': excel_data.get('sheet_names', [])
                 }],
                 'sheets': excel_data.get('sheet_names', []),
                 'data': {
                     f"{os.path.basename(file_path)}_{sheet_name}": {
-                        'filename': os.path.basename(file_path),
+                        'file_name': os.path.basename(file_path),
                         'sheet_name': sheet_name,
                         'columns': excel_data.get('columns', []),
                         'rows': excel_data.get('rows', []),
@@ -494,9 +502,9 @@ class DataSourceservice:
             
             for i, config_dict in enumerate(config_list):
                 config=ExcelDataSourceConfig(**config_dict)
-                filename = config.unique_name
+                file_name = config.unique_name
                 file_path=''  
-                # 如果filename已经是完整路径，直接使用；否则拼接excel_files_folder
+                # 如果file_name已经是完整路径，直接使用；否则拼接excel_files_folder
                 if os.path.isabs(config.file_path) or '\\' in config.file_path or '/' in config.file_path:
                     file_path = config.file_path
                 else:
@@ -512,11 +520,11 @@ class DataSourceservice:
                     # 获取返回的数据
                     file_data = file_result['data']
                     
-                    # 处理文件信息，保留original_filename
+                    # 处理文件信息，保留original_file_name
                     for file_info in file_data['files']:
                         # 添加原始文件名信息
-                        file_info['filename'] = config.unique_name
-                        file_info['original_filename'] = config.file_name
+                        file_info['file_name'] = config.unique_name
+                        file_info['original_file_name'] = config.file_name
                         result_data['files'].append(file_info)
                     
                     # 合并工作表名称（去重）
@@ -527,10 +535,10 @@ class DataSourceservice:
                     # 合并数据，修改键名以匹配原有格式
                     for original_key, sheet_data in file_data['data'].items():
                         # 使用唯一名称生成新的键
-                        new_key = f"{filename}_{sheet_data['sheet_name']}"
+                        new_key = f"{file_name}_{sheet_data['sheet_name']}"
                         # 复制数据并确保包含所有必要字段
                         result_data['data'][new_key] = {
-                            'filename': filename,
+                            'file_name': file_name,
                             'sheet_name': sheet_data['sheet_name'],
                             'columns': sheet_data['columns'],
                             'rows': sheet_data['rows'],
@@ -578,10 +586,14 @@ class DataSourceservice:
                     'data': None
                 }
             
-            response = requests.request(method, url, headers=headers, timeout=30)
-            response.raise_for_status()
+            # 使用线程池异步执行requests调用
+            import asyncio
+            def make_request():
+                response = requests.request(method, url, headers=headers, timeout=30)
+                response.raise_for_status()
+                return response.json()
             
-            data = response.json()
+            data = await asyncio.to_thread(make_request)
             
             # 如果返回的是列表，限制数量
             if isinstance(data, list) and len(data) > limit:
@@ -626,8 +638,9 @@ class DataSourceservice:
                     'data': None
                 }
             
-            # 使用ExcelHelper读取Excel范围数据
-            range_data = ExcelHelper._read_excel_range_with_xlwings(file_path, sheet_name, cell_range)
+            # 使用ExcelHelper读取Excel范围数据（异步执行）
+            import asyncio
+            range_data = await asyncio.to_thread(ExcelHelper._read_excel_range_with_xlwings, file_path, sheet_name, cell_range)
             
             # 处理返回格式差异（excel_helper返回'data'，而原方法期望'table_data'）
             if 'data' in range_data:

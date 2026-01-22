@@ -202,14 +202,14 @@ const props = defineProps<Props>();
 
 // 定义事件
 const emit = defineEmits<{
-  '_element-select': [_elementIndex: number];
-  '_position-update': [_property: string, _value: number];
-  '_style-update': [_property: string, _value: string];
-  '_content-update': [_value: string];
-  '_image-upload': [_file: File];
-  '_reset-image': [];
-  '_data-source-change': [_sourceId: string];
-  '_open-data-preview': [];
+  'element-select': [_elementIndex: number];
+  'position-update': [_property: string, _value: number];
+  'style-update': [_property: string, _value: string];
+  'content-update': [_value: string];
+  'image-upload': [_file: File];
+  'reset-image': [];
+  'data-source-change': [_sourceId: string];
+  'open-data-preview': [];
 }>();
 
 // 响应式数据

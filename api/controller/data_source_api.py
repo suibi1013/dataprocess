@@ -9,7 +9,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Path as PathParam,
 from typing import Optional, Dict, Any, List
 from pydantic import BaseModel
 import os
-from werkzeug.utils import secure_filename
 
 from config import config
 from service.data_source_service import DataSourceservice
@@ -229,13 +228,13 @@ async def upload_excel(
             raise HTTPException(status_code=400, detail="文件大小不能超过50MB")
         
         # 保存文件
-        filename = secure_filename(file.filename)
+        file_name_noextension, file_ext = os.path.splitext(file.filename)
         excel_files_folder = f'{config.DATA_SOURCES_FOLDER}/excel_files'
         os.makedirs(excel_files_folder, exist_ok=True)
         
         # 生成唯一文件名
-        unique_filename = CommonUtils.encode_text_to_code(filename)
-        file_path = os.path.join(excel_files_folder, unique_filename)
+        unique_file_name = CommonUtils.encode_text_to_code(file_name_noextension)
+        file_path = os.path.join(excel_files_folder, unique_file_name+file_ext)
         
         # 保存文件到磁盘
         with open(file_path, "wb") as buffer:
@@ -243,9 +242,9 @@ async def upload_excel(
             buffer.write(content)
         # 创建数据源配置
         datasource_config:ExcelDataSourceConfig=ExcelDataSourceConfig(
-            file_name=filename,
+            file_name=file_name_noextension,
             file_path=file_path,
-            unique_name=unique_filename,
+            unique_name=unique_file_name,
         )
         
         # 创建数据源请求
@@ -298,7 +297,7 @@ async def upload_multiple_excel(
                 # 验证文件类型
                 if not file.filename.lower().endswith(('.xlsx', '.xls')):
                     failed_files.append({
-                        "filename": file.filename,
+                        "file_name": file.filename,
                         "error": "只支持Excel文件(.xlsx, .xls)"
                     })
                     continue
@@ -306,19 +305,20 @@ async def upload_multiple_excel(
                 # 验证文件大小 (50MB限制)
                 if file.size and file.size > 50 * 1024 * 1024:
                     failed_files.append({
-                        "filename": file.filename,
+                        "file_name": file.filename,
                         "error": "文件大小不能超过50MB"
                     })
                     continue
                 
                 # 保存文件
-                filename = file.filename
+                
+                file_name_noextension, file_ext = os.path.splitext(file.filename)
                 excel_files_folder = os.path.join(config.DATA_SOURCES_FOLDER, 'excel_files')
                 os.makedirs(excel_files_folder, exist_ok=True)
                 
                 # 生成唯一文件名
-                unique_filename = CommonUtils.encode_text_to_code(filename)
-                file_path = os.path.join(excel_files_folder, unique_filename)
+                unique_file_name = CommonUtils.encode_text_to_code(file_name_noextension)
+                file_path = os.path.join(excel_files_folder, unique_file_name+file_ext)
                 
                 try:
                     # 保存文件到磁盘
@@ -330,15 +330,15 @@ async def upload_multiple_excel(
                 
                 # 收集文件信息
                 datasource_config:ExcelDataSourceConfig=ExcelDataSourceConfig(
-                    file_name=filename,
+                    file_name=file_name_noextension,
                     file_path=file_path,
-                    unique_name=unique_filename,
+                    unique_name=unique_file_name,
                 )
                 datasource_config_list.append(datasource_config)
                     
             except Exception as file_exc:
                 failed_files.append({
-                    "filename": file.filename,
+                    "file_name": file.filename,
                     "error": f"处理文件时出错: {str(file_exc)}"
                 })
         
@@ -447,14 +447,14 @@ async def get_data_source_range(
 @router.post("/datasource/upload-file")
 async def upload_data_source_file(
     file: UploadFile = File(...),
-    unique_filename: Optional[str] = Form(None, description="文件标识id,可为空"),
+    unique_file_name: Optional[str] = Form(None, description="文件标识id,可为空"),
     data_source_service: DataSourceservice = Depends(lambda: inject(DataSourceservice))
 ):
     """上传数据源文件
     
     输入参数：
     - file: 文件流
-    - unique_filename: 文件标识id,可为空
+    - unique_file_name: 文件标识id,可为空
     
     输出参数：
     - file_name: 文件名称
@@ -464,7 +464,6 @@ async def upload_data_source_file(
     """
     try:
         # 获取原始文件名
-        original_filename = file.filename
         if not file.filename:
             raise HTTPException(status_code=400, detail="文件名不能为空")
         
@@ -473,14 +472,14 @@ async def upload_data_source_file(
         os.makedirs(excel_files_folder, exist_ok=True)
         
         # 注意：只分割最后一个 . 后缀
-        original_filename, ext = os.path.splitext(file.filename)
+        file_name_noextension, ext = os.path.splitext(file.filename)
         # 生成唯一文件名
-        if not unique_filename:
-            # 如果没有提供unique_filename，使用FileHelper生成
-            unique_filename = CommonUtils.encode_text_to_code(original_filename)+ext
+        if not unique_file_name:
+            # 如果没有提供unique_file_name，使用FileHelper生成
+            unique_file_name = CommonUtils.encode_text_to_code(file_name_noextension)+ext
         
         # 构建文件路径
-        file_path = f'{excel_files_folder}/{unique_filename}'
+        file_path = f'{excel_files_folder}/{unique_file_name}'
         
         # 保存文件到磁盘
         content = await file.read()
@@ -491,8 +490,8 @@ async def upload_data_source_file(
                 
         # 返回文件信息
         return ExcelDataSourceConfig(
-            file_name=original_filename,
-            unique_name=unique_filename,
+            file_name=file_name_noextension,
+            unique_name=unique_file_name,
             file_path=file_path,
             file_size=file_size
         )

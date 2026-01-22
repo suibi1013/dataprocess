@@ -82,21 +82,21 @@ async def get_file_info(
             'data': {}
         }
         # 尝试文件名解码
-        filename=Path(file_path).stem
-        original_filename=''
+        file_name=Path(file_path).stem
+        original_file_name=''
         try:
-            original_filename=CommonUtils.decode_code_to_text(filename)
+            original_file_name=CommonUtils.decode_code_to_text(file_name)
         except Exception as e:
-            original_filename=filename
+            original_file_name=file_name
         if file_result['success'] and file_result['data']:
             # 获取返回的数据
             file_data = file_result['data']
             
-            # 处理文件信息，保留original_filename
+            # 处理文件信息，保留original_file_name
             for file_info in file_data['files']:
                 # 添加原始文件名信息
-                file_info['filename'] = filename
-                file_info['original_filename'] = original_filename
+                file_info['file_name'] = file_name
+                file_info['original_file_name'] = original_file_name
                 result_data['files'].append(file_info)
             
             # 合并工作表名称（去重）
@@ -107,10 +107,10 @@ async def get_file_info(
             # 合并数据，修改键名以匹配原有格式
             for original_key, sheet_data in file_data['data'].items():
                 # 使用唯一名称生成新的键
-                new_key = f"{filename}_{sheet_data['sheet_name']}"
+                new_key = f"{file_name}_{sheet_data['sheet_name']}"
                 # 复制数据并确保包含所有必要字段
                 result_data['data'][new_key] = {
-                    'filename': filename,
+                    'file_name': file_name,
                     'sheet_name': sheet_data['sheet_name'],
                     'columns': sheet_data['columns'],
                     'rows': sheet_data['rows'],
@@ -172,15 +172,15 @@ async def download_file(filepath: str):
                 )
 
         # 推测文件名
-        filename = os.path.basename(filepath)
-        if not filename or '.' not in filename:
+        file_name = os.path.basename(filepath)
+        if not file_name or '.' not in file_name:
             # 从 URL path 尝试获取
             parsed_path = parsed.path
             if parsed_path and '/' in parsed_path:
-                filename = os.path.basename(parsed_path)
-            if not os.path.splitext(filename)[1]:
+                file_name = os.path.basename(parsed_path)
+            if not os.path.splitext(file_name)[1]:
                 # 仍然没有扩展名
-                filename += '.bin'
+                file_name += '.bin'
 
         # 推测 MIME 类型
         content_type, _ = mimetypes.guess_type(filepath)
@@ -220,7 +220,7 @@ async def download_file(filepath: str):
             content=file_stream,
             media_type=content_type,
             headers={
-                "Content-Disposition": f"attachment; filename={filename}"
+                "Content-Disposition": f"attachment; file_name={file_name}"
             }
         )
 

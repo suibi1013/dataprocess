@@ -7,7 +7,7 @@
 
 import json
 from typing import List, Optional
-from repository.base_repository import BaseRepository, SQLiteConnectionPool
+from repository.base_repository import BaseRepository, AsyncSQLiteConnectionPool
 from entity.execution_record import ExecutionRecord
 from entity.execution_result import ExecutionResult
 
@@ -17,18 +17,17 @@ class ExecutionRecordRepository(BaseRepository[ExecutionRecord]):
     
     TABLE_NAME = "execution_records"
     
-    def __init__(self, db_pool: SQLiteConnectionPool):
+    def __init__(self, db_pool: AsyncSQLiteConnectionPool):
         """初始化执行记录仓储类
         
         Args:
-            db_pool: SQLite连接池实例
+            db_pool: SQLite连接池实例（异步）
         """
         super().__init__(db_pool)
-        # 初始化表结构
-        self._init_table()
+        # 初始化表结构将在异步任务中执行
     
-    def _init_table(self):
-        """初始化执行记录表结构"""
+    async def _init_table(self):
+        """初始化执行记录表结构（异步）"""
         create_table_sql = f"""
         CREATE TABLE IF NOT EXISTS {self.TABLE_NAME} (
             id TEXT PRIMARY KEY,
@@ -41,10 +40,10 @@ class ExecutionRecordRepository(BaseRepository[ExecutionRecord]):
             result_data TEXT
         )
         """
-        self.execute_non_query(create_table_sql)
+        await self.execute_non_query(create_table_sql)
     
-    def add(self, record: ExecutionRecord) -> bool:
-        """添加执行记录
+    async def add(self, record: ExecutionRecord) -> bool:
+        """添加执行记录（异步）
         
         Args:
             record: 执行记录实体
@@ -75,10 +74,10 @@ class ExecutionRecordRepository(BaseRepository[ExecutionRecord]):
             "executed_at": record.executed_at,
             "result_data": result_data_json
         }
-        return self.insert(self.TABLE_NAME, data)
+        return await self.insert(self.TABLE_NAME, data)
     
-    def update(self, record: ExecutionRecord) -> bool:
-        """更新执行记录
+    async def update(self, record: ExecutionRecord) -> bool:
+        """更新执行记录（异步）
         
         Args:
             record: 执行记录实体
@@ -106,10 +105,10 @@ class ExecutionRecordRepository(BaseRepository[ExecutionRecord]):
             "execution_time": record.execution_time,
             "result_data": result_data_json
         }
-        return super().update(self.TABLE_NAME, data, "id = ?", (record.id,))
+        return await super().update(self.TABLE_NAME, data, "id = ?", (record.id,))
     
-    def delete(self, id: str) -> bool:
-        """删除执行记录
+    async def delete(self, id: str) -> bool:
+        """删除执行记录（异步）
         
         Args:
             id: 执行记录ID
@@ -117,10 +116,10 @@ class ExecutionRecordRepository(BaseRepository[ExecutionRecord]):
         Returns:
             bool: 删除是否成功
         """
-        return super().delete(self.TABLE_NAME, "id = ?", (id,))
+        return await super().delete(self.TABLE_NAME, "id = ?", (id,))
     
-    def find_by_id(self, id: str) -> Optional[ExecutionRecord]:
-        """根据ID查找执行记录
+    async def find_by_id(self, id: str) -> Optional[ExecutionRecord]:
+        """根据ID查找执行记录（异步）
         
         Args:
             id: 执行记录ID
@@ -128,7 +127,7 @@ class ExecutionRecordRepository(BaseRepository[ExecutionRecord]):
         Returns:
             Optional[ExecutionRecord]: 执行记录实体，如果不存在则返回None
         """
-        result = super().find_by_id(self.TABLE_NAME, id)
+        result = await super().find_by_id(self.TABLE_NAME, id)
         if result:
             # 处理布尔值转换
             result["success"] = bool(result["success"])
@@ -141,13 +140,13 @@ class ExecutionRecordRepository(BaseRepository[ExecutionRecord]):
             return self.dict_to_model(result, ExecutionRecord)
         return None
     
-    def find_all(self) -> List[ExecutionRecord]:
-        """查找所有执行记录
+    async def find_all(self) -> List[ExecutionRecord]:
+        """查找所有执行记录（异步）
         
         Returns:
             List[ExecutionRecord]: 执行记录列表
         """
-        results = super().find_all(self.TABLE_NAME, None, None)
+        results = await super().find_all(self.TABLE_NAME, None, None)
         records = []
         for result in results:
             # 处理布尔值转换
@@ -164,8 +163,8 @@ class ExecutionRecordRepository(BaseRepository[ExecutionRecord]):
         records.sort(key=lambda x: x.executed_at, reverse=True)
         return records
     
-    def find_by_flow_id(self, flow_id: str) -> List[ExecutionRecord]:
-        """根据流程ID查找执行记录
+    async def find_by_flow_id(self, flow_id: str) -> List[ExecutionRecord]:
+        """根据流程ID查找执行记录（异步）
         
         Args:
             flow_id: 流程ID
@@ -173,7 +172,7 @@ class ExecutionRecordRepository(BaseRepository[ExecutionRecord]):
         Returns:
             List[ExecutionRecord]: 执行记录列表
         """
-        results = super().find_all(self.TABLE_NAME, "flow_id = ?", (flow_id,))
+        results = await super().find_all(self.TABLE_NAME, "flow_id = ?", (flow_id,))
         records = []
         for result in results:
             # 处理布尔值转换

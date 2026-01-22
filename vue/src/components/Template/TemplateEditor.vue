@@ -298,7 +298,7 @@ export default class TemplateEditor extends Vue {
       // 保存模板信息
       sessionStorage.setItem('templateId', this.templateId)
       sessionStorage.setItem('pptConfigMode', 'edit')
-      sessionStorage.setItem('pptFilename', this.templateId)
+      // sessionStorage.setItem('pptFilename', this.templateId)
       
     } catch (error) {
       console.error('加载模板配置失败:', error)
@@ -311,10 +311,12 @@ export default class TemplateEditor extends Vue {
     try {
       // 使用dataSourceService获取数据源列表
       const response: any = await dataSourceService.getDataSources()
-      if (response.success && response.data_sources) {
-        this.dataSources = response.data_sources
-      // 如果API调用失败
+      if (response.success && response.data) {
+        this.dataSources = response.data
+      } else {
+        // 如果API调用失败或返回的数据不符合预期，使用空数组
         this.dataSources = []
+        this.showToastMessage('未获取到数据源列表', 'info')
       }
     } catch (error) {
       console.error('加载数据源失败:', error)
@@ -438,11 +440,14 @@ export default class TemplateEditor extends Vue {
   }
   
   // 数据源变更事件
-  onDataSourceChange() {
+  onDataSourceChange(sourceId: string) {
+    // 更新组件自身的selectedDataSource属性
+    this.selectedDataSource = sourceId;
+    
     const elements = this.getCurrentSlideElements()
     if (this.selectedElementIndex >= 0 && this.selectedElementIndex < elements.length) {
       // 查找选中的数据源对象以获取其名称
-      const selectedDataSourceObj = this.dataSources.find(source => source.id === this.selectedDataSource);
+      const selectedDataSourceObj = this.dataSources.find(source => source.id === sourceId);
       const element = elements[this.selectedElementIndex];
       if (element) {
         if (!element.data) {
@@ -719,14 +724,44 @@ export default class TemplateEditor extends Vue {
   
   // 替换元素数据为选中的数据区域
   async replaceElementDataWithSelectedRange(selection: DataSelection) {
-    await templateEditorInteractionService.replaceElementDataWithSelectedRange(
-      selection,
-      this.selectedDataSource,
-      this.currentSelectedSheet,
-      () => this.getCurrentSlideElements(),
-      this.selectedElementIndex,
-      (message, type) => this.showToastMessage(message, type)
-    )
+    try {
+      // 从已加载的数据源数据中提取指定范围的数据
+      const allData = this.dataSourceSheetsData[this.currentSelectedSheet] || [];
+      
+      // 解析选择范围
+      const startRow = selection.start_row - 1; // 转换为0基索引
+      const endRow = selection.end_row - 1;
+      const startCol = this.columnToNumber(selection.start_column);
+      const endCol = this.columnToNumber(selection.end_column);
+      
+      // 提取指定范围的数据
+      const selectedData = allData.slice(startRow, endRow + 1).map((row: any[]) => {
+        return row.slice(startCol, endCol + 1);
+      });
+      
+      // 调用服务方法，传递提取的数据
+      await templateEditorInteractionService.replaceElementDataWithSelectedRange(
+        selection,
+        this.selectedDataSource,
+        this.currentSelectedSheet,
+        () => this.getCurrentSlideElements(),
+        this.selectedElementIndex,
+        (message, type) => this.showToastMessage(message, type),
+        selectedData
+      );
+    } catch (error) {
+      console.error('获取和更新数据失败:', error);
+      this.showToastMessage('数据更新失败: ' + (error as Error).message, 'error');
+    }
+  }
+  
+  // 将列字母转换为数字索引 (A=0, B=1, ...)
+  columnToNumber(column: string): number {
+    let result = 0;
+    for (let i = 0; i < column.length; i++) {
+      result = result * 26 + (column.charCodeAt(i) - 'A'.charCodeAt(0) + 1);
+    }
+    return result - 1;
   }
   
   // 将数据转换为图表格式

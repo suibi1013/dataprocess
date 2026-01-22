@@ -266,6 +266,7 @@ export class TemplateEditorInteractionService {
    * @param getCurrentSlideElements 获取当前幻灯片元素的方法
    * @param selectedElementIndex 选中的元素索引
    * @param showToastMessage 显示Toast消息的方法
+   * @param selectedData 已提取的数据（可选）
    */
   async replaceElementDataWithSelectedRange(
     selection: DataSelection,
@@ -273,7 +274,8 @@ export class TemplateEditorInteractionService {
     currentSelectedSheet: string,
     getCurrentSlideElements: () => Element[],
     selectedElementIndex: number,
-    showToastMessage: (_message: string, _type?: 'success' | 'error' | 'info') => void
+    showToastMessage: (_message: string, _type?: 'success' | 'error' | 'info') => void,
+    selectedData?: any
   ) {
     try {
       const elements = getCurrentSlideElements();
@@ -286,18 +288,26 @@ export class TemplateEditorInteractionService {
       // 请求数据源的实际数据
       showToastMessage('正在获取选中数据区域的数据...', 'info');
       
-      const response = await httpClient.post(`/datasource/${encodeURIComponent(selectedDataSource)}/range`, {
-        sheet_name: currentSelectedSheet,
-        cell_range: `${selection.start_column}${selection.start_row}:${selection.end_column}${selection.end_row}`
-      });
+      // 如果提供了已提取的数据，直接使用
+      let newData = selectedData;
+      let table_row_heights: number[] = [];
+      let table_col_widths: number[] = [];
       
-      if (!response.success) {
-        throw new Error(response.error || '获取数据失败');
+      // 如果没有提供数据，尝试从API获取（保留原有逻辑，作为备份）
+      if (!newData) {
+        const response = await httpClient.post(`/datasource/${encodeURIComponent(selectedDataSource)}/range`, {
+          sheet_name: currentSelectedSheet,
+          cell_range: `${selection.start_column}${selection.start_row}:${selection.end_column}${selection.end_row}`
+        });
+        
+        if (!response.success) {
+          throw new Error(response.error || '获取数据失败');
+        }
+        
+        newData = response.data.table_data;
+        table_row_heights = response.data.table_row_heights || [];
+        table_col_widths = response.data.table_col_widths || [];
       }
-      
-      const newData = response.data.table_data;
-      const table_row_heights = response.data.table_row_heights;
-      const table_col_widths = response.data.table_col_widths;
       
       if (!newData || (!Array.isArray(newData) && typeof newData !== 'object')) {
         throw new Error('返回的数据格式不正确');

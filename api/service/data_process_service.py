@@ -238,11 +238,12 @@ class DataProcessService(BaseService):
             )
             
             # 使用仓储保存流程
-            # 检查流程是否已存在
-            existing_process = self.data_process_repo.find_by_id(flow_id)
+            # 检查流程是否已存在（异步执行数据库操作）
+            existing_process = await self.data_process_repo.find_by_id(flow_id)
             if existing_process:
                 # 流程已存在，使用update方法
-                if self.data_process_repo.update(data_process):
+                update_result = await self.data_process_repo.update(data_process)
+                if update_result:
                     response = SaveDataProcessFlowResponse(
                         id=flow_id,
                         message=f"流程 '{flow.name}' 更新成功",
@@ -253,7 +254,8 @@ class DataProcessService(BaseService):
                     return Result.fail("更新流程失败，请稍后重试")
             else:
                 # 流程不存在，使用add方法
-                if self.data_process_repo.add(data_process):
+                add_result = await self.data_process_repo.add(data_process)
+                if add_result:
                     response = SaveDataProcessFlowResponse(
                         id=flow_id,
                         message=f"流程 '{flow.name}' 保存成功",
@@ -277,8 +279,8 @@ class DataProcessService(BaseService):
             Result[DataProcessFlow]: 流程对象
         """
         try:
-            # 使用仓储获取流程
-            process = self.data_process_repo.find_by_id(flow_id)
+            # 使用仓储获取流程（异步执行数据库操作）
+            process = await self.data_process_repo.find_by_id(flow_id)
             if not process:
                 return Result.fail(f"流程ID '{flow_id}' 不存在")
             
@@ -324,8 +326,8 @@ class DataProcessService(BaseService):
             Result[List[DataProcessFlow]]: 流程列表
         """
         try:
-            # 使用仓储获取所有流程
-            processes = self.data_process_repo.find_all()
+            # 使用仓储获取所有流程（异步执行数据库操作）
+            processes = await self.data_process_repo.find_all()
             flow_list = []
             
             for process in processes:
@@ -377,13 +379,14 @@ class DataProcessService(BaseService):
             Result[bool]: 删除结果
         """
         try:
-            # 检查流程是否存在
-            existing_process = self.data_process_repo.find_by_id(flow_id)
+            # 检查流程是否存在（异步执行数据库操作）
+            existing_process = await self.data_process_repo.find_by_id(flow_id)
             if not existing_process:
                 return Result.fail(f"流程ID '{flow_id}' 不存在")
             
-            # 使用仓储删除流程
-            if self.data_process_repo.delete(flow_id):
+            # 使用仓储删除流程（异步执行数据库操作）
+            delete_result = await self.data_process_repo.delete(flow_id)
+            if delete_result:
                 return Result.success(True)
             else:
                 return Result.fail("删除流程失败，请稍后重试")
@@ -466,7 +469,8 @@ class DataProcessService(BaseService):
             before_nodes = []
             visited = set()
             
-            def dfs_find_predecessors(current_id):
+            # 先使用同步DFS找到所有前置节点ID
+            def dfs_find_predecessor_ids(current_id):
                 # 如果当前节点是目标节点，不添加到前置节点列表
                 if current_id == target_node_id:
                     return
@@ -476,6 +480,28 @@ class DataProcessService(BaseService):
                 
                 visited.add(current_id)
                 
+                # 继续递归查找前置节点
+                if current_id in reverse_edges_dict:
+                    for predecessor_id in reverse_edges_dict[current_id]:
+                        dfs_find_predecessor_ids(predecessor_id)
+            
+            # 从目标节点的所有直接前置节点开始搜索
+            if target_node_id in reverse_edges_dict:
+                for predecessor_id in reverse_edges_dict[target_node_id]:
+                    dfs_find_predecessor_ids(predecessor_id)
+            
+            # 递归查找所有前置节点
+            # 遍历已找到的节点，继续查找它们的前置节点
+            visited_copy = visited.copy()
+            for current_id in visited_copy:
+                if current_id in reverse_edges_dict:
+                    for predecessor_id in reverse_edges_dict[current_id]:
+                        if predecessor_id not in visited:
+                            dfs_find_predecessor_ids(predecessor_id)
+            
+            # 然后异步获取每个节点的详细信息
+            import asyncio
+            for current_id in visited:
                 # 获取当前节点
                 node = node_map[current_id]
                 
@@ -489,8 +515,8 @@ class DataProcessService(BaseService):
                 
                 # 收集节点的参数作为变量
                 if hasattr(node, 'params') and node.params:
-                    # 从数据库获取当前节点指令的参数配置
-                    instruction_params = self.instruction_parameter_repo.find_by_instruction_id(node.instructionId)
+                    # 从数据库获取当前节点指令的参数配置（异步执行数据库操作）
+                    instruction_params = await self.instruction_parameter_repo.find_by_instruction_id(node.instructionId)
                     # 构建参数名到label的映射
                     param_labels = {param.name: param.label for param in instruction_params}
                     
@@ -506,22 +532,6 @@ class DataProcessService(BaseService):
                         })
                 
                 before_nodes.append(node_info)
-            
-            # 从目标节点的所有直接前置节点开始搜索
-            if target_node_id in reverse_edges_dict:
-                for predecessor_id in reverse_edges_dict[target_node_id]:
-                    dfs_find_predecessors(predecessor_id)
-            
-            # 递归查找所有前置节点
-            # 遍历已找到的节点，继续查找它们的前置节点
-            i = 0
-            while i < len(before_nodes):
-                current_id = before_nodes[i]["node_id"]
-                if current_id in reverse_edges_dict:
-                    for predecessor_id in reverse_edges_dict[current_id]:
-                        if predecessor_id not in visited:
-                            dfs_find_predecessors(predecessor_id)
-                i += 1
             
             return Result.success(before_nodes)
             
@@ -633,7 +643,8 @@ class DataProcessService(BaseService):
                 try:
                     # 获取节点指令脚本 
                     current_node = node_map[current_node_id]                
-                    instruction_info = self.instruction_item_repo.find_by_id(current_node.instructionId)                
+                    # 异步获取指令信息（避免阻塞事件循环）
+                    instruction_info = await self.instruction_item_repo.find_by_id(current_node.instructionId)                
                     if not instruction_info:
                         raise Exception(f"未找到指令ID: {current_node.instructionId}")                
                     python_script = instruction_info.python_script
@@ -672,11 +683,11 @@ class DataProcessService(BaseService):
                                 resolved_params[param_name] = processed_value
                             except Exception as e:
                                 resolved_params[param_name] = param_value 
-                    # 获取节点对应指令的参数信息
+                    # 获取节点对应指令的参数信息（异步执行数据库操作）
                     input_params = {}
                     back_param_name = None
                     output_param_name = None
-                    instruction_parameters = self.instruction_parameter_repo.find_by_instruction_id(current_node.instructionId)
+                    instruction_parameters = await self.instruction_parameter_repo.find_by_instruction_id(current_node.instructionId)
                     # 遍历指令参数，将解析后的参数变量转换类型，对未同步更新的参数赋予默认值（指令中的参数为最新，以指令为标准）
                     for param in instruction_parameters:
                         if param.direction == 0:  # 输入参数
@@ -702,8 +713,9 @@ class DataProcessService(BaseService):
                         elif param.direction ==2:  # 回写参数
                             back_param_name = param.name 
                     
-                    # 执行节点指令脚本
-                    execution_result = PythonScriptUtils._execute_python_script(python_script, input_params)                    
+                    # 执行节点指令脚本（异步执行，避免阻塞事件循环）
+                    import asyncio
+                    execution_result = await asyncio.to_thread(PythonScriptUtils._execute_python_script, python_script, input_params)                    
                     
                     # 保存输入参数
                     for param_name, param_value in input_params.items():
@@ -989,11 +1001,11 @@ class DataProcessService(BaseService):
             Result[List[Dict[str, Any]]]: 执行历史记录列表
         """
         try:
-            # 使用仓储获取执行历史记录
+            # 使用仓储获取执行历史记录（异步执行数据库操作）
             if flow_id:
-                records = self.execution_record_repo.find_by_flow_id(flow_id)
+                records = await self.execution_record_repo.find_by_flow_id(flow_id)
             else:
-                records = self.execution_record_repo.find_all()
+                records = await self.execution_record_repo.find_all()
             
             # 转换为字典列表
             history = []

@@ -232,7 +232,7 @@ export class TemplateEditorService {
    * 获取模拟PPT配置数据
    * @param templateId 模板ID
    */
-  private getMockPptConfig(templateId: string): PPTConfig {
+  public getMockPptConfig(templateId: string): PPTConfig {
     return {
       file_path: `${templateId}.pptx`,
       total_slides: 2,

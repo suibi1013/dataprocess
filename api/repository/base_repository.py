@@ -4,14 +4,66 @@
 基础仓储类，实现SQLite数据库的增删改查功能，使用连接池模式管理数据库连接
 """
 
-import sqlite3
 import json
-from typing import Any, Dict, List, Optional, Tuple, TypeVar, Generic, Generator
+from typing import Any, Dict, List, Optional, Tuple, TypeVar, Generic
 from datetime import datetime
+import asyncio
 import threading
+
+# 导入异步SQLite库
+import aiosqlite
 
 T = TypeVar('T')
 
+
+class AsyncSQLiteConnectionPool:
+    """异步SQLite连接池类，支持异步操作，每个任务使用自己的连接"""
+    
+    def __init__(self, db_path: str, max_connections: int = 5):
+        """初始化连接池
+        
+        Args:
+            db_path: SQLite数据库文件路径
+            max_connections: 最大连接数
+        """
+        self.db_path = db_path
+        self.max_connections = max_connections
+        self.semaphore = asyncio.Semaphore(max_connections)  # 使用信号量限制并发连接数
+    
+    async def get_connection(self) -> aiosqlite.Connection:
+        """获取异步数据库连接
+        
+        Returns:
+            aiosqlite.Connection: 数据库连接对象
+        """
+        await self.semaphore.acquire()
+        try:
+            conn = await aiosqlite.connect(self.db_path)
+            # 启用外键约束
+            await conn.execute("PRAGMA foreign_keys = ON")
+            return conn
+        except Exception as e:
+            self.semaphore.release()
+            raise
+    
+    async def return_connection(self, conn: aiosqlite.Connection) -> None:
+        """归还数据库连接
+        
+        Args:
+            conn: 数据库连接对象
+        """
+        try:
+            await conn.close()
+        finally:
+            self.semaphore.release()
+    
+    async def close_all(self) -> None:
+        """关闭所有连接（信号量会自动处理）"""
+        pass
+
+
+# 保留原有的同步连接池，确保向后兼容
+import sqlite3
 
 class SQLiteConnectionPool:
     """SQLite连接池类，支持线程安全，每个线程使用自己的连接"""
@@ -85,21 +137,17 @@ class SQLiteConnectionPool:
 
 
 class BaseRepository(Generic[T]):
-    """基础仓储类，提供SQLite数据库的CRUD操作"""
+    """基础仓储类，提供SQLite数据库的CRUD操作（支持异步和同步）"""
     
-    def __init__(self, db_pool: SQLiteConnectionPool):
+    def __init__(self, db_pool: AsyncSQLiteConnectionPool):
         """初始化仓储类
         
         Args:
-            db_pool: SQLite连接池实例
+            db_pool: SQLite连接池实例（异步）
         """
         self.db_pool = db_pool
-        # 初始化数据库连接
-        self._init_db()
     
-    def _init_db(self):
-        """初始化数据库连接"""
-        pass
+    # 初始化数据库连接的方法已移除，表初始化将在首次数据库操作时自动处理
     
     def model_to_dict(self, model: Any, exclude: set = None) -> Dict[str, Any]:
         """
@@ -127,8 +175,8 @@ class BaseRepository(Generic[T]):
         """
         return model_class.model_validate(data)
     
-    def execute_query(self, query: str, params: Tuple[Any, ...] = None) -> List[Dict[str, Any]]:
-        """执行查询语句
+    async def execute_query(self, query: str, params: Tuple[Any, ...] = None) -> List[Dict[str, Any]]:
+        """执行查询语句（异步）
         
         Args:
             query: SQL查询语句
@@ -139,25 +187,23 @@ class BaseRepository(Generic[T]):
         """
         conn = None
         try:
-            conn = self.db_pool.get_connection()
-            conn.row_factory = sqlite3.Row  # 设置行工厂，返回字典形式的结果
-            cursor = conn.cursor()
-            if params:
-                cursor.execute(query, params)
-            else:
-                cursor.execute(query)
-            
+            conn = await self.db_pool.get_connection()
+            cursor = await conn.execute(query, params or ())
+            rows = await cursor.fetchall()
+            # 获取列名
+            columns = [column[0] for column in cursor.description]
             # 将查询结果转换为字典列表
-            results = [dict(row) for row in cursor.fetchall()]
+            results = [dict(zip(columns, row)) for row in rows]
+            await cursor.close()
             return results
-        except sqlite3.Error as e:
+        except Exception as e:
             print(f"查询数据库失败: {e}")
             return []
         finally:
             if conn:
-                self.db_pool.return_connection(conn)
+                await self.db_pool.return_connection(conn)
     
-    def execute_non_query(self, query: str, params: Tuple[Any, ...] = None) -> bool:
+    async def execute_non_query(self, query: str, params: Tuple[Any, ...] = None) -> bool:
         """执行非查询语句（INSERT、UPDATE、DELETE）
         
         Args:
@@ -169,24 +215,20 @@ class BaseRepository(Generic[T]):
         """
         conn = None
         try:
-            conn = self.db_pool.get_connection()
-            cursor = conn.cursor()
-            if params:
-                cursor.execute(query, params)
-            else:
-                cursor.execute(query)
-            conn.commit()
+            conn = await self.db_pool.get_connection()
+            await conn.execute(query, params or ())
+            await conn.commit()
             return True
-        except sqlite3.Error as e:
+        except Exception as e:
             print(f"执行数据库操作失败: {e}")
             if conn:
-                conn.rollback()
+                await conn.rollback()
             return False
         finally:
             if conn:
-                self.db_pool.return_connection(conn)
+                await self.db_pool.return_connection(conn)
     
-    def insert(self, table: str, data: Dict[str, Any]) -> bool:
+    async def insert(self, table: str, data: Dict[str, Any]) -> bool:
         """插入数据
         
         Args:
@@ -201,9 +243,9 @@ class BaseRepository(Generic[T]):
         values = tuple(data.values())
         
         query = f"INSERT INTO {table} ({keys}) VALUES ({placeholders})"
-        return self.execute_non_query(query, values)
+        return await self.execute_non_query(query, values)
     
-    def update(self, table: str, data: Dict[str, Any], condition: str, params: Tuple[Any, ...] = None) -> bool:
+    async def update(self, table: str, data: Dict[str, Any], condition: str, params: Tuple[Any, ...] = None) -> bool:
         """更新数据
         
         Args:
@@ -222,9 +264,9 @@ class BaseRepository(Generic[T]):
             values += params
         
         query = f"UPDATE {table} SET {set_clause} WHERE {condition}"
-        return self.execute_non_query(query, values)
+        return await self.execute_non_query(query, values)
     
-    def delete(self, table: str, condition: str, params: Tuple[Any, ...] = None) -> bool:
+    async def delete(self, table: str, condition: str, params: Tuple[Any, ...] = None) -> bool:
         """删除数据
         
         Args:
@@ -236,9 +278,9 @@ class BaseRepository(Generic[T]):
             bool: 删除是否成功
         """
         query = f"DELETE FROM {table} WHERE {condition}"
-        return self.execute_non_query(query, params)
+        return await self.execute_non_query(query, params)
     
-    def find_by_id(self, table: str, id_value: Any, id_column: str = 'id') -> Optional[Dict[str, Any]]:
+    async def find_by_id(self, table: str, id_value: Any, id_column: str = 'id') -> Optional[Dict[str, Any]]:
         """根据ID查找数据
         
         Args:
@@ -250,10 +292,10 @@ class BaseRepository(Generic[T]):
             Optional[Dict[str, Any]]: 查找结果，如果不存在则返回None
         """
         query = f"SELECT * FROM {table} WHERE {id_column} = ?"
-        results = self.execute_query(query, (id_value,))
+        results = await self.execute_query(query, (id_value,))
         return results[0] if results else None
     
-    def find_all(self, table: str, condition: str = None, params: Tuple[Any, ...] = None) -> List[Dict[str, Any]]:
+    async def find_all(self, table: str, condition: str = None, params: Tuple[Any, ...] = None) -> List[Dict[str, Any]]:
         """查找所有数据
         
         Args:
@@ -268,9 +310,9 @@ class BaseRepository(Generic[T]):
         if condition:
             query += f" WHERE {condition}"
         
-        return self.execute_query(query, params)
+        return await self.execute_query(query, params)
     
-    def insert_batch(self, table: str, data_list: List[Dict[str, Any]]) -> bool:
+    async def insert_batch(self, table: str, data_list: List[Dict[str, Any]]) -> bool:
         """批量插入数据
         
         Args:
@@ -285,8 +327,7 @@ class BaseRepository(Generic[T]):
         
         conn = None
         try:
-            conn = self.db_pool.get_connection()
-            cursor = conn.cursor()
+            conn = await self.db_pool.get_connection()
             
             # 获取数据字段名
             keys = ', '.join(data_list[0].keys())
@@ -299,14 +340,14 @@ class BaseRepository(Generic[T]):
             params_list = [tuple(data.values()) for data in data_list]
             
             # 执行批量插入
-            cursor.executemany(query, params_list)
-            conn.commit()
+            await conn.executemany(query, params_list)
+            await conn.commit()
             return True
-        except sqlite3.Error as e:
+        except Exception as e:
             print(f"批量插入数据失败: {e}")
             if conn:
-                conn.rollback()
+                await conn.rollback()
             return False
         finally:
             if conn:
-                self.db_pool.return_connection(conn)
+                await self.db_pool.return_connection(conn)

@@ -6,7 +6,7 @@
 """
 
 from typing import List, Optional
-from repository.base_repository import BaseRepository, SQLiteConnectionPool
+from repository.base_repository import BaseRepository, AsyncSQLiteConnectionPool
 from entity.instruction_category import InstructionCategory
 
 
@@ -15,18 +15,17 @@ class InstructionCategoryRepository(BaseRepository[InstructionCategory]):
     
     TABLE_NAME = "instruction_categories"
     
-    def __init__(self, db_pool: SQLiteConnectionPool):
+    def __init__(self, db_pool: AsyncSQLiteConnectionPool):
         """初始化指令分类仓储类
         
         Args:
-            db_pool: SQLite连接池实例
+            db_pool: SQLite连接池实例（异步）
         """
         super().__init__(db_pool)
-        # 初始化表结构
-        self._init_table()
+        # 初始化表结构将在异步任务中执行
     
-    def _init_table(self):
-        """初始化指令分类表结构"""
+    async def _init_table(self):
+        """初始化指令分类表结构（异步）"""
         create_table_sql = f"""
         CREATE TABLE IF NOT EXISTS {self.TABLE_NAME} (
             id TEXT PRIMARY KEY,
@@ -38,10 +37,10 @@ class InstructionCategoryRepository(BaseRepository[InstructionCategory]):
             updated_at TEXT NOT NULL
         )
         """
-        self.execute_non_query(create_table_sql)
+        await self.execute_non_query(create_table_sql)
     
-    def add(self, category: InstructionCategory) -> bool:
-        """添加指令分类
+    async def add(self, category: InstructionCategory) -> bool:
+        """添加指令分类（异步）
         
         Args:
             category: 指令分类实体
@@ -58,10 +57,10 @@ class InstructionCategoryRepository(BaseRepository[InstructionCategory]):
             "created_at": category.created_at,
             "updated_at": category.updated_at
         }
-        return self.insert(self.TABLE_NAME, data)
+        return await self.insert(self.TABLE_NAME, data)
     
-    def update(self, category: InstructionCategory) -> bool:
-        """更新指令分类
+    async def update(self, category: InstructionCategory) -> bool:
+        """更新指令分类（异步）
         
         Args:
             category: 指令分类实体
@@ -76,10 +75,10 @@ class InstructionCategoryRepository(BaseRepository[InstructionCategory]):
             "is_active": 1 if category.is_active else 0,
             "updated_at": category.updated_at
         }
-        return super().update(self.TABLE_NAME, data, "id = ?", (category.id,))
+        return await super().update(self.TABLE_NAME, data, "id = ?", (category.id,))
     
-    def delete(self, id: str) -> bool:
-        """删除指令分类
+    async def delete(self, id: str) -> bool:
+        """删除指令分类（异步）
         
         Args:
             id: 指令分类ID
@@ -87,10 +86,10 @@ class InstructionCategoryRepository(BaseRepository[InstructionCategory]):
         Returns:
             bool: 删除是否成功
         """
-        return super().delete(self.TABLE_NAME, "id = ?", (id,))
+        return await super().delete(self.TABLE_NAME, "id = ?", (id,))
     
-    def find_by_id(self, id: str) -> Optional[InstructionCategory]:
-        """根据ID查找指令分类
+    async def find_by_id(self, id: str) -> Optional[InstructionCategory]:
+        """根据ID查找指令分类（异步）
         
         Args:
             id: 指令分类ID
@@ -98,20 +97,20 @@ class InstructionCategoryRepository(BaseRepository[InstructionCategory]):
         Returns:
             Optional[InstructionCategory]: 指令分类实体，如果不存在则返回None
         """
-        result = super().find_by_id(self.TABLE_NAME, id)
+        result = await super().find_by_id(self.TABLE_NAME, id)
         if result:
             # 处理布尔值转换
             result["is_active"] = bool(result["is_active"])
             return self.dict_to_model(result, InstructionCategory)
         return None
     
-    def find_all(self) -> List[InstructionCategory]:
-        """查找所有指令分类
+    async def find_all(self) -> List[InstructionCategory]:
+        """查找所有指令分类（异步）
         
         Returns:
             List[InstructionCategory]: 指令分类列表
         """
-        results = super().find_all(self.TABLE_NAME)
+        results = await super().find_all(self.TABLE_NAME)
         categories = []
         for result in results:
             # 处理布尔值转换
@@ -121,13 +120,13 @@ class InstructionCategoryRepository(BaseRepository[InstructionCategory]):
         categories.sort(key=lambda x: x.sort_order)
         return categories
     
-    def find_active(self) -> List[InstructionCategory]:
-        """查找所有激活的指令分类
+    async def find_active(self) -> List[InstructionCategory]:
+        """查找所有激活的指令分类（异步）
         
         Returns:
             List[InstructionCategory]: 激活的指令分类列表
         """
-        results = super().find_all(self.TABLE_NAME, "is_active = 1")
+        results = await super().find_all(self.TABLE_NAME, "is_active = 1")
         categories = []
         for result in results:
             # 处理布尔值转换

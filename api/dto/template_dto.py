@@ -22,8 +22,8 @@ class ElementPosition(BaseModel):
     """元素位置DTO"""
     left: float = Field(..., description="左边距", example=100.0)
     top: float = Field(..., description="上边距", example=50.0)
-    width: float = Field(..., description="宽度", example=200.0, gt=0)
-    height: float = Field(..., description="高度", example=100.0, gt=0)
+    width: float = Field(..., description="宽度", example=200.0)
+    height: float = Field(..., description="高度", example=100.0)
 
 
 class ElementStyle(BaseModel):
@@ -60,10 +60,24 @@ class ElementStyle(BaseModel):
         return v
 
 
+class TableCellData(BaseModel):
+    """表格单元格数据DTO"""
+    background_color: str = Field("#ffffff", description="背景颜色")
+    border: str = Field("", description="边框样式")
+    font_bold: bool = Field(False, description="是否加粗")
+    font_italic: bool = Field(False, description="是否斜体")
+    font_name: str = Field("Arial", description="字体族")
+    font_size: int = Field(12, description="字体大小")
+    font_underline: bool = Field(False, description="是否下划线")
+    horizontal_align: str = Field("left", description="水平对齐")
+    text: str = Field("", description="单元格文本内容")
+    text_color: str = Field("#000000", description="文本颜色")
+    vertical_align: str = Field("middle", description="垂直对齐")
+
 class ElementData(BaseModel):
     """元素数据DTO"""
     text_content: str = Field("", description="文本内容")
-    table_data: Optional[List[List[str]]] = Field(None, description="表格数据")
+    table_data: Optional[List[List[TableCellData]]] = Field(None, description="表格数据")
     chart_data: Optional[Dict[str, Any]] = Field(None, description="图表数据")
     image_data: str = Field("", description="图片数据")
     original_image_data: str = Field("", description="原始图片数据，用于重置")
@@ -134,3 +148,15 @@ class PPTConfig(BaseModel):
 class ConfigUpdateDto(BaseModel):
     template_id: str = Field(..., description="模板id")
     config_data: dict = Field(..., description="配置数据")
+
+class ConfigSaveDto(BaseModel):
+    """PPT保存配置DTO"""
+    id: Optional[str] = Field(None, description="模板ID")
+    file_name: str = Field(..., description="文件名", example="presentation.pptx")
+    file_path: str = Field(..., description="PPT文件路径", example="/path/to/presentation.pptx")
+    file_size: Optional[int] = Field(None, description="文件大小")
+    slide_height: float = Field(..., description="幻灯片高度", example=1080.0, gt=0)
+    slide_width: float = Field(..., description="幻灯片宽度", example=1920.0, gt=0)
+    slides: List[SlideConfig] = Field(..., description="幻灯片配置列表")
+    template_name: str = Field(..., description="模板名称", example="模板1")
+    total_slides: int = Field(..., description="总幻灯片数", example=10, ge=1)

@@ -527,7 +527,7 @@ class ExcelHelper:
             # 记录文件信息
             file_info = {
                 'file_path': file_path,
-                'filename': os.path.basename(file_path),
+                'file_name': os.path.basename(file_path),
                 'sheets': sheet_names
             }
             result_data['files'].append(file_info)
@@ -547,7 +547,7 @@ class ExcelHelper:
                     key = f"{os.path.basename(file_path)}_{sheet_name}"
                     
                     result_data['data'][key] = {
-                        'filename': os.path.basename(file_path),
+                        'file_name': os.path.basename(file_path),
                         'sheet_name': sheet_name,
                         'columns': sheet_data['columns'],
                         'rows': sheet_data['rows'],
@@ -563,7 +563,7 @@ class ExcelHelper:
                     # 使用文件名+sheet名作为key，避免重复
                     key = f"{os.path.basename(file_path)}_{sheet}"
                     result_data['data'][key] = {
-                        'filename': os.path.basename(file_path),
+                        'file_name': os.path.basename(file_path),
                         'sheet_name': sheet,
                         'columns': sheet_data['columns'],
                         'rows': sheet_data['rows'],

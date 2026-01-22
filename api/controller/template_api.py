@@ -3,6 +3,7 @@
 """
 
 from fastapi import APIRouter, UploadFile, File, Form, Query, Depends, HTTPException
+from fastapi.responses import FileResponse
 from typing import Dict, Any
 import os
 from dataclasses import dataclass
@@ -13,71 +14,38 @@ from datetime import datetime
 from config import config
 from service.ppt_service import PPTservice
 from service.config_service import Configservice
+from service.template_service import TemplateService
 from di.container import inject
-from dto.ppt_dto import ConfigUpdateDto
-
-# 错误处理函数
-async def handle_internal_error(e: Exception) -> None:
-    """处理内部错误"""
-    raise HTTPException(status_code=500, detail=f'内部服务器错误: {str(e)}')
-
-
-async def handle_file_too_large() -> None:
-    """处理文件过大错误"""
-    raise HTTPException(status_code=413, detail='文件大小超过限制')
-
+from dto.template_dto import ConfigUpdateDto,ConfigSaveDto
 
 # 创建APIRouter实例
-api_router = APIRouter(prefix="/api", tags=["PPT"])
-static_router = APIRouter(prefix="/api", tags=["Static"])
-
-
+api_router = APIRouter(prefix="/api", tags=["template"])
 # PPT相关路由定义
-@api_router.post("/template/upload")
-async def upload_ppt(
+@api_router.post("/template/upload_and_parse_ppt")
+async def upload_and_parse_ppt(
     ppt_file: UploadFile = File(...),
     templateName: str = Form(...),
     ppt_service: PPTservice = Depends(lambda: inject(PPTservice))
 ):
-    """上传PPT文件"""
+    """上传并解析PPT文件"""
     try:
         # 读取文件内容
         file_content = await ppt_file.read()
         
-        # 直接创建请求字典
-        request = {
-            "filename": ppt_file.filename,
-            "file_data": file_content,
-            "template_name": templateName
-        }
-        
         # 调用服务层
-        response = await ppt_service.upload_ppt(request)
-        
-        # 如果转换成功，返回包含配置信息的响应
-        if response.get('success', False):
-            conversion_result = response.get('conversion_result', {})
-            file_info = response.get('file_info', {})
-            return {
-                'success': True,
-                'message': '文件上传并解析成功',
-                'filename': ppt_file.filename,
-                'file_unique': file_info.get('file_unique',''),
-                'file_size': len(file_content),
-                'config': conversion_result.get('config'),
-                'slides_count': conversion_result.get('slides_count', 0),
-                'output_html_path': conversion_result.get('convert_ppt_to_html')
-            }
-        else:
-            return response
-        
+        response = await ppt_service.upload_and_parse_ppt(ppt_file.filename,file_content)        
+        return {
+            'success': True,
+            'message': '文件上传并解析成功',
+             'data':response
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"上传失败: {str(e)}")
 
 
 @api_router.post("/template/config/save")
 async def save_config(
-    config_data: dict,
+    config_data: ConfigSaveDto,
     config_service: Configservice = Depends(lambda: inject(Configservice))
 ):
     """保存配置"""
@@ -102,10 +70,8 @@ async def update_config(
         # 调用服务层方法更新配置
         config_data=await config_service.update_config(request.template_id, request.config_data)
         return {'success': True, 'message': '配置更新成功',"config_data": config_data}
-    except HTTPException:
-        raise
     except Exception as e:
-        await handle_internal_error(e)
+        raise HTTPException(status_code=500, detail=f'内部服务器错误: {str(e)}')
 
 
 @api_router.get("/template/config/load")
@@ -125,121 +91,76 @@ async def load_config(
         
 @api_router.get("/template/list")
 async def get_templates(
+    template_service: TemplateService = Depends(lambda: inject(TemplateService))
 ):
     """获取模板列表"""
     try:
-        from repository.base_repository import SQLiteConnectionPool
-        from repository.template_info_repository import TemplateInfoRepository
+        # 调用服务层获取模板列表
+        result = await template_service.get_templates()
         
-        # 创建连接池
-        db_path = config.DB_PATH
-        db_pool = SQLiteConnectionPool(db_path)
-        
-        # 创建模板信息仓储实例
-        template_info_repo = TemplateInfoRepository(db_pool)
-        
-        # 获取所有模板信息
-        template_infos = template_info_repo.find_all()
-        
-        # 构建响应数据
-        templates = []
-        for template_info in template_infos:
-            template = {
-                'id': template_info.id,
-                'name': template_info.template_name,
-                'filename': template_info.filename,
-                'createTime': template_info.created_at,
-                'status': 'ready'
+        # 根据结果返回相应的响应
+        if result.success:
+            return {
+                'success': True,
+                'templates': result.data.get('templates', [])
             }
-            templates.append(template)
-        
-        return {
-            'success': True,
-            'templates': templates
-        }
+        else:
+            raise HTTPException(status_code=500, detail=result.message)
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f'服务器错误: {str(e)}')
+        raise HTTPException(status_code=500, detail=f'获取模板列表失败: {str(e)}')
 
 
 @api_router.delete("/template/{template_id}")
 async def delete_template(
-    template_id: str
+    template_id: str,
+    template_service: TemplateService = Depends(lambda: inject(TemplateService))
 ):
     """删除指定模板"""
     try:
-        from repository.base_repository import SQLiteConnectionPool
-        from repository.template_info_repository import TemplateInfoRepository
-        from repository.template_slide_repository import TemplateSlideRepository
+        # 调用服务层删除模板
+        result = await template_service.delete_template(template_id)
         
-        # 创建连接池
-        db_path = config.DB_PATH
-        db_pool = SQLiteConnectionPool(db_path)
-        
-        # 创建仓储实例
-        template_info_repo = TemplateInfoRepository(db_pool)
-        template_slide_repo = TemplateSlideRepository(db_pool)
-        
-        # 检查模板是否存在
-        template_info = template_info_repo.find_by_id(template_id)
-        if not template_info:
-            raise HTTPException(status_code=404, detail='模板不存在')
-        
-        # 删除模板幻灯片配置
-        template_slide_repo.delete_by_template_id(template_id)
-        
-        # 删除模板信息
-        template_info_repo.delete(template_id)
-        
-        return {
-            'success': True,
-            'message': '模板删除成功'
-        }
+        # 根据结果返回相应的响应
+        if result.success:
+            return {
+                'success': True,
+                'message': result.message
+            }
+        else:
+            raise Exception(result.message)
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f'服务器错误: {str(e)}')
+        raise HTTPException(status_code=500, detail=f'删除模板失败: {str(e)}')
 
 
 @api_router.get("/check_config_update")
 async def check_config_update(
-    filename: str = Query(..., description="文件名")
+    file_name: str = Query(..., description="文件名"),
+    template_service: TemplateService = Depends(lambda: inject(TemplateService))
 ):
     """检查配置更新"""
     try:
-        from repository.base_repository import SQLiteConnectionPool
-        from repository.template_info_repository import TemplateInfoRepository
+        # 调用服务层检查配置更新
+        result = await template_service.check_config_update(file_name)
         
-        # 创建连接池
-        db_path = config.DB_PATH
-        db_pool = SQLiteConnectionPool(db_path)
-        
-        # 创建模板信息仓储实例
-        template_info_repo = TemplateInfoRepository(db_pool)
-        
-        # 获取所有模板信息
-        template_infos = template_info_repo.find_all()
-        
-        # 查找匹配的模板
-        for template_info in template_infos:
-            if filename in template_info.filename:
-                # 获取最后更新时间戳
-                import time
-                updated_time = datetime.fromisoformat(template_info.updated_at)
-                mtime = time.mktime(updated_time.timetuple())
-                
-                return {
-                    'success': True,
-                    'hasUpdate': True,
-                    'configFile': template_info.id + '.json',  # 保持与原接口兼容
-                    'lastModified': mtime,
-                    'message': '找到匹配的配置文件'
-                }
-        
-        return {
-            'success': True,
-            'hasUpdate': False,
-            'message': '未找到匹配的配置文件'
-        }
+        # 根据结果返回相应的响应
+        if result.success:
+            return {
+                'success': True,
+                'hasUpdate': result.data.get('hasUpdate', False),
+                'configFile': result.data.get('configFile', ''),
+                'lastModified': result.data.get('lastModified', 0),
+                'message': result.data.get('message', '')
+            }
+        else:
+            return {
+                'success': False,
+                'hasUpdate': False,
+                'message': result.message
+            }
     except Exception as e:
         return {
             'success': False,
@@ -249,7 +170,7 @@ async def check_config_update(
 
 
 # 静态文件服务路由
-@static_router.get("/static")
+@api_router.get("/static")
 async def index():
     """根路径重定向到编辑器"""
     static_dir = config.STATIC_FOLDER
@@ -261,17 +182,17 @@ async def index():
         raise HTTPException(status_code=404, detail='静态文件未找到')
 
 
-@static_router.get("/static/{filename:path}")
+@api_router.get("/static/{file_name:path}")
 async def serve_static(
-    filename: str
+    file_name: str
 ):
     """提供静态文件服务 - 排除API路径"""
     # 如果路径以api开头，返回404
-    if filename.startswith('api'):
+    if file_name.startswith('api'):
         raise HTTPException(status_code=404, detail="Not Found")
     
     static_dir = config.STATIC_FOLDER
-    file_path = os.path.join(static_dir, filename)
+    file_path = os.path.join(static_dir, file_name)
     
     # 安全检查：确保请求的文件在静态目录内
     if not os.path.abspath(file_path).startswith(os.path.abspath(static_dir)):

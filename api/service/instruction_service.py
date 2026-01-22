@@ -60,16 +60,16 @@ class InstructionService:
             Optional[Dict[str, Any]]: 指令信息，如果不存在则返回None
         """
         try:
-            # 使用仓储类获取指令项目实体
-            item_entity = self.item_repo.find_by_id(instruction_id)
+            # 使用仓储类获取指令项目实体（异步执行）
+            item_entity = await self.item_repo.find_by_id(instruction_id)
             if not item_entity:
                 return None
             
             # 使用pydantic的model_dump()方法将实体转换为字典
             item_dict = item_entity.model_dump()
             
-            # 获取指令参数
-            param_entities = self.param_repo.find_by_instruction_id(instruction_id)
+            # 获取指令参数（异步执行）
+            param_entities = await self.param_repo.find_by_instruction_id(instruction_id)
             item_dict["params"] = [param.model_dump() for param in param_entities]
             
             return item_dict
@@ -80,14 +80,15 @@ class InstructionService:
     async def get_instruction_list(self,get_active:bool=True) -> ApiResponse[InstructionListResponse]:
         """获取指令列表"""
         try:
-            # 使用仓储类获取所有激活的分类
-            category_entities = self.category_repo.find_active()            
-            # 使用仓储类获取所有指令项目
+            # 使用仓储类获取所有激活的分类（异步执行）
+            category_entities = await self.category_repo.find_active()
+            
+            # 使用仓储类获取所有指令项目（异步执行）
             item_entities:List[InstructionItem] =[]
             if get_active:
-                item_entities = self.item_repo.find_active()
+                item_entities = await self.item_repo.find_active()
             else:
-                item_entities = self.item_repo.find_all()
+                item_entities = await self.item_repo.find_all()
             
             # 构建分类和项目的关联关系
             categories = []
@@ -96,8 +97,8 @@ class InstructionService:
                 category_items = []
                 for item_entity in item_entities:
                     if item_entity.category_id == cat_entity.id:
-                        # 获取指令参数
-                        param_entities = self.param_repo.find_by_instruction_id(item_entity.id)
+                        # 获取指令参数（异步执行）
+                        param_entities = await self.param_repo.find_by_instruction_id(item_entity.id)
                         
                         # 将实体类参数转换为DTO参数
                         param_dtos = []
@@ -175,8 +176,8 @@ class InstructionService:
                 is_active=True
             )
             
-            # 使用仓储类保存分类
-            if self.category_repo.add(category_entity):
+            # 使用仓储类保存分类（异步执行）
+            if await self.category_repo.add(category_entity):
                 # 将实体类转换为DTO
                 category_dto = InstructionCategory(
                     id=category_entity.id,
@@ -210,8 +211,8 @@ class InstructionService:
     async def create_item(self, request: CreateInstructionItemRequest) -> ApiResponse[InstructionItem]:
         """创建指令项目"""
         try:
-            # 验证分类是否存在
-            category = self.category_repo.find_by_id(request.category_id)
+            # 验证分类是否存在（异步执行）
+            category = await self.category_repo.find_by_id(request.category_id)
             if not category:
                 return ApiResponse(
                     success=False,
@@ -248,11 +249,11 @@ class InstructionService:
                 is_active=True
             )
             
-            # 使用仓储类保存指令项目
-            if self.item_repo.add(item_entity):
-                # 保存指令参数
+            # 使用仓储类保存指令项目（异步执行）
+            if await self.item_repo.add(item_entity):
+                # 保存指令参数（异步执行）
                 if param_entities:
-                    self.param_repo.add_batch(item_entity.id, param_entities)
+                    await self.param_repo.add_batch(item_entity.id, param_entities)
                 
                 # 将实体类参数转换为DTO参数
                 param_dtos = []
@@ -307,8 +308,8 @@ class InstructionService:
     async def update_category(self, category_id: str, request: UpdateInstructionCategoryRequest) -> ApiResponse[InstructionCategory]:
         """更新指令分类"""
         try:
-            # 使用仓储类获取分类实体
-            category_entity = self.category_repo.find_by_id(category_id)
+            # 使用仓储类获取分类实体（异步执行）
+            category_entity = await self.category_repo.find_by_id(category_id)
             if not category_entity:
                 return ApiResponse(
                     success=False,
@@ -329,8 +330,8 @@ class InstructionService:
             # 更新时间
             category_entity.updated_at = datetime.now().isoformat()
             
-            # 使用仓储类保存更新
-            if self.category_repo.update(category_entity):
+            # 使用仓储类保存更新（异步执行）
+            if await self.category_repo.update(category_entity):
                 # 将实体类转换为DTO
                 category_dto = InstructionCategory(
                     id=category_entity.id,
@@ -364,8 +365,8 @@ class InstructionService:
     async def update_item(self, item_id: str, request: UpdateInstructionItemRequest) -> ApiResponse[InstructionItem]:
         """更新指令项目"""
         try:
-            # 使用仓储类获取指令项目实体
-            item_entity = self.item_repo.find_by_id(item_id)
+            # 使用仓储类获取指令项目实体（异步执行）
+            item_entity = await self.item_repo.find_by_id(item_id)
             if not item_entity:
                 return ApiResponse(
                     success=False,
@@ -373,9 +374,9 @@ class InstructionService:
                     message="指令项目不存在"
                 )
             
-            # 如果要更新分类，验证新分类是否存在
+            # 如果要更新分类，验证新分类是否存在（异步执行）
             if request.category_id is not None:
-                category = self.category_repo.find_by_id(request.category_id)
+                category = await self.category_repo.find_by_id(request.category_id)
                 if not category:
                     return ApiResponse(
                         success=False,
@@ -402,13 +403,13 @@ class InstructionService:
             # 更新时间
             item_entity.updated_at = datetime.now().isoformat()
             
-            # 使用仓储类保存更新
-            if self.item_repo.update(item_entity):
+            # 使用仓储类保存更新（异步执行）
+            if await self.item_repo.update(item_entity):
                 # 处理参数更新
                 param_entities = []
                 if request.params is not None:
-                    # 删除原有的所有参数
-                    self.param_repo.delete_by_instruction_id(item_id)
+                    # 删除原有的所有参数（异步执行）
+                    await self.param_repo.delete_by_instruction_id(item_id)
                     
                     # 将InstructionParameter对象转换为实体类并保存
                     param_entities = []
@@ -426,11 +427,11 @@ class InstructionService:
                         )
                         param_entities.append(param_entity)
                     
-                    # 批量保存新参数
-                    self.param_repo.add_batch(item_id, param_entities)
+                    # 批量保存新参数（异步执行）
+                    await self.param_repo.add_batch(item_id, param_entities)
                 else:
-                    # 获取现有参数
-                    param_entities = self.param_repo.find_by_instruction_id(item_id)
+                    # 获取现有参数（异步执行）
+                    param_entities = await self.param_repo.find_by_instruction_id(item_id)
                 
                 # 将实体类参数转换为DTO参数
                 param_dtos = []
@@ -485,13 +486,14 @@ class InstructionService:
     async def delete_category(self, category_id: str) -> ApiResponse[bool]:
         """删除指令分类"""
         try:
-            # 使用仓储类删除分类
-            if self.category_repo.delete(category_id):
+            # 使用仓储类删除分类（异步执行）
+            if await self.category_repo.delete(category_id):
                 # 级联删除该分类下的所有指令项目
-                # 先获取该分类下的所有指令项目
-                items = self.item_repo.find_by_category(category_id)
+                # 先获取该分类下的所有指令项目（异步执行）
+                items = await self.item_repo.find_by_category(category_id)
                 for item in items:
-                    self.item_repo.delete(item.id)
+                    # 异步删除每个项目
+                    await self.item_repo.delete(item.id)
                 
                 return ApiResponse(
                     success=True,
@@ -515,11 +517,11 @@ class InstructionService:
     async def delete_item(self, item_id: str) -> ApiResponse[bool]:
         """删除指令项目"""
         try:
-            # 先删除相关的指令参数
-            self.param_repo.delete_by_instruction_id(item_id)
+            # 先删除相关的指令参数（异步执行）
+            await self.param_repo.delete_by_instruction_id(item_id)
             
-            # 使用仓储类删除指令项目
-            if self.item_repo.delete(item_id):
+            # 使用仓储类删除指令项目（异步执行）
+            if await self.item_repo.delete(item_id):
                 return ApiResponse(
                     success=True,
                     data=True,
@@ -542,8 +544,8 @@ class InstructionService:
     async def execute_instruction(self, request: ExecuteInstructionRequest) -> ApiResponse[ExecuteInstructionResponse]:
         """执行指令"""
         try:
-            # 获取指令信息
-            item_entity = self.item_repo.find_by_id(request.instruction_id)
+            # 获取指令信息（异步执行）
+            item_entity = await self.item_repo.find_by_id(request.instruction_id)
             if not item_entity:
                 return ApiResponse(
                     success=False,
@@ -570,8 +572,8 @@ class InstructionService:
             
             # 查找direction为1的输出参数
             result_variable_name = ''
-            # 使用param_repo获取指令参数，而不是直接访问item_entity.params
-            param_entities = self.param_repo.find_by_instruction_id(item_entity.id)
+            # 使用param_repo获取指令参数，而不是直接访问item_entity.params（异步执行）
+            param_entities = await self.param_repo.find_by_instruction_id(item_entity.id)
             for param in param_entities:
                 if param.direction == 1:
                     result_variable_name = param.name
@@ -599,8 +601,9 @@ class InstructionService:
                     # 文本类型参数，直接使用原始值
                     processed_params[param_name] = param_value
             
-            # 执行Python脚本
-            result = PythonScriptUtils._execute_python_script(
+            # 执行Python脚本（异步执行）
+            import asyncio
+            result = await asyncio.to_thread(PythonScriptUtils._execute_python_script,
                 python_script, 
                 processed_params
             )
@@ -614,10 +617,10 @@ class InstructionService:
             # 获取指令信息以确定result_variable_name（如果需要）
             result_variable_name = ''
             try:
-                item_entity = self.item_repo.find_by_id(request.instruction_id)
+                item_entity = await self.item_repo.find_by_id(request.instruction_id)
                 if item_entity:
-                    # 使用param_repo获取指令参数，而不是直接访问item_entity.params
-                    param_entities = self.param_repo.find_by_instruction_id(item_entity.id)
+                    # 使用param_repo获取指令参数，而不是直接访问item_entity.params（异步执行）
+                    param_entities = await self.param_repo.find_by_instruction_id(item_entity.id)
                     for param in param_entities:
                         if param.direction == 1:
                             result_variable_name = param.name
@@ -634,8 +637,8 @@ class InstructionService:
     async def execute_event(self, request: ExecuteEventRequest) -> ApiResponse[Any]:
         """执行事件脚本"""
         try:
-            # 1. 根据指令id获取指令信息
-            item_entity = self.item_repo.find_by_id(request.instruction_id)
+            # 1. 根据指令id获取指令信息（异步执行）
+            item_entity = await self.item_repo.find_by_id(request.instruction_id)
             if not item_entity:
                 return ApiResponse(
                     success=False,
@@ -643,9 +646,9 @@ class InstructionService:
                     message="指令不存在"
                 )
             
-            # 2. 根据事件参数名称获取事件脚本
+            # 2. 根据事件参数名称获取事件脚本（异步执行）
             event_script = None
-            param_entities = self.param_repo.find_by_instruction_id(item_entity.id)
+            param_entities = await self.param_repo.find_by_instruction_id(item_entity.id)
             for param in param_entities:
                 if param.name == request.event_param_name and param.event_script:
                     event_script = param.event_script
@@ -698,8 +701,9 @@ class InstructionService:
                 if param_name in processed_params:
                     event_params[param_name] = processed_params[param_name]
             
-            # 5. 执行事件脚本
-            result = PythonScriptUtils._execute_python_script(
+            # 5. 执行事件脚本（异步执行）
+            import asyncio
+            result = await asyncio.to_thread(PythonScriptUtils._execute_python_script,
                 event_script, 
                 event_params
             )
@@ -919,8 +923,9 @@ class InstructionService:
                     message="未提供有效的依赖包"
                 )
             
-            # 使用pip安装指定的依赖包，并指定安装目录
-            result = subprocess.run(
+            # 使用pip安装指定的依赖包，并指定安装目录（异步执行）
+            import asyncio
+            result = await asyncio.to_thread(subprocess.run,
                 [sys.executable, "-m", "pip", "install", "--target", install_target] + dependency_list,
                 capture_output=True,
                 text=True

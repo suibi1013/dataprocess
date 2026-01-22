@@ -7,7 +7,7 @@
 
 import json
 from typing import List, Optional
-from repository.base_repository import BaseRepository, SQLiteConnectionPool
+from repository.base_repository import BaseRepository, AsyncSQLiteConnectionPool
 from entity.data_source import DataSource
 
 
@@ -16,18 +16,17 @@ class DataSourceRepository(BaseRepository[DataSource]):
     
     TABLE_NAME = "data_sources"
     
-    def __init__(self, db_pool: SQLiteConnectionPool):
+    def __init__(self, db_pool: AsyncSQLiteConnectionPool):
         """初始化数据源仓储类
         
         Args:
-            db_pool: SQLite连接池实例
+            db_pool: SQLite连接池实例（异步）
         """
         super().__init__(db_pool)
-        # 初始化表结构
-        self._init_table()
+        # 初始化表结构将在异步任务中执行
     
-    def _init_table(self):
-        """初始化数据源表结构"""
+    async def _init_table(self):
+        """初始化数据源表结构（异步）"""
         create_table_sql = f"""
         CREATE TABLE IF NOT EXISTS {self.TABLE_NAME} (
             id TEXT PRIMARY KEY,
@@ -41,10 +40,10 @@ class DataSourceRepository(BaseRepository[DataSource]):
             is_active INTEGER DEFAULT 1
         )
         """
-        self.execute_non_query(create_table_sql)
+        await self.execute_non_query(create_table_sql)
     
-    def add(self, data_source: DataSource) -> bool:
-        """添加数据源
+    async def add(self, data_source: DataSource) -> bool:
+        """添加数据源（异步）
         
         Args:
             data_source: 数据源实体
@@ -66,10 +65,10 @@ class DataSourceRepository(BaseRepository[DataSource]):
             "updated_time": data_source.updated_time,
             "is_active": 1 if data_source.is_active else 0
         }
-        return self.insert(self.TABLE_NAME, data)
+        return await self.insert(self.TABLE_NAME, data)
     
-    def update(self, data_source: DataSource) -> bool:
-        """更新数据源
+    async def update(self, data_source: DataSource) -> bool:
+        """更新数据源（异步）
         
         Args:
             data_source: 数据源实体
@@ -88,10 +87,10 @@ class DataSourceRepository(BaseRepository[DataSource]):
             "updated_time": data_source.updated_time,
             "is_active": 1 if data_source.is_active else 0
         }
-        return super().update(self.TABLE_NAME, data, "id = ?", (data_source.id,))
+        return await super().update(self.TABLE_NAME, data, "id = ?", (data_source.id,))
     
-    def delete(self, id: str) -> bool:
-        """删除数据源
+    async def delete(self, id: str) -> bool:
+        """删除数据源（异步）
         
         Args:
             id: 数据源ID
@@ -99,10 +98,10 @@ class DataSourceRepository(BaseRepository[DataSource]):
         Returns:
             bool: 删除是否成功
         """
-        return super().delete(self.TABLE_NAME, "id = ?", (id,))
+        return await super().delete(self.TABLE_NAME, "id = ?", (id,))
     
-    def find_by_id(self, id: str) -> Optional[DataSource]:
-        """根据ID查找数据源
+    async def find_by_id(self, id: str) -> Optional[DataSource]:
+        """根据ID查找数据源（异步）
         
         Args:
             id: 数据源ID
@@ -110,25 +109,25 @@ class DataSourceRepository(BaseRepository[DataSource]):
         Returns:
             Optional[DataSource]: 数据源实体，如果不存在则返回None
         """
-        result = super().find_by_id(self.TABLE_NAME, id)
+        result = await super().find_by_id(self.TABLE_NAME, id)
         if result:
             return self._convert_result_to_source(result)
         return None
     
-    def find_all(self) -> List[DataSource]:
-        """查找所有数据源
+    async def find_all(self) -> List[DataSource]:
+        """查找所有数据源（异步）
         
         Returns:
             List[DataSource]: 数据源列表
         """
-        results = super().find_all(self.TABLE_NAME)
+        results = await super().find_all(self.TABLE_NAME)
         sources = [self._convert_result_to_source(result) for result in results]
         # 按更新时间倒序排序
         sources.sort(key=lambda x: x.updated_time, reverse=True)
         return sources
     
-    def find_by_type(self, type: str) -> List[DataSource]:
-        """根据类型查找数据源
+    async def find_by_type(self, type: str) -> List[DataSource]:
+        """根据类型查找数据源（异步）
         
         Args:
             type: 数据源类型
@@ -136,19 +135,19 @@ class DataSourceRepository(BaseRepository[DataSource]):
         Returns:
             List[DataSource]: 数据源列表
         """
-        results = super().find_all(self.TABLE_NAME, "type = ?", (type,))
+        results = await super().find_all(self.TABLE_NAME, "type = ?", (type,))
         sources = [self._convert_result_to_source(result) for result in results]
         # 按更新时间倒序排序
         sources.sort(key=lambda x: x.updated_time, reverse=True)
         return sources
     
-    def find_active(self) -> List[DataSource]:
-        """查找所有激活的数据源
+    async def find_active(self) -> List[DataSource]:
+        """查找所有激活的数据源（异步）
         
         Returns:
             List[DataSource]: 激活的数据源列表
         """
-        results = super().find_all(self.TABLE_NAME, "is_active = 1")
+        results = await super().find_all(self.TABLE_NAME, "is_active = 1")
         sources = [self._convert_result_to_source(result) for result in results]
         # 按更新时间倒序排序
         sources.sort(key=lambda x: x.updated_time, reverse=True)

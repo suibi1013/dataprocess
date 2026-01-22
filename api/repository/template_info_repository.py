@@ -6,7 +6,7 @@
 """
 
 from typing import List, Optional
-from repository.base_repository import BaseRepository, SQLiteConnectionPool
+from repository.base_repository import BaseRepository, AsyncSQLiteConnectionPool
 from entity.template_info import TemplateInfo
 
 
@@ -15,23 +15,22 @@ class TemplateInfoRepository(BaseRepository[TemplateInfo]):
     
     TABLE_NAME = "template_infos"
     
-    def __init__(self, db_pool: SQLiteConnectionPool):
+    def __init__(self, db_pool: AsyncSQLiteConnectionPool):
         """初始化数据模板信息仓储类
         
         Args:
-            db_pool: SQLite连接池实例
+            db_pool: SQLite连接池实例（异步）
         """
         super().__init__(db_pool)
-        # 初始化表结构
-        self._init_table()
+        # 初始化表结构将在异步任务中执行
     
-    def _init_table(self):
-        """初始化数据模板信息表结构"""
+    async def _init_table(self):
+        """初始化数据模板信息表结构（异步）"""
         create_table_sql = f"""
         CREATE TABLE IF NOT EXISTS {self.TABLE_NAME} (
             id TEXT PRIMARY KEY,
             template_name TEXT NOT NULL,
-            filename TEXT NOT NULL,
+            file_name TEXT NOT NULL,
             total_slides INTEGER NOT NULL,
             file_path TEXT NOT NULL,
             slide_width INTEGER NOT NULL,
@@ -40,10 +39,10 @@ class TemplateInfoRepository(BaseRepository[TemplateInfo]):
             updated_at TEXT NOT NULL
         )
         """
-        self.execute_non_query(create_table_sql)
+        await self.execute_non_query(create_table_sql)
     
-    def add(self, template_info: TemplateInfo) -> bool:
-        """添加数据模板信息
+    async def add(self, template_info: TemplateInfo) -> bool:
+        """添加数据模板信息（异步）
         
         Args:
             template_info: 数据模板信息实体
@@ -54,7 +53,7 @@ class TemplateInfoRepository(BaseRepository[TemplateInfo]):
         data = {
             "id": template_info.id,
             "template_name": template_info.template_name,
-            "filename": template_info.filename,
+            "file_name": template_info.file_name,
             "total_slides": template_info.total_slides,
             "file_path": template_info.file_path,
             "slide_width": template_info.slide_width,
@@ -62,10 +61,10 @@ class TemplateInfoRepository(BaseRepository[TemplateInfo]):
             "created_at": template_info.created_at,
             "updated_at": template_info.updated_at
         }
-        return self.insert(self.TABLE_NAME, data)
+        return await self.insert(self.TABLE_NAME, data)
     
-    def update(self, template_info: TemplateInfo) -> bool:
-        """更新数据模板信息
+    async def update(self, template_info: TemplateInfo) -> bool:
+        """更新数据模板信息（异步）
         
         Args:
             template_info: 数据模板信息实体
@@ -75,17 +74,17 @@ class TemplateInfoRepository(BaseRepository[TemplateInfo]):
         """
         data = {
             "template_name": template_info.template_name,
-            "filename": template_info.filename,
+            "file_name": template_info.file_name,
             "total_slides": template_info.total_slides,
             "file_path": template_info.file_path,
             "slide_width": template_info.slide_width,
             "slide_height": template_info.slide_height,
             "updated_at": template_info.updated_at
         }
-        return super().update(self.TABLE_NAME, data, "id = ?", (template_info.id,))
+        return await super().update(self.TABLE_NAME, data, "id = ?", (template_info.id,))
     
-    def delete(self, id: str) -> bool:
-        """删除数据模板信息
+    async def delete(self, id: str) -> bool:
+        """删除数据模板信息（异步）
         
         Args:
             id: 数据模板信息ID
@@ -93,10 +92,10 @@ class TemplateInfoRepository(BaseRepository[TemplateInfo]):
         Returns:
             bool: 删除是否成功
         """
-        return super().delete(self.TABLE_NAME, "id = ?", (id,))
+        return await super().delete(self.TABLE_NAME, "id = ?", (id,))
     
-    def find_by_id(self, id: str) -> Optional[TemplateInfo]:
-        """根据ID查找数据模板信息
+    async def find_by_id(self, id: str) -> Optional[TemplateInfo]:
+        """根据ID查找数据模板信息（异步）
         
         Args:
             id: 数据模板信息ID
@@ -104,30 +103,30 @@ class TemplateInfoRepository(BaseRepository[TemplateInfo]):
         Returns:
             Optional[TemplateInfo]: 数据模板信息实体，如果不存在则返回None
         """
-        result = super().find_by_id(self.TABLE_NAME, id)
+        result = await super().find_by_id(self.TABLE_NAME, id)
         if result:
             return self.dict_to_model(result, TemplateInfo)
         return None
     
-    def find_all(self) -> List[TemplateInfo]:
-        """查找所有数据模板信息
+    async def find_all(self) -> List[TemplateInfo]:
+        """查找所有数据模板信息（异步）
         
         Returns:
             List[TemplateInfo]: 数据模板信息列表
         """
-        results = super().find_all(self.TABLE_NAME)
+        results = await super().find_all(self.TABLE_NAME)
         return [self.dict_to_model(result, TemplateInfo) for result in results]
     
-    def find_by_filename(self, filename: str) -> Optional[TemplateInfo]:
-        """根据文件名查找数据模板信息
+    async def find_by_file_name(self, file_name: str) -> Optional[TemplateInfo]:
+        """根据文件名查找数据模板信息（异步）
         
         Args:
-            filename: 文件名
+            file_name: 文件名
             
         Returns:
             Optional[TemplateInfo]: 数据模板信息实体，如果不存在则返回None
         """
-        results = super().find_all(self.TABLE_NAME, "filename = ?", (filename,))
+        results = await super().find_all(self.TABLE_NAME, "file_name = ?", (file_name,))
         if results:
             return self.dict_to_model(results[0], TemplateInfo)
         return None

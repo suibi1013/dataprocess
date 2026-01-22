@@ -72,7 +72,7 @@ export class TemplateService implements TemplateApiService {
         formData.append('ppt_file', data.file);
         
         // 使用上传接口
-        return await httpClient.upload(`template/upload`, formData);
+        return await httpClient.upload(`template/upload_and_parse_ppt`, formData);
       } else {
         // 仅创建模板元数据
         return await httpClient.post<Template>(this.basePath, data);
@@ -152,12 +152,9 @@ export class TemplateService implements TemplateApiService {
   /**
    * 保存模板配置到服务器
    */
-  async saveTemplateConfig(config: any, filename: string): Promise<ApiResponse<any>> {
+  async saveTemplateConfig(configData: any): Promise<ApiResponse<any>> {
     try {
-      return await httpClient.post('/template/config/save', {
-        filename,
-        config
-      });
+      return await httpClient.post('/template/config/save', configData);
     } catch (error) {
       console.error('保存模板配置到服务器失败:', error);
       throw error;
