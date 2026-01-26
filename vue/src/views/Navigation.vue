@@ -55,11 +55,11 @@
         </li>
         <li class="nav-item">
           <router-link 
-            to="/about" 
+            to="/systeminfo" 
             class="nav-link"
-            :class="{ active: $route.name === 'About' }"
+            :class="{ active: $route.name === 'systeminfo' }"
           >
-            关于
+            系统信息
           </router-link>
         </li>
       </ul>

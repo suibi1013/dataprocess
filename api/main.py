@@ -24,6 +24,7 @@ from controller.data_source_api import router as datasource_router
 from controller.instruction_api import router as instruction_router
 from controller.data_process_api import router as data_process_router
 from controller.file_api import router as file_router
+from controller.system_api import router as system_router
 
 # 创建FastAPI应用
 app = FastAPI(
@@ -64,6 +65,7 @@ app.include_router(datasource_router)
 app.include_router(instruction_router)
 app.include_router(data_process_router)
 app.include_router(file_router)
+app.include_router(system_router)
 
 # 全局异常处理
 @app.exception_handler(413)

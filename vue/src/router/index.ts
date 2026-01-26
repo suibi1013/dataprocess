@@ -1,7 +1,7 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
 import Home from '../views/Home.vue'
-import About from '../views/About.vue'
+import SystemInfo from '../views/SystemInfo.vue'
 import Template from '../views/Template.vue'
 import DataSource from '../views/DataSource.vue'
 import DataProcess from '../views/DataProcess.vue'
@@ -33,10 +33,10 @@ const routes: Array<RouteRecordRaw> = [
     meta: { title: '指令管理' }
   },
   {
-    path: '/about',
-    name: 'About',
-    component: About,
-    meta: { title: '关于' }
+    path: '/systeminfo',
+    name: 'SystemInfo',
+    component: SystemInfo,
+    meta: { title: '系统信息' }
   },
   {
     path: '/process',

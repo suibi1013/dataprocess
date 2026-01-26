@@ -3,23 +3,23 @@
     <div class="hero-section">
       <h1>欢迎使用数据可视化</h1>
       <p class="hero-description">
-        这是一个功能强大的PPT转HTML工具，帮助您轻松将PowerPoint演示文稿转换为网页格式。
+        这是一个功能强大的数据管理和流程可视化设计工具，提供直观易用的用户界面和丰富的功能特性。
       </p>
       <div class="feature-cards">
-        <div class="card">
-          <h3>🎨 模板管理</h3>
-          <p>管理和自定义您的PPT转换模板</p>
-          <router-link to="/template" class="card-link">前往模板管理</router-link>
-        </div>
         <div class="card">
           <h3>📊 数据源</h3>
           <p>配置和管理您的数据源连接</p>
           <router-link to="/datasource" class="card-link">前往数据源</router-link>
         </div>
         <div class="card">
-          <h3>ℹ️ 系统信息</h3>
-          <p>了解更多关于系统的信息</p>
-          <router-link to="/about" class="card-link">查看详情</router-link>
+          <h3>🎨 模板管理</h3>
+          <p>管理和自定义您的PPT转换模板</p>
+          <router-link to="/template" class="card-link">前往模板管理</router-link>
+        </div>
+        <div class="card">
+          <h3>ℹ️ 数据流程</h3>
+          <p>可视化设计数据处理流程</p>
+          <router-link to="/process" class="card-link">前往数据流程</router-link>
         </div>
       </div>
     </div>

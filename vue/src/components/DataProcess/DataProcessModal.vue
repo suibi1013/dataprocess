@@ -145,7 +145,7 @@ import { httpClient } from '@/services/httpClient';
 // ElementPlusIconsVue已移至InstructionPanel组件
 // import { downloadFile } from '@/utils/fileUtils'; // 移除未使用的导入
 
-import DataPreviewModal from '@/components/DataPreviewModal.vue';
+import DataPreviewModal from '@/components/Common/DataPreviewModal.vue';
   import ExecutionResultModal from '@/components/DataProcess/ExecutionResultModal.vue';
   import InstructionPanel from '@/components/DataProcess/InstructionPanel.vue';
   import ProcessCanvas from '@/components/DataProcess/ProcessCanvas.vue';
