@@ -94,7 +94,7 @@
                 </label>
 
                 <!-- 数字输入框 - 复合型输入框 -->
-                <div v-if="(item.param?.type === 'number' || item.type === 'number')" class="input-with-variable composite-input"
+                <div v-if="(item.param?.display_type === 'number' || item.display_type === 'number')" class="input-with-variable composite-input"
                   style="position: relative; display: flex; align-items: center; margin-bottom: 2px;">
                   <el-input 
                     type="number" 
@@ -127,7 +127,7 @@
                 </div>
 
                 <!-- 文本输入框 - 复合型输入框 -->
-                <div v-else-if="(item.param?.type === 'string' || item.type === 'string')" class="input-with-variable composite-input"
+                <div v-else-if="(item.param?.display_type === 'string' || item.display_type === 'string')" class="input-with-variable composite-input"
                   style="position: relative; display: flex; align-items: center; margin-bottom: 2px;">
                   <el-input 
                     type="text" 
@@ -159,7 +159,7 @@
                 </div>
                 
                 <!-- excel文件路径选择器 (select_excelpath类型) - 使用级联选择器 -->
-                <div v-else-if="(item.param?.type === 'select_excelpath' || item.type === 'select_excelpath')"
+                <div v-else-if="(item.param?.display_type === 'select_excelpath' || item.display_type === 'select_excelpath')"
                   class="input-with-variable" style="position: relative; display: flex; align-items: center; margin-bottom: 2px;" :key="`select_excelpath-${item.param?.name || item.name}`">
                   <!-- 获取要使用的options数据 -->
                   <el-cascader 
@@ -180,15 +180,15 @@
                 </div>
 
                 <!-- 开关选择器 (boolean类型) -->
-                <div v-else-if="(item.param?.type === 'boolean' || item.type === 'boolean')" class="switch-container" style="margin-bottom: 2px;">
+                <div v-else-if="(item.param?.display_type === 'boolean' || item.display_type === 'boolean')" class="switch-container" style="margin-bottom: 2px;">
                   <el-switch 
                     v-model="item.value"
                     @change="updateParamValue(item.param?.name || item.name, $event)"
                   ></el-switch>
                 </div>
 
-                <!-- 文件上传 (file类型) -->
-                <div v-else-if="(item.param?.type === 'file' || item.type === 'file')" class="upload-container" style="margin-bottom: 2px;">
+                <!-- 文件上传 (file_upload类型) -->
+                <div v-else-if="(item.param?.display_type === 'file_upload' || item.display_type === 'file_upload')" class="upload-container" style="margin-bottom: 2px;">
                   <el-upload 
                     :file-list="item.value ? [{name: onGetFileNameFromPath(item.value), url: item.value}] : []"
                     :auto-upload="false"
@@ -208,7 +208,7 @@
                 </div>
 
                 <!-- 下拉选择框 -->
-                <div v-else-if="(item.param?.type === 'select' || item.type === 'select')" style="margin-bottom: 2px;" :key="`select-${item.param?.name || item.name}`">
+                <div v-else-if="(item.param?.display_type === 'select_radio' || item.display_type === 'select_radio')" style="margin-bottom: 2px;" :key="`select_radio-${item.param?.name || item.name}`">
                   <el-select :model-value="item.value"
                     :placeholder="'请选择' + (item.param?.label || item.label)"
                     class="form-select"
@@ -230,30 +230,8 @@
                   </el-select>
                 </div>
 
-                <!-- 列选择器 -->
-                <div v-else-if="(item.param?.type === 'column' || item.type === 'column')" class="column-selector" style="margin-bottom: 2px;">
-                  <el-select 
-                    v-if="!item.param?.multiple && !item.multiple" 
-                    class="form-select" 
-                    :model-value="item.value"
-                    @update:model-value="updateParamValue(item.param?.name || item.name, $event)"
-                    placeholder="请选择列"
-                  >
-                    <el-option v-for="column in availableColumns" :key="column" :value="column" :label="column"></el-option>
-                  </el-select>
-
-                  <div v-else class="multi-column-selector">
-                    <el-checkbox-group 
-                      v-model="item.value" 
-                      @change="(values) => updateParamValue(item.param?.name || item.name, values)"
-                    >
-                      <el-checkbox v-for="column in availableColumns" :key="column" :label="column"></el-checkbox>
-                    </el-checkbox-group>
-                  </div>
-                </div>
-
                 <!-- 按钮事件类型 -->
-                <div v-else-if="(item.param?.type === 'button_event' || item.type === 'button_event')" class="button-event-container" style="position: relative; display: flex; align-items: center; margin-bottom: 2px;">
+                <div v-else-if="(item.param?.display_type === 'button_event' || item.display_type === 'button_event')" class="button-event-container" style="position: relative; display: flex; align-items: center; margin-bottom: 2px;">
                   <el-input 
                     type="text" 
                     v-model="item.value" 
@@ -280,27 +258,7 @@
                   >
                     {{ item.param?.label || item.label }}
                   </el-button>
-                </div>
-                
-                <!-- 文本域 -->
-                <div v-else-if="(item.param?.type === 'textarea' || item.type === 'textarea')" class="textarea-with-type-btn" style="position: relative; margin-bottom: 2px;">
-                  <!-- 使用 img 标签显示本地图标 -->
-                  <img 
-                        :src="getInputTypeIconPath(item.param?.name || item.name)" 
-                        alt="切换输入类型" 
-                        class="input-type-toggle-icon" 
-                        @click="toggleInputType(item.param?.name || item.name)" 
-                        title="切换输入类型（表达式/文本）" 
-                      />
-                  <el-input 
-                    type="textarea"
-                    class="form-textarea"
-                    :placeholder="item.param?.placeholder || item.placeholder || '请输入' + (item.param?.label || item.label)"
-                    v-model="item.value"
-                    @input="updateParamValue(item.param?.name || item.name, $event)"
-                    :rows="3"
-                  ></el-input>
-                </div>
+                </div>              
 
                 <!-- 参数描述信息 -->
                 <div class="form-help" v-if="item.param?.description || item.description">
@@ -327,7 +285,7 @@
                 </label>
 
                 <!-- 数字输入框 - Element Plus复合型输入框 -->
-                <div v-if="(item.param?.type === 'number' || item.type === 'number')" class="input-with-variable composite-input"
+                <div v-if="(item.param?.display_type === 'number' || item.display_type === 'number')" class="input-with-variable composite-input"
                   style="position: relative; display: flex; align-items: center; margin-bottom: 2px;">
                   <el-input 
                     type="number" 
@@ -350,16 +308,11 @@
                       />
                     </template>
                   </el-input>
-                  <!-- <el-button type="primary" round class="variable-select-btn"
-                    @click="onToggleVariableSelector(item.param?.name || item.name, 'number')" title="选择变量"
-                    :data-param-name="item.param?.name || item.name">
-                    x
-                  </el-button> -->
                 </div>
 
 
                 <!-- 文本输入框 - Element Plus复合型输入框 -->
-                <div v-else-if="(item.param?.type === 'string' || item.type === 'string')" class="input-with-variable composite-input"
+                <div v-else-if="(item.param?.display_type === 'string' || item.display_type === 'string')" class="input-with-variable composite-input"
                   style="position: relative; display: flex; align-items: center; margin-bottom: 2px;">
                   <el-input 
                     type="text" 
@@ -381,15 +334,10 @@
                       />
                     </template>
                   </el-input>
-                  <!-- <el-button type="primary" round class="variable-select-btn"
-                    @click="onToggleVariableSelector(item.param?.name || item.name, 'string')" title="选择变量"
-                    :data-param-name="item.param?.name || item.name">
-                    x
-                  </el-button> -->
                 </div>
 
                 <!-- excel文件路径选择器 (select_excelpath类型) - 使用级联选择器 -->
-                <div v-else-if="(item.param?.type === 'select_excelpath' || item.type === 'select_excelpath')"
+                <div v-else-if="(item.param?.display_type === 'select_excelpath' || item.display_type === 'select_excelpath')"
                   class="input-with-variable" style="position: relative; display: flex; align-items: center; margin-bottom: 2px;" :key="`select_excelpath-output-${item.param?.name || item.name}`">
                   <!-- 获取要使用的options数据 -->
                   <el-cascader 
@@ -404,14 +352,10 @@
                     popper-class="custom-cascader-popper"
                     disabled
                   />
-                  <!-- <el-button type="success" round class="variable-select-btn" title="选择数据"
-                    @click="onHandleManualDataPreview(item.param?.name || item.name)">
-                    <el-icon><DocumentChecked /></el-icon>
-                  </el-button> -->
                 </div>
 
                 <!-- 开关选择器 (boolean类型) -->
-                <div v-else-if="(item.param?.type === 'boolean' || item.type === 'boolean')" class="switch-container" style="margin-bottom: 2px;">
+                <div v-else-if="(item.param?.display_type === 'boolean' || item.display_type === 'boolean')" class="switch-container" style="margin-bottom: 2px;">
                   <el-switch 
                     v-model="item.value"
                     @change="updateParamValue(item.param?.name || item.name, $event)"
@@ -420,7 +364,7 @@
                 </div>
 
                 <!-- 文件上传 (file类型) -->
-                <div v-else-if="(item.param?.type === 'file' || item.type === 'file')" class="upload-container" style="margin-bottom: 2px;">
+                <div v-else-if="(item.param?.display_type === 'file_upload' || item.display_type === 'file_upload')" class="upload-container" style="margin-bottom: 2px;">
                   <el-upload 
                     :file-list="item.value ? [{name: onGetFileNameFromPath(item.value), url: item.value}] : []"
                     :auto-upload="false"
@@ -441,7 +385,7 @@
                 </div>
 
                 <!-- 下拉选择框 -->
-                <div v-else-if="(item.param?.type === 'select' || item.type === 'select')" style="margin-bottom: 2px;" :key="`select-output-${item.param?.name || item.name}`">
+                <div v-else-if="(item.param?.display_type === 'select_radio' || item.display_type === 'select_radio')" style="margin-bottom: 2px;" :key="`select_radio-output-${item.param?.name || item.name}`">
                   <el-select :model-value="item.value"
                     :placeholder="'请选择' + (item.param?.label || item.label)"
                     class="form-select"
@@ -463,33 +407,8 @@
                     </template>
                   </el-select>
                 </div>
-
-                <!-- 列选择器 -->
-                <div v-else-if="(item.param?.type === 'column' || item.type === 'column')" class="column-selector" style="margin-bottom: 2px;">
-                  <el-select 
-                    v-if="!item.param?.multiple && !item.multiple" 
-                    class="form-select" 
-                    :model-value="item.value"
-                    @update:model-value="updateParamValue(item.param?.name || item.name, $event)"
-                    placeholder="请选择列"
-                    disabled
-                  >
-                    <el-option v-for="column in availableColumns" :key="column" :value="column" :label="column"></el-option>
-                  </el-select>
-
-                  <div v-else class="multi-column-selector">
-                    <el-checkbox-group 
-                      v-model="item.value" 
-                      @change="(values) => updateParamValue(item.param?.name || item.name, values)"
-                      disabled
-                    >
-                      <el-checkbox v-for="column in availableColumns" :key="column" :label="column"></el-checkbox>
-                    </el-checkbox-group>
-                  </div>
-                </div>
-
                 <!-- 按钮事件类型 -->
-                <div v-else-if="(item.param?.type === 'button_event' || item.type === 'button_event')" class="button-event-container" style="position: relative; display: flex; align-items: center; margin-bottom: 2px;">
+                <div v-else-if="(item.param?.display_type === 'button_event' || item.display_type === 'button_event')" class="button-event-container" style="position: relative; display: flex; align-items: center; margin-bottom: 2px;">
                   <el-input 
                     type="text" 
                     v-model="item.value" 
@@ -518,28 +437,7 @@
                   >
                     {{ item.param?.label || item.label }}
                   </el-button> -->
-                </div>
-                
-                <!-- 文本域 -->
-                <div v-else-if="(item.param?.type === 'textarea' || item.type === 'textarea')" class="textarea-with-type-btn" style="position: relative; margin-bottom: 2px;">
-                  <img 
-                        :src="getInputTypeIconPath(item.param?.name || item.name)" 
-                        alt="切换输入类型" 
-                        class="input-type-toggle-icon" 
-                        @click="toggleInputType(item.param?.name || item.name)" 
-                        title="切换输入类型（表达式/文本）" 
-                        disabled
-                      />
-                  <el-input 
-                    type="textarea"
-                    class="form-textarea"
-                    :placeholder="item.param?.placeholder || item.placeholder || '请输入' + (item.param?.label || item.label)"
-                    v-model="item.value"
-                    @input="updateParamValue(item.param?.name || item.name, $event)"
-                    :rows="3"
-                    disabled
-                  ></el-input>
-                </div>
+                </div>              
 
                 <!-- 参数描述信息 -->
                 <div class="form-help" v-if="item.param?.description || item.description">
@@ -566,7 +464,7 @@
                 </label>
 
                 <!-- 数字输入框 - Element Plus复合型输入框 -->
-                <div v-if="(item.param?.type === 'number' || item.type === 'number')" class="input-with-variable"
+                <div v-if="(item.param?.display_type === 'number' || item.display_type === 'number')" class="input-with-variable"
                   style="position: relative; display: flex; align-items: center; margin-bottom: 5px;">
                   <el-input 
                     type="number" 
@@ -595,7 +493,7 @@
 
 
                 <!-- 文本输入框 - Element Plus复合型输入框 -->
-                <div v-else-if="(item.param?.type === 'string' || item.type === 'string')" class="input-with-variable"
+                <div v-else-if="(item.param?.display_type === 'string' || item.display_type === 'string')" class="input-with-variable"
                   style="position: relative; display: flex; align-items: center; margin-bottom: 5px;">
                   <el-input 
                     type="text" 
@@ -623,7 +521,7 @@
                 </div>
 
                 <!-- excel文件路径选择器 (select_excelpath类型) - 使用级联选择器 -->
-                <div v-else-if="(item.param?.type === 'select_excelpath' || item.type === 'select_excelpath')"
+                <div v-else-if="(item.param?.display_type === 'select_excelpath' || item.display_type === 'select_excelpath')"
                   class="source-data-path-container" style="display: flex; align-items: center;" :key="`select_excelpath-writeback-${item.param?.name || item.name}`">
                   <!-- 获取要使用的options数据 -->
                   <el-cascader 
@@ -644,7 +542,7 @@
                 </div>
 
                 <!-- 开关选择器 (boolean类型) -->
-                <div v-else-if="(item.param?.type === 'boolean' || item.type === 'boolean')" class="switch-container">
+                <div v-else-if="(item.param?.display_type === 'boolean' || item.display_type === 'boolean')" class="switch-container">
                   <el-switch 
                     v-model="item.value"
                     @change="updateParamValue(item.param?.name || item.name, $event)"
@@ -652,7 +550,7 @@
                 </div>
 
                 <!-- 文件上传 (file类型) -->
-                <div v-else-if="(item.param?.type === 'file' || item.type === 'file')" class="upload-container">
+                <div v-else-if="(item.param?.display_type === 'file_upload' || item.display_type === 'file_upload')" class="upload-container">
                   <el-upload 
                     :file-list="item.value ? [{name: onGetFileNameFromPath(item.value), url: item.value}] : []"
                     :auto-upload="false"
@@ -672,7 +570,7 @@
                 </div>
 
                 <!-- 下拉选择框 -->
-                <div v-else-if="(item.param?.type === 'select' || item.type === 'select')" :key="`select-writeback-${item.param?.name || item.name}`">
+                <div v-else-if="(item.param?.display_type === 'select_radio' || item.display_type === 'select_radio')" :key="`select-writeback-${item.param?.name || item.name}`">
                   <el-select :model-value="item.value"
                     :placeholder="'请选择' + (item.param?.label || item.label)"
                     class="form-select"
@@ -694,30 +592,8 @@
                   </el-select>
                 </div>
 
-                <!-- 列选择器 -->
-                <div v-else-if="(item.param?.type === 'column' || item.type === 'column')" class="column-selector">
-                  <el-select 
-                    v-if="!item.param?.multiple && !item.multiple" 
-                    class="form-select" 
-                    :model-value="item.value"
-                    @update:model-value="updateParamValue(item.param?.name || item.name, $event)"
-                    placeholder="请选择列"
-                  >
-                    <el-option v-for="column in availableColumns" :key="column" :value="column" :label="column"></el-option>
-                  </el-select>
-
-                  <div v-else class="multi-column-selector">
-                    <el-checkbox-group 
-                      v-model="item.value" 
-                      @change="(values) => updateParamValue(item.param?.name || item.name, values)"
-                    >
-                      <el-checkbox v-for="column in availableColumns" :key="column" :label="column"></el-checkbox>
-                    </el-checkbox-group>
-                  </div>
-                </div>
-
                 <!-- 按钮事件类型 -->
-                <div v-else-if="(item.param?.type === 'button_event' || item.type === 'button_event')" class="button-event-container" style="position: relative; display: flex; align-items: center; margin-bottom: 2px;">
+                <div v-else-if="(item.param?.display_type === 'button_event' || item.display_type === 'button_event')" class="button-event-container" style="position: relative; display: flex; align-items: center; margin-bottom: 2px;">
                   <el-input 
                     type="text" 
                     v-model="item.value" 
@@ -744,25 +620,6 @@
                   >
                     {{ item.param?.label || item.label }}
                   </el-button>
-                </div>
-
-                <!-- 文本域 -->
-                <div v-else-if="(item.param?.type === 'textarea' || item.type === 'textarea')" class="textarea-with-type-btn" style="position: relative; margin-bottom: 2px;">
-                  <img 
-                        :src="getInputTypeIconPath(item.param?.name || item.name)" 
-                        alt="切换输入类型" 
-                        class="input-type-toggle-icon" 
-                        @click="toggleInputType(item.param?.name || item.name)" 
-                        title="切换输入类型（表达式/文本）" 
-                      />
-                  <el-input 
-                    type="textarea"
-                    class="form-textarea"
-                    :placeholder="item.param?.placeholder || item.placeholder || '请输入' + (item.param?.label || item.label)"
-                    v-model="item.value"
-                    @input="updateParamValue(item.param?.name || item.name, $event)"
-                    :rows="3"
-                  ></el-input>
                 </div>
 
                 <!-- 参数描述信息 -->
@@ -1327,8 +1184,8 @@ const initAllFormItemsOptions = () => {
   const allParams = [...(inputParams.value || []), ...(outputParams.value || []), ...(writebackParams.value || [])];
   allParams.forEach(item => {
     // 只处理select和select_excelpath类型的表单项
-    if ((item.param?.type === 'select' || item.type === 'select' || 
-         item.param?.type === 'select_excelpath' || item.type === 'select_excelpath') &&
+    if ((item.param?.display_type === 'select_radio' || item.display_type === 'select_radio' || 
+         item.param?.display_type === 'select_excelpath' || item.display_type === 'select_excelpath') &&
         (item.param?.api_url || item.api_url)) {
       initFormItemOptions(item);
     }
@@ -1450,11 +1307,6 @@ watch(() => [props.paramsPanel.selectedNode, props.paramsPanel.selectedEdge], ()
     }
   }, 0);
 }, { immediate: true, deep: true });
-
-// 获取可用列
-const availableColumns = computed(() => {
-  return props.paramsPanel.availableColumns || [];
-});
 
 // 获取节点显示名称
 const getNodeDisplayName = (node: any) => {
@@ -1714,7 +1566,7 @@ const onHandleRunInstruction = async () => {
         // 确保参数值存在且不为空字符串
         if (paramValue !== undefined && paramValue !== null && paramValue !== '') {
           // 根据参数类型进行转换
-          switch (param.type) {
+          switch (param.display_type) {
             case 'number':
               // 转换为数字
               typedParams[paramName] = Number(paramValue);

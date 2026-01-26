@@ -24,7 +24,9 @@ from repository.instruction_parameter_repository import InstructionParameterRepo
 from repository.data_process_repository import DataProcessRepository
 from repository.execution_record_repository import ExecutionRecordRepository
 from utils.python_script_utils import PythonScriptUtils
-from utils.common import execution_terminator, CommonUtils
+from utils.common import CommonUtils
+from utils.data_heler import data_helper
+from utils.execution_terminator import execution_terminator
 import inspect
 
 
@@ -694,15 +696,7 @@ class DataProcessService(BaseService):
                             if param.name in resolved_params:
                                 value=resolved_params[param.name]
                                 # 值类型转换
-                                # match param.type:
-                                #     case "string":
-                                #         value=str(value)
-                                #     case "number":
-                                #         value=int(value)
-                                #     case "boolean":
-                                #         value=bool(value)
-                                #     case _:  # 默认情况（相当于 default）
-                                #         pass
+                                value=data_helper.convert_value(value, param.value_type)
                                 # 存在时，重新赋值
                                 input_params[param.name] = value 
                             else:

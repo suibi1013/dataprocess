@@ -20,7 +20,7 @@ from dto.instruction_dto import (
     CanvasEdge
 )
 from di.container import inject
-from utils.common import execution_terminator
+from utils.execution_terminator import execution_terminator
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)

@@ -200,24 +200,42 @@ def execute(params):
               <div class="form-item">
                 <label class="form-label required">控件类型</label>
                 <select 
-                v-model="param.type"
+                v-model="param.display_type"
                 class="form-select"
                 @change="onParamTypeChange(param, index)"
               >
                 <option value="string">文本/表达式</option>
                 <option value="number">数字</option>
                 <option value="boolean">布尔开关</option>
-                <option value="select">下拉单选</option>
+                <option value="select_radio">下拉单选</option>
                 <option value="select_excelpath">数据源选择</option>
-                <option value="file">文件上传</option>
+                <option value="file_upload">文件上传</option>
                 <option value="button_event">按钮事件</option>
               </select>
               </div>
 
+              <!-- 参数值类型 -->
+              <div class="form-item">
+                <label class="form-label required">参数值类型</label>
+                <select 
+                v-model="param.value_type"
+                class="form-select"
+              >
+                <option value="string">字符串</option>
+                <option value="number">整数</option>
+                <option value="float">小数</option>
+                <option value="boolean">布尔值</option>
+                <option value="file">文件</option>
+                <option value="dict">字典</option>
+                <option value="list">列表</option>
+                <option value="tabledata">表格数据</option>
+                <option value="any">任意类型</option>
+              </select>
+              </div>
 
 
               <!-- 默认值 -->
-              <div v-if="param.type !== 'checkbox'" class="form-item">
+              <div v-if="param.display_type !== 'checkbox'" class="form-item">
                 <label class="form-label">默认值</label>
                 <input 
                   v-model="param.default_value"
@@ -228,21 +246,10 @@ def execute(params):
                 >
               </div>
 
-              <!-- 是否必需 -->
-              <div class="form-item checkbox-item">
-                <div class="checkbox-wrapper">
-                  <input 
-                    v-model="param.required"
-                    type="checkbox"
-                    :id="`required_${index}`"
-                  >
-                  <label :for="`required_${index}`">是否必需</label>
-                </div>
-              </div>
             </div>
             
             <!-- 数据接口地址 -->
-            <div v-if="param.type === 'select'||param.type === 'select_excelpath'" class="form-item">
+            <div v-if="param.display_type === 'select_radio'||param.display_type === 'select_excelpath'" class="form-item">
               <label class="form-label">option数据或数据请求接口地址</label>
               <input 
                 v-model="param.api_url"
@@ -253,7 +260,7 @@ def execute(params):
             </div>
             
             <!-- 事件脚本 -->
-            <div v-if="param.type === 'button_event'" class="form-item">
+            <div v-if="param.display_type === 'button_event'" class="form-item">
               <label class="form-label required">事件脚本</label>
               <textarea 
                 v-model="param.event_script"
@@ -271,34 +278,49 @@ def handle_click(params):
               <div v-if="errors[`param_${index}_event_script`]" class="error-message">{{ errors[`param_${index}_event_script`] }}</div>
             </div>
 
-            <!-- 参数方向 -->
-            <div class="form-item inline-radio">
-              <label class="form-label required inline-label">参数方向</label>
-              <div class="radio-group inline-options">
-                <label class="radio-option">
+            <!-- 参数方向和是否必需 -->
+            <div class="form-row">
+              <!-- 参数方向 -->
+              <div class="form-item inline-radio flex-grow">
+                <label class="form-label required inline-label">参数方向</label>
+                <div class="radio-group inline-options">
+                  <label class="radio-option">
+                    <input 
+                      type="radio" 
+                      v-model.number="param.direction" 
+                      :value="0" 
+                    >
+                    <span>输入参数</span>
+                  </label>
+                  <label class="radio-option">
+                    <input 
+                      type="radio" 
+                      v-model.number="param.direction" 
+                      :value="1" 
+                    >
+                    <span>输出参数</span>
+                  </label>
+                  <label class="radio-option">
+                    <input 
+                      type="radio" 
+                      v-model.number="param.direction" 
+                      :value="2" 
+                    >
+                    <span>回写参数</span>
+                  </label>
+                </div>
+              </div>
+              
+              <!-- 是否必需 -->
+              <div class="form-item checkbox-item align-self-end">
+                <div class="checkbox-wrapper">
                   <input 
-                    type="radio" 
-                    v-model.number="param.direction" 
-                    :value="0" 
+                    v-model="param.required"
+                    type="checkbox"
+                    :id="`required_${index}`"
                   >
-                  <span>输入参数</span>
-                </label>
-                <label class="radio-option">
-                  <input 
-                    type="radio" 
-                    v-model.number="param.direction" 
-                    :value="1" 
-                  >
-                  <span>输出参数</span>
-                </label>
-                <label class="radio-option">
-                  <input 
-                    type="radio" 
-                    v-model.number="param.direction" 
-                    :value="2" 
-                  >
-                  <span>回写参数</span>
-                </label>
+                  <label :for="`required_${index}`">是否必需</label>
+                </div>
               </div>
             </div>
 
@@ -383,7 +405,8 @@ interface FormData {
   icon?: string;
   params: Array<{
     name: string;
-    type: string;
+    display_type: string;
+    value_type: string;
     label: string;
     required: boolean;
     description?: string;
@@ -535,7 +558,8 @@ def execute(params):
           // 确保参数对象结构完整
           const cleanParam = {
             name: param.name || '',
-            type: param.type || 'string',
+            display_type: param.display_type || 'string',
+            value_type: param.value_type || 'string',
             label: param.label || '',
             required: param.required || false,
             description: param.description || '',
@@ -602,7 +626,7 @@ def execute(params):
         }
         
         // 验证按钮事件类型的事件脚本
-        if (param.type === 'button_event' && !param.event_script?.trim()) {
+        if (param.display_type === 'button_event' && !param.event_script?.trim()) {
           errors[`param_${index}_event_script`] = '请输入事件脚本';
           isValid = false;
         }
@@ -669,7 +693,8 @@ def execute(params):
     const addParameter = () => {
       formData.params.push({
         name: '',
-        type: 'string',
+        display_type: 'string',
+        value_type: 'string',
         label: '',
         required: false,
         description: '',
@@ -778,21 +803,21 @@ def execute(params):
 
     const onParamTypeChange = (param: any, _index: number) => {
       // 根据控件类型调整默认值
-      if (param.type === 'boolean') {
+      if (param.display_type === 'boolean') {
         param.default_value = false;
-      } else if (param.type === 'number') {
+      } else if (param.display_type === 'number') {
         param.default_value = 0;
       } else {
         param.default_value = '';
       }
       
       // 只有下拉单选框需要api_url，其他类型清空
-      if (param.type !== 'select' || param.type !== 'select_excelpath') {
+      if (param.display_type !== 'select_radio' || param.display_type !== 'select_excelpath') {
         param.api_url = '';
       }
       
       // 只有按钮事件类型需要event_script，其他类型清空
-      if (param.type !== 'button_event') {
+      if (param.display_type !== 'button_event') {
         param.event_script = '';
       }      
     };
@@ -823,7 +848,8 @@ def execute(params):
             // 创建新对象，只包含需要的属性，不包含options
             return {
               name: param.name,
-              type: param.type,
+              display_type: param.display_type || 'string',
+              value_type: param.value_type || 'string',
               label: param.label,
               required: param.required,
               description: param.description,
@@ -1340,6 +1366,23 @@ def execute(params):
   font-weight: normal;
   margin: 0;
   cursor: pointer;
+}
+
+/* 表单行布局 */
+.form-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.flex-grow {
+  flex: 1;
+}
+
+.align-self-end {
+  align-self: flex-end;
+  margin-bottom: 4px; /* 调整垂直对齐 */
 }
 
 /* 选项配置 */

@@ -14,7 +14,8 @@ class InstructionParameter(BaseModel):
     name: str  # 参数名称
     label: str  # 参数标签
     description: Optional[str] = None  # 参数描述
-    type: str  # 控件类型，如：string, number, boolean,select,select_excelpath,file等
+    display_type: str  # 控件类型，如：string, number, boolean,select,select_excelpath,file等
+    value_type: str  # 参数值类型,包括字符串string、整数int、小数float、布尔boolean、文件file、字典dict、列表list、表格数据tabledata（包含value、style属性）、任意类型any
     required: bool = False  # 是否必填
     default_value: Optional[Any] = None  # 默认值
     direction: int = 0  # 参数方向：0-输入参数，1-输出参数，2-回写参数（常用于循环逻辑中的游标变量）

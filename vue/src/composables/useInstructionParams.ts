@@ -202,11 +202,11 @@ export function useInstructionParams() {
     instructionParams.forEach(param => {
       // 对于datapath类型参数，需要特殊处理其值的来源
       let paramValue;
-      if (param.type === 'select_excelpath') {
+      if (param.display_type === 'select_excelpath') {
         // 优先使用节点参数中的对应名称值，如果不存在则使用sourceDataPath或sheetPath作为回退
-        paramValue = nodeParams[param.name] ?? nodeParams.source_data_path ?? nodeParams.sheetPath ?? param.default_value ?? getDefaultValueByType(param.type);
+        paramValue = nodeParams[param.name] ?? nodeParams.source_data_path ?? nodeParams.sheetPath ?? param.default_value ?? getDefaultValueByType(param.value_type);
       } else {
-        paramValue = nodeParams[param.name] ?? param.default_value ?? getDefaultValueByType(param.type);
+        paramValue = nodeParams[param.name] ?? param.default_value ?? getDefaultValueByType(param.value_type);
       }
       
       const formItem = {
@@ -224,23 +224,24 @@ export function useInstructionParams() {
   /**
    * 根据控件类型获取默认值
    */
-  const getDefaultValueByType = (type: string): any => {
-    switch (type) {
+  const getDefaultValueByType = (value_type: string): any => {
+    switch (value_type) {
       case 'string':
-      case 'textarea':
-      case 'select_excelpath':
         return '';
-      case 'number':
+      case 'int':
         return 0;
+      case 'float':
+        return 0.0;
       case 'boolean':
         return false;
-      case 'select':
-      case 'column':
-        return null;
       case 'file':
         return null;
-      case 'range':
-        return [0, 100];
+      case 'dict':
+        return {};
+      case 'list':
+        return [];
+      case 'tabledata':
+        return null;
       default:
         return null;
     }
@@ -344,7 +345,7 @@ export function useInstructionParams() {
 
       // 类型验证
       if (value !== null && value !== undefined && value !== '') {
-        switch (param.type) {
+        switch (param.display_type) {
           case 'number':
             if (isNaN(Number(value))) {
               errors[paramName] = `${param.label}必须是数字`;
@@ -359,7 +360,6 @@ export function useInstructionParams() {
             }
             break;
           case 'string':
-          case 'textarea':
             if (param.validation?.pattern) {
               const regex = new RegExp(param.validation.pattern);
               if (!regex.test(String(value))) {

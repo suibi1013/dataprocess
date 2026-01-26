@@ -368,10 +368,11 @@ def group_rows_by_feature_segments(
     返回:
         List[Tuple[int, int]]: 分组范围 [(start_row, end_row), ...]（Excel 行号）
     """
-    if not data or not split_column or not beginstr:
+    if not data or not split_column :
         return []
+    print('beginstr',beginstr)
+    print('pattern_regex',pattern_regex)
     # 转换字符串为数组类型
-    
     # 只在beginstr是字符串时才进行JSON解析
     if beginstr and isinstance(beginstr, str):
         try:
@@ -411,9 +412,9 @@ def group_rows_by_feature_segments(
         # 统一为列表
         pattern_regex=[pattern_regex] if isinstance(pattern_regex, str) else pattern_regex
         patterns.extend(pattern_regex)
+    print('patterns',pattern_regex,patterns)
     if not patterns:
         return []
-
     # 预编译所有正则
     compiled_patterns = [re.compile(p) for p in patterns]
 
@@ -547,9 +548,9 @@ data = read_excel_range_data(file_path=file_path, sheet_name=sheet_name,start_ro
 
 # Step 2: 按特征分段
 # beginstrarray = ["   ","  "]
-beginstrarray ="[\"   \",\"  \"]"
-# pattern_regex = ["[\\u4e00-\\u9fff]"]
-pattern_regex=""
+# beginstrarray ="[\"   \",\"  \"]"
+beginstrarray =""
+pattern_regex = ["[\\u4e00-\\u9fff]"]
 
 # Step 3:数据行分组按列拆分
 newdata=data_grouprow_split_by_column(

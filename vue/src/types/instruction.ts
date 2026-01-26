@@ -14,7 +14,8 @@ export interface InstructionCategory {
 // 指令参数定义
 export interface InstructionParam {
   name: string;
-  type: 'string' | 'number' | 'boolean' | 'select' | 'file' | 'range' | 'column' | 'textarea' | 'select_excelpath';
+  display_type: 'string' | 'number' | 'boolean' | 'select_radio' | 'file_upload' | 'range' | 'column' | 'textarea' | 'select_excelpath';
+  value_type: 'string' | 'int' |'float'| 'boolean' | 'file' | 'dict' | 'list' | 'tabledata' | 'any';
   label: string;
   required: boolean;
   default_value?: any;
