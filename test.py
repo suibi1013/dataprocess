@@ -1,22 +1,7 @@
 from openpyxl import load_workbook
 from openpyxl.cell.cell import Cell
-from typing import List, Dict, Any, Union, Callable, Optional
-import re
-import ast
-from pypinyin import lazy_pinyin, Style
-import os
-def _col_to_index_1based(col: Union[str, int],max_col: int) -> int:
-    """将列索引转换为 1-based 的列索引"""    
-    if isinstance(col, int):
-        if col < 1: raise ValueError("Column index must be >= 1")
-        return col
-    elif isinstance(col, str):        
-        col = col.upper().strip()
-        idx = 0
-        for ch in col:
-            if not ch.isalpha(): raise ValueError(f"Invalid column letter: {col}")
-            idx = idx * 26 + (ord(ch) - ord('A') + 1)
-        return idx  
+from typing import List, Dict, Any, Union, Optional
+
 def _col_to_index_0based(col: Union[str, int],max_col: int) -> int:
     """将列索引转换为 0-based 的列索引
     :param col: 列索引（1-based 或字母表示）
@@ -41,7 +26,7 @@ def _col_to_index_0based(col: Union[str, int],max_col: int) -> int:
         for ch in col:
             if not ch.isalpha(): raise ValueError(f"Invalid column letter: {col}")
             idx = idx * 26 + (ord(ch) - ord('A') + 1)
-        return idx-1    
+        return idx-1      
 # 索引颜色列表
 COLOR_INDEX = [
     "00000000",  # 0: 黑色
@@ -245,8 +230,16 @@ def _convert_protection_to_dict(protection) -> Dict[str, Any]:
         'hidden': protection.hidden
     }
 
-# ==================== excel数据提取：读取区域 → 转为 A1 起点的局部矩阵 ====================
-def read_excel_range_data(file_path: str,sheet_name: str,start_row: Optional[int] = 1,end_row: Optional[int] = -1,start_col: Optional[Union[str, int]] = 1,end_col: Optional[Union[str, int]] = -1,include_styles: bool = False,) -> List[List[Dict[str, Any]]]:    
+# ==================== 步骤一：读取区域 → 转为 A1 起点的局部矩阵 ====================
+def read_excel_range_data(
+    file_path: str,
+    sheet_name: str,
+    start_row: Optional[int] = None,
+    end_row: Optional[int] = None,
+    start_col: Optional[Union[str, int]] = None,
+    end_col: Optional[Union[str, int]] = None,
+    include_styles: bool = False,
+) -> List[List[Dict[str, Any]]]:
     """
     读取 Excel 指定区域的数据（含样式和值）。
     
@@ -254,10 +247,10 @@ def read_excel_range_data(file_path: str,sheet_name: str,start_row: Optional[int
     
     :param file_path: Excel 文件路径
     :param sheet_name: 工作表名称
-    :param start_row: 起始行（1-based），默认1，第一行
-    :param end_row: 结束行（1-based），默认-1，最后一行
-    :param start_col: 起始列（如 "A" 或 1），默认1，第一列
-    :param end_col: 结束列（如 "Z" 或 26），默认-1，最后一列
+    :param start_row: 起始行（1-based），默认自动
+    :param end_row: 结束行（1-based），默认自动
+    :param start_col: 起始列（如 "A" 或 1），默认自动
+    :param end_col: 结束列（如 "Z" 或 26），默认自动
     :param include_styles: 是否包含样式信息（如字体、填充、边框等），默认 False
     :return: 二维列表，每个单元格为 {'value', 'style', 'abs_pos'}
     """
@@ -265,14 +258,13 @@ def read_excel_range_data(file_path: str,sheet_name: str,start_row: Optional[int
     workbook = load_workbook(file_path, data_only=True)
     ws_value = workbook[sheet_name]
     
-    max_row = ws_value.max_row or 1
-    max_col = ws_value.max_column or 1
-
-    # 转换列为 1-based 索引
-    start_row = _col_to_index_0based(start_row,max_row)+1
-    end_row = _col_to_index_0based(end_row,max_row)+1
-    start_col_idx = _col_to_index_0based(start_col,max_col)+1
-    end_col_idx = _col_to_index_0based(end_col,max_col)+1
+    # 转换列为 1-based 索引，处理负数索引（-1 表示末尾）    
+    n_rows = ws_value.max_row
+    n_cols = ws_value.max_column
+    start_row = _col_to_index_0based(start_row,n_rows)+1
+    start_col_idx = _col_to_index_0based(start_col,n_cols)+1
+    end_row = _col_to_index_0based(end_row,n_rows)+1
+    end_col_idx = _col_to_index_0based(end_col,n_cols)+1
 
     # 校验范围
     if start_row > end_row or start_col_idx > end_col_idx:
@@ -317,291 +309,260 @@ def read_excel_range_data(file_path: str,sheet_name: str,start_row: Optional[int
 
     return result
 
-# ==================== 筛选行：按操作符和值对指定列进行筛选 ====================
-def _build_condition(operator: str, value: Any) -> Callable[[Any], bool]:
+import pandas as pd
+import re
+from typing import List, Tuple, Dict, Any, Union
+
+def _col_to_index_0based(col: Union[str, int],max_col: int) -> int:
+    """将列索引转换为 0-based 的列索引
+    :param col: 列索引（1-based 或字母表示）
+    :param max_col: 最大列索引（用于验证,1-based）
+    :return: 0-based 的列索引
     """
-    根据操作符和值构建过滤条件函数。
+    if isinstance(col, str):
+        # 先尝试将字符串转换为整数
+        if not col.isalpha(): 
+            col = int(col)
+    if isinstance(col, int):
+        # 验证列索引是否在有效范围内
+        if col > max_col: raise ValueError(f"Column index must be <= {max_col}")
+        if col==0: raise ValueError(f"Column index can't be 0")
+        # 转换为 0-based 索引
+        if col < 0:col=max_col+col
+        else:col-=1
+        return col
+    elif isinstance(col, str):        
+        col = col.upper().strip()
+        idx = 0
+        for ch in col:
+            if not ch.isalpha(): raise ValueError(f"Invalid column letter: {col}")
+            idx = idx * 26 + (ord(ch) - ord('A') + 1)
+        return idx-1    
+import re
+import json
+def make_regex(s: str) -> str:
+    if not s:
+        raise ValueError("字符串不能为空")
+    # 转义特殊字符
+    escaped_s = re.escape(s)
+    if len(set(s))==1:
+        # 纯字符,只需匹配后边不以第一位字符开头即可
+        escaped_s0 = re.escape(s[0])
+        return f"^{escaped_s}(?!{escaped_s0})"
+    return f"^{escaped_s}(?!{escaped_s})"
+def group_rows_by_feature_segments(
+    data: List[List[Dict[str, Any]]],
+    split_column: Union[str, int],
+    beginstr: Union[str, List[str]]=None,
+    pattern_regex: Union[str, List[str]]=None
+) -> List[Tuple[int, int]]:
+    """
+    根据指定列的值是否匹配任一正则表达式，将数据行分段。
+
+    参数:
+        df: 输入表格（不含 header）
+        split_column: 分段列索引(1-based,如 "A" 或 1)
+        beginstr: 开头字符串特征列表,格式为["xx1","xx2"]，如["   ","  "]，表示以两个或三个空格开头的特征值
+        pattern_regex: 正则表达式特征列表,如["[\\u4e00-\\u9fff]"],表示包含中文的特征值
+
+    返回:
+        List[Tuple[int, int]]: 分组范围 [(start_row, end_row), ...]（Excel 行号）
+    """
+    if not data or not split_column or not beginstr:
+        return []
+    # 转换字符串为数组类型
     
-    :param operator: 操作符，如 "==", "!=", "like", "is not None" 等
-    :param value: 比较值（对 is None 类操作可忽略）
-    :return: 接收 cell_value 并返回 bool 的函数
-    """
-    operator = operator.strip().lower()
-
-    if operator == "is none":
-        return lambda x: x is None and str(x).strip() == "" and str(x).strip().lower() == "none"
-
-    if operator == "is not none":
-        return lambda x: x is not None and str(x).strip() != "" and str(x).strip().lower() != "none"
-
-    if operator == "==":
-        return lambda x: x == value
-
-    if operator == "!=":
-        return lambda x: x != value
-
-    if operator == ">":        
-        # return lambda x: isinstance(x, (int, float)) and x > value
-        return lambda x:float(x) > float(value)
-
-    if operator == ">=":
-        # return lambda x: isinstance(x, (int, float)) and x >= value
-        return lambda x:float(x) >= float(value)
-
-    if operator == "<":
-        # return lambda x: isinstance(x, (int, float)) and x < value
-        return lambda x:float(x) < float(value)
-
-    if operator == "<=":
-        # return lambda x: isinstance(x, (int, float)) and x <= value
-        return lambda x:float(x) <= float(value)
-
-    if operator == "in":
-        value = ast.literal_eval(str(value))
-        if not isinstance(value, (list, tuple, set)):
-            raise ValueError("操作符 'in' 要求 value 是列表、元组或集合")
-        val_set = set(value)
-        return lambda x: x in val_set
-
-    if operator == "not in":
-        value = ast.literal_eval(str(value))
-        if not isinstance(value, (list, tuple, set)):
-            raise ValueError("操作符 'not in' 要求 value 是列表、元组或集合")
-        val_set = set(value)
-        return lambda x: x not in val_set
-
-    if operator == "like":
-        # 模糊匹配：转为字符串并检查是否包含（忽略大小写）
-        pattern = str(value).lower() if value is not None else ""
-        return lambda x: x is not None and pattern in str(x).lower()
-
-    if operator == "startswith":
-        prefix = str(value).lower() if value is not None else ""
-        return lambda x: x is not None and str(x).lower().startswith(prefix)
-
-    if operator == "endswith":
-        suffix = str(value).lower() if value is not None else ""
-        return lambda x: x is not None and str(x).lower().endswith(suffix)
-
-    # 支持正则（可选扩展）
-    if operator == "regex":
+    # 只在beginstr是字符串时才进行JSON解析
+    if beginstr and isinstance(beginstr, str):
         try:
-            compiled = re.compile(str(value), re.IGNORECASE)
-        except re.error as e:
-            raise ValueError(f"无效的正则表达式: {value}") from e
-        return lambda x: x is not None and compiled.search(str(x)) is not None
-
-    raise ValueError(f"不支持的操作符: '{operator}'")
-def filter_excel_data_by_column(data: Union[List[List[Dict[str, Any]]], str],filter_col: Union[str, int],operator: str,value: Any = None,has_header: bool = False) -> List[List[Dict[str, Any]]]:
-    """
-    按操作符和值对指定列进行筛选。
+            beginstr=json.loads(beginstr)
+        except Exception as e:
+            raise ValueError(f"beginstr数据格式错误: {e}")
     
-    :param data: 数据
-    :param filter_col: 列（如 "B" 或 1）
-    :param operator: 操作符，如 "like", "!=", "is not None" 等
-    :param value: 比较值（对 is None 类可省略）
-    :param has_header: 是否保留首行为标题
-    """
-    if not data:
+    # 只在pattern_regex是字符串时才进行JSON解析
+    if pattern_regex and isinstance(pattern_regex, str):
+        try:
+            pattern_regex=json.loads(pattern_regex)
+        except Exception as e:
+            raise ValueError(f"pattern_regex数据格式错误: {e}")
+
+    # 提取列名和数据值
+    headers = data[0]
+    # 从每个列头字典中提取value作为实际列名
+    column_names = [header['value'] for header in headers]
+    # 将数据行转换为仅包含值的列表
+    rows_values = [[cell['value'] for cell in row] for row in data[1:]]
+    df = pd.DataFrame(rows_values, columns=column_names)
+
+    # 获取分段列索引（0-based）
+    num_rows = len(data)
+    num_cols = len(data[0]) if num_rows > 0 else 0    
+    split_column_index = _col_to_index_0based(split_column, num_cols)
+    # 获取列名
+    split_column_name = column_names[split_column_index]
+
+    # 构建正则表达式列表
+    patterns=[]
+    if beginstr:
+        # 统一为列表
+        beginstr=[beginstr] if isinstance(beginstr, str) else beginstr
+        patterns.extend([make_regex(s) for s in beginstr])
+    if pattern_regex:
+        # 统一为列表
+        pattern_regex=[pattern_regex] if isinstance(pattern_regex, str) else pattern_regex
+        patterns.extend(pattern_regex)
+    if not patterns:
         return []
-    data = ast.literal_eval(str(data))
-    max_col = len(data[0])
-    col_index = _col_to_index_0based(filter_col,max_col)
-    if col_index < 0 or col_index >= len(data[0]):
-        raise IndexError(f"列 {filter_col} 超出范围")
 
-    condition = _build_condition(operator, value)
+    # 预编译所有正则
+    compiled_patterns = [re.compile(p) for p in patterns]
 
-    if has_header:
-        header = [data[0]]
-        rows_to_filter = data[1:]
-    else:
-        header = []
-        rows_to_filter = data
+    segment_starts: List[int] = []
 
-    filtered_rows = [
-        row for row in rows_to_filter
-        if condition(row[col_index]['value'])
-    ]
+    # 遍历每一行
+    for idx, value in enumerate(df[split_column_name]):
+        if not isinstance(value, str):
+            continue
 
-    return header + filtered_rows
+        # 只要匹配任意一个正则，就记录为起始行
+        for cp in compiled_patterns:
+            if cp.search(value):                
+                segment_starts.append(idx+1)
+                break  # 匹配一个即可，避免重复添加
 
-# ==================== 筛选行：按操作符和值对指定列进行筛选 ====================
-def filter_columns_by_header(data: Union[List[List[Dict[str, Any]]], str],include_headers: Optional[Union[List[str], str]] = None,exclude_headers: Optional[Union[List[str], str]] = None,) -> List[List[Dict[str, Any]]]:
-    """
-    根据首行（标题行）的值筛选列。
-    
-    - 如果提供 include_headers，则只保留这些标题对应的列；
-    - 如果提供 exclude_headers，则排除这些标题对应的列；
-    - 两者可同时使用（先 include，再 exclude）；
-    - 至少提供其中一个，否则返回原数据。
-    
-    :param data: 来自 read_excel_range_to_local 的结果
-    :param include_headers: 要保留的列标题列表（精确匹配）
-    :param exclude_headers: 要排除的列标题列表（精确匹配）
-    :return: 筛选后的数据（新列表，不修改原数据）
-    """
-    if not data:
-        return data
-    data = ast.literal_eval(str(data))
-    include_headers= ast.literal_eval(str(include_headers)) if include_headers and str(include_headers) !='[]' else None
-    exclude_headers= ast.literal_eval(str(exclude_headers)) if exclude_headers and str(exclude_headers) !='[]' else None
+    if not segment_starts:
+        return []
 
-    # 提取首行所有标题（转为字符串以便比较）
-    header_row = data[0]
-    all_headers = [str(cell['value']) if cell['value'] is not None else '' for cell in header_row]
+    segments: List[Tuple[int, int]] = []
+    n_rows = len(df)
 
-    # 初始化列索引集合
-    if include_headers is not None:
-        include_headers_set = set(include_headers)
-        selected_cols = [
-            i for i, h in enumerate(all_headers)
-            if h in include_headers_set
-        ]
-    else:
-        selected_cols = list(range(len(all_headers)))
-
-    # 排除指定列
-    if exclude_headers is not None:
-        exclude_headers_set = set(exclude_headers)
-        selected_cols = [
-            i for i in selected_cols
-            if all_headers[i] not in exclude_headers_set
-        ]
-
-    # 如果没有列被选中，返回空结构（保留行数，但无列）
-    if not selected_cols:
-        return [[] for _ in range(len(data))]
-
-    # 构建新数据：只保留 selected_cols 中的列
-    filtered_data = []
-    for row in data:
-        new_row = [row[col_idx] for col_idx in selected_cols]
-        filtered_data.append(new_row)
-
-    return filtered_data
-
-# ==================== 筛选列：根据首行（标题行）的值筛选列 ====================
-def sort_excel_data_by_column(data: Union[List[List[Dict[str, Any]]], str],sort_col: Union[str, int],reverse: bool = False,has_header: bool = False) -> List[List[Dict[str, Any]]]:
-    """
-    对数据按指定列排序。
-    
-    :param data: 二维列表，每个元素是包含 'value', 'style', 'abs_pos' 的字典
-    :param start_col: 要排序的列索引（从0开始）
-    :param reverse: 是否降序
-    :param has_header: 是否包含标题行（若为 True，则第0行不参与排序，保持在最前）
-    :return: 排序后的新数据（不修改原数据）
-    """    
-    if not data:
-        return data
-    data = ast.literal_eval(str(data))
-    max_col = len(data[0])
-    # 转换列标识为索引
-    sort_col = _col_to_index_0based(sort_col,max_col)
-    if sort_col < -1 or sort_col >= len(data[0]):
-        raise IndexError(f"sort_col_index:{str(sort_col)}-{str(max_col)} 超出列范围")
-    # 分离标题行和数据行
-    header = []
-    rows_to_sort = data
-    if has_header:
-        header = [data[0]]          # 保留标题（作为列表的列表，便于后续拼接）
-        rows_to_sort = data[1:]
-    if not rows_to_sort:
-        return data  # 无数据可排序，直接返回
-    def get_sort_key(row: List[Dict[str, Any]]) -> List[str]:
-        cell_value = row[sort_col]['value']
-        
-        # 处理 None 或非字符串类型
-        if cell_value is None:
-            return ['']  # 排在最前或最后取决于排序方向，这里统一转为空字符串
-        
-        if isinstance(cell_value, str):
-            # 中文转拼音（带声调），用于准确排序
-            return lazy_pinyin(cell_value, style=Style.TONE3)
+    for i, start_idx in enumerate[any](segment_starts):
+        if i == len(segment_starts) - 1:
+            end_idx = n_rows - 1
         else:
-            # 非字符串（如数字、日期）直接排序
-            return [cell_value]
+            end_idx = segment_starts[i + 1] - 1
 
-    # 使用 sorted 创建新列表，保持原始数据不变
-    sorted_rows = sorted(rows_to_sort, key=get_sort_key, reverse=reverse)
-    # 合并标题 + 排序后的数据
-    return header + sorted_rows
+        excel_start = start_idx + 1
+        excel_end = end_idx + 1
+        segments.append((excel_start, excel_end))
 
-# ==================== 范围数据提取：根据指定范围提取数据 ====================
-def slice_data_by_range(data: Union[List[List[Dict[str, Any]]], str],start_row: int = 1,end_row: int = -1,start_col: Union[str, int] = 1,end_col: Union[str, int] = -1) -> List[List[Dict[str, Any]]]:
+    return segments
+
+from typing import List, Dict, Any, Union, Callable, Optional
+
+def data_grouprow_split_by_column(
+    data: List[List[Dict[str, Any]]],    
+    split_column: Union[str, int],    
+    beginstr: Union[str, List[str]]=None,
+    pattern_regex: Union[str, List[str]]=None,
+    new_col_header_name:str="new_col",
+    new_col_position="left",
+    charecter_cell_replace_value:str=None
+) -> List[List[Dict[str, Any]]]:
     """
-    对数据按 1 起始的行列索引范围切片。
-    
-    参数说明（均为 1 起始索引）：
-    - start_row: 起始行索引（包含）
-    - end_row:   结束行索引（包含），-1 表示最后一行
-    - start_col: 起始列索引（包含）
-    - end_col:   结束列索引（包含），-1 表示最后一列
-    
-    :return: 切片后的新数据（深拷贝结构，但 cell 内容为引用，因样式对象不可变）
+    数据行分组按列拆分，返回新的二维数据。
+
+    :param data: 二维数据
+    :param split_column: 特征值列索引(1-based,如 "A" 或 1)
+    :param segments: 分组范围 [(start_row, end_row), ...]（Excel 行号）
+    :param beginstr: 开头字符串特征列表,格式为["xx1","xx2"]，如["   ","  "]，表示以两个或三个空格开头的特征值
+    :param pattern_regex: 正则表达式特征列表,如["[\\u4e00-\\u9fff]"],表示包含中文的特征值
+    :param new_col_header_name: 新列标题名称
+    :param new_col_position: 新列位置,相对于拆分列的位置，左侧或右侧（left/right）, [{"value": "left", "label":"左侧"},{"value": "right", "label":"右侧"}]
+    :param charecter_cell_replace_value: 分组内特征单元格值替换为（可选）
+    :return: 新的二维数据
     """
     if not data:
+        # 空数据，返回空
         return []
-    if isinstance(data, str):
-        data = ast.literal_eval(data)
 
-    n_rows = len(data)
-    n_cols = len(data[0]) if n_rows > 0 else 0
+    num_rows = len(data)
+    num_cols = len(data[0]) if num_rows > 0 else 0
 
-    # 处理索引，改为以0为起始的索引
-    start_row=_col_to_index_0based(start_row,n_rows)
-    end_row=_col_to_index_0based(end_row,n_rows)
-    start_col=_col_to_index_0based(start_col,n_cols)
-    end_col=_col_to_index_0based(end_col,n_cols)
+    # 查找新列插入位置
+    insert_at_col_index = _col_to_index_0based(split_column,num_cols)+1
+    if new_col_position=="right":
+        insert_at_col_index = insert_at_col_index
+    else:
+        insert_at_col_index = insert_at_col_index-1
+    
+    # 将数据行，按特征分段
+    segments = group_rows_by_feature_segments(
+        data=data,
+        split_column=split_column,
+        beginstr=beginstr,  # 如两个空格开头，第三个不是空格
+        pattern_regex=pattern_regex
+    )
+    print("分组范围（Excel 行号）:",segments)
+    # 构建新数据
+    new_data = []
+    # 添加标题行
+    new_row = []
+    new_row.extend(data[0][:insert_at_col_index])
+    # 新列标题也应该是一个字典对象
+    new_col_header = {
+        'value': new_col_header_name,
+        'style': {},
+        'abs_pos': [1, insert_at_col_index + 1]  # 1-based 逻辑位置
+    }
+    new_row.append(new_col_header)
+    new_row.extend(data[0][insert_at_col_index:])
+    new_data.append(new_row)
 
-    # 边界校验
-    if not (0 <= start_row <= end_row < n_rows):
-        raise IndexError(f"行范围 [{start_row}, {end_row}] 超出数据行数范围 [0, {n_rows - 1}]")
-    if not (0 <= start_col <= end_col < n_cols):
-        raise IndexError(f"列范围 [{start_col}, {end_col}] 超出数据列数范围 [0, {n_cols - 1}]")
+    # 处理数据行
+    for start_row, end_row in segments:
+        segment_rows = data[start_row-1:end_row]
+        # 获取特征值        
+        charecter_cell = segment_rows[0][insert_at_col_index]
+        # 提取特征值的value
+        charecter_cell_value = charecter_cell['value']
+        if charecter_cell_replace_value:
+            segment_rows[0][insert_at_col_index]['value'] = charecter_cell_replace_value
+        # 处理数据行
+        for row_idx, row in enumerate(segment_rows):  
+            new_row = []
+            new_row.extend(row[:insert_at_col_index])            
 
-    # 切片：逐行提取指定列
-    sliced = []
-    for r in range(start_row, end_row + 1):
-        new_row = data[r][start_col:end_col + 1]
-        sliced.append(new_row)
+            # 新单元格（abs_pos 使用逻辑位置：行号不变，列设为 insert_at_col_index+1）
+            # 单元格样式暂未设置
+            new_cell = {
+                'value': charecter_cell_value,
+                'style': {},
+                'abs_pos': [row_idx + 2, insert_at_col_index + 1]  # 1-based 逻辑位置
+            }
+            new_row.append(new_cell)
+            new_row.extend(row[insert_at_col_index:])
+            new_data.append(new_row)
 
-    return sliced
+    return new_data
 
-# ==================== excel数据提取-整合:excel数据提取、筛选行、筛选列、安列排序、范围数据提取 ====================
-def extract_excel_data(file_path: str,sheet_name: str,start_row: int = 1,end_row: int = -1,start_col: Union[str, int] = 1,end_col: Union[str, int] = -1,include_styles: bool = False,has_header: bool = True,filter_col: Union[str, int]='A',filter_operator: str="==",filter_values: Optional[List[Any]] = None,keep_headers: Optional[List[str]] = None,exclude_headers: Optional[List[str]] = None,sort_col: Union[str, int] = 1,reverse: bool = False,slice_start_row: int = 1,slice_end_row: int = -1,slice_start_col: Union[str, int] = 1,slice_end_col: Union[str, int] = -1,) -> List[List[Dict[str, Any]]]:
-    """
-    从 Excel 文件中提取数据，并返回一个二维列表。
+file_path="E:/temp/欣和酱油测试.xlsx"
+sheet_name="Sheet2"
+data = read_excel_range_data(file_path=file_path, sheet_name=sheet_name,start_row=1,end_row=469,start_col="A",end_col="F", include_styles=False)
 
-    :param file_path: Excel文件
-    :param sheet_name: sheet名称
-    :param start_row: 起始行索引（包含）,1-based,-1 表示最后一行
-    :param end_row: 结束行索引（包含）,1-based,-1 表示最后一行
-    :param start_col: 起始列索引（包含）,1-based(-1 表示最后一列) 或字母表示（如 'A' 表示第1列)
-    :param end_col: 结束列索引（包含）,1-based(-1 表示最后一列) 或字母表示（如 'A' 表示第1列)
-    :param include_styles: 是否返回样式（若为 True,则每个单元格包含样式信息）
-    :param has_header: 是否包含标题行（若为 True,则第0行不参与筛选、排序,若为False,则不处理筛选列逻辑）
-    :param filter_col: 筛选索引列（包含）,1-based(-1 表示最后一列) 或字母表示（如 'A' 表示第1列)
-    :param filter_operator: 筛选操作符（[{"value":"==","label":"等于"},{"value":"!=","label":"不等于"},{"value":">","label":"大于"},{"value":">=","label":"大于等于"},{"value":"<","label":"小于"},{"value":"<=","label":"小于等于"},{"value":"like","label":"包含（模糊匹配）"},{"value":"startswith","label":"以...开头"},{"value":"endswith","label":"以...结尾"},{"value":"in","label":"在列表中"},{"value":"not in","label":"不在列表中"},{"value":"regex","label":"正则匹配"},{"value":"is none","label":"为空（NULL）"},{"value":"is not none","label":"不为空（非 NULL)"}])
-    :param filter_values: 筛选值列表，示例格式：["a","b","c"]
-    :param keep_headers: 保留的标题集合,若为空，则保留所有标题列,示例格式：["a","b","c"]
-    :param exclude_headers: 排除的标题集合,若为空，则不排除任何标题,示例格式：["a","b","c"]
-    :param sort_col: 排序列索引（包含）,1-based(-1 表示最后一列) 或字母表示（如 'A' 表示第1列)
-    :param reverse: 是否按降序排序,False升序,True为降序,默认为 False
-    :param slice_start_row: 行提取范围起始行索引（包含）,1-based,-1 表示最后一行
-    :param slice_end_row: 行提取范围结束行索引（包含）,1-based,-1 表示最后一行
-    :param slice_start_col: 行提取范围起始列索引（包含）,1-based(-1 表示最后一列) 或字母表示（如 'A' 表示第1列)
-    :param slice_end_col: 行提取范围结束列索引（包含）,1-based(-1 表示最后一列) 或字母表示（如 'A' 表示第1列)
-    :return: 提取后的二维列表（每个元素为一个单元格信息,包括value、style、abs_pos信息)
-    """
-    if not os.path.exists(file_path):
-        raise FileNotFoundError(f"文件 {file_path} 不存在")
-    excel_data=read_excel_range_data(file_path,sheet_name,start_row,end_row,start_col,end_col,include_styles)
-    excel_data=filter_excel_data_by_column(excel_data,filter_col,filter_operator,filter_values,has_header)    
-    if has_header and filter_col:
-        # 若包含标题行，则根据第0行标题名称，选择或排除标题列
-        excel_data=filter_columns_by_header(excel_data,keep_headers,exclude_headers)  
-    if sort_col:
-        excel_data=sort_excel_data_by_column(excel_data,sort_col,reverse,has_header)
-    excel_data=slice_data_by_range(excel_data,slice_start_row,slice_end_row,slice_start_col,slice_end_col)
-    return excel_data
+# for index, row in enumerate(data):
+#     print(row)
+#     if index>10:
+#         break
+
+# Step 2: 按特征分段
+# beginstrarray = ["   ","  "]
+beginstrarray ="[\"   \",\"  \"]"
+# pattern_regex = ["[\\u4e00-\\u9fff]"]
+pattern_regex=""
+
+# Step 3:数据行分组按列拆分
+newdata=data_grouprow_split_by_column(
+    data=data,
+    split_column="D",
+    beginstr=beginstrarray,
+    pattern_regex=pattern_regex,
+    new_col_header_name="品牌",
+    new_col_position="left",
+    charecter_cell_replace_value="酱油总体"
+)
+print("新数据行分组按列拆分后:")
+for index, row in enumerate(newdata):
+    print(index,row)
+    if index>10:
+        break

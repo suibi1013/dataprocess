@@ -1,6 +1,6 @@
 {
   "name": "dataprocess",
-  "version": "1.0.0",
+  "version": "1.0.3",
   "description": "数据流程可视化",
   "main": "main.js",
   "scripts": {
@@ -10,7 +10,8 @@
   },
   "build": {
     "appId": "com.dataprocess.app",
-    "productName": "数据流程可视化工具",
+    "productName": "数据流程可视化",
+    "artifactName": "数据流程可视化-Setup-${version}.${ext}",
     "directories": {
       "output": "electron-dist-final"
     },
@@ -24,45 +25,45 @@
         "from": "backend",
         "to": "backend",
         "filter": [
-          "**/*"
+          "**/*",
+          "!**/__pycache__",
+          "!**/*.pyc",
+          "!**/.git"
         ]
       },
       {
         "from": "python-embed",
         "to": "python-embed",
         "filter": [
-          "**/*"
+          "**/*",
+          "!**/Doc",
+          "!**/Tools",
+          "!**/*.pdb"
         ]
       },
       {
         "from": "site-packages",
         "to": "site-packages",
         "filter": [
-          "**/*"
+          "**/*",
+          "!**/__pycache__",
+          "!**/*.pyc",
+          "!**/tests",
+          "!**/test"
         ]
       }
     ],
     "asar": true,
-    "asarUnpack": [
-      "backend/**/*",
-      "python-embed/**/*",
-      "site-packages/**/*"
-    ],
+    "compression": "store",
+    "asarUnpack": [],
     "win": {
       "target": "nsis",
       "icon": "icon-resources/icon.ico"
     },
-    "mac": {
-      "target": "dmg",
-      "icon": "icon-resources/icon.png"
-    },
-    "linux": {
-      "target": "AppImage"
-    },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "perMachine": true,
+      "perMachine": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "installerIcon": "icon-resources/icon.ico",

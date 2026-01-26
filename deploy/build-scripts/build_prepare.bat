@@ -7,13 +7,23 @@ set "PROJECT_Deploy_Dir=%PROJECT_ROOT%\deploy"
 set "SOURCEFILES_DIR=%PROJECT_Deploy_Dir%\sourcefiles"
 set "BUILD_READY_DIR=%PROJECT_Deploy_Dir%\build_ready"
 
-rmdir /s /q %BUILD_READY_DIR%
+rem Don't clear build_ready directory, keep existing files
+rem rmdir /s /q %BUILD_READY_DIR%
+rem if %errorlevel% neq 0 (
+rem     echo Error: build-ready not found.
+rem )
+
+rem delete build_ready/electron-dist-final directory
+rmdir /s /q %BUILD_READY_DIR%\electron-dist-final
 if %errorlevel% neq 0 (
-    echo Error: build-ready not found. Please install build-ready and ensure it's in PATH.
+    echo Error: build-ready/electron-dist-final not found. 
 )
 
-rem Create build-ready directory
-mkdir %BUILD_READY_DIR%
+rem Ensure build_ready directory exists, create if it doesn't
+if not exist "%BUILD_READY_DIR%" (
+    rem Create build-ready directory if it doesn't exist
+    mkdir %BUILD_READY_DIR%
+)
 
 rem Copy Python
 echo Copying Python...

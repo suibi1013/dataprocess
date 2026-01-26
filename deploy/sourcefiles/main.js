@@ -228,14 +228,26 @@ function startBackend() {
     pyProc.stdout.on('data', (data) => {
       // 尝试将数据转换为UTF-8字符串，避免编码问题
       const output = data.toString('utf-8');
-      console.log(`Python stdout: ${output}`);
+      // 逐行输出，便于查看
+      const lines = output.split('\n');
+      for (const line of lines) {
+        if (line.trim()) {
+          console.log(`Python stdout: ${line}`);
+        }
+      }
     });
 
     // 捕获 Python 进程的错误输出
     pyProc.stderr.on('data', (data) => {
       // 尝试将错误数据转换为UTF-8字符串，避免编码问题
       const output = data.toString('utf-8');
-      console.error(`Python stderr: ${output}`);
+      // 逐行输出，便于查看
+      const lines = output.split('\n');
+      for (const line of lines) {
+        if (line.trim()) {
+          console.error(`Python stderr: ${line}`);
+        }
+      }
     });
 
     pyProc.on('error', (err) => {
@@ -252,16 +264,45 @@ function startBackend() {
       console.error(`1. Python解释器未正确安装或打包`);
       console.error(`2. 后端代码文件不存在或路径错误`);
       console.error(`3. 文件权限问题`);
-      console.error(`请检查日志文件以获取更多详细信息。`);
+      console.error(`4. 依赖库未正确安装`);
+      console.error(`5. 端口${PY_PORT}已被占用`);
+      console.error(`\n详细错误信息:`);
+      console.error(err);
       console.error(`=================\n`);
     });
 
     pyProc.on('exit', (code) => {
       console.log(`后端进程退出，退出代码: ${code}`);
       if (code !== 0 && code !== null) {
-        console.warn(`后端进程异常退出，退出代码: ${code}`);
+        console.error(`后端进程异常退出，退出代码: ${code}`);
+        console.error(`\n==== 退出原因分析 ====`);
+        console.error(`退出代码 ${code} 可能表示:`);
+        console.error(`- 1: 通用错误`);
+        console.error(`- 2: 命令行语法错误`);
+        console.error(`- 127: 找不到命令`);
+        console.error(`- 128+信号: 被信号终止`);
+        console.error(`=================\n`);
       }
     });
+    
+    // 添加健康检查功能，定期检查后端是否正常运行
+    function checkBackendHealth() {
+      const https = require('https');
+      const http = require('http');
+      
+      const url = `http://${PY_HOST}:${PY_PORT}/docs`;
+      console.log(`正在检查后端健康状态: ${url}`);
+      
+      http.get(url, (res) => {
+        console.log(`后端健康检查成功，状态码: ${res.statusCode}`);
+      }).on('error', (err) => {
+        console.error(`后端健康检查失败: ${err.message}`);
+        console.error(`详细错误: ${err}`);
+      });
+    }
+    
+    // 延迟5秒后开始健康检查，给后端足够的启动时间
+    setTimeout(checkBackendHealth, 5000);
     
     return true; // 表示启动成功
   } catch (error) {

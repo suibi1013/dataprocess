@@ -16,14 +16,21 @@ rem Copy icon-resources
 robocopy %SOURCEFILES_DIR%\icon-resources %BUILD_READY_DIR%\icon-resources /E
 
 cd /d "%BUILD_READY_DIR%"
-call npm install electron-builder --save-dev
-if %errorlevel% neq 0 (
-    echo [Electron Packaging] Error: Failed to install electron-builder
-    exit /b 1
+
+rem 检查electron-builder是否已经安装，避免每次重新安装
+if not exist "node_modules/electron-builder" (
+    echo [Electron Packaging] Installing electron-builder...
+    call npm install electron-builder --save-dev --no-package-lock
+    if %errorlevel% neq 0 (
+        echo [Electron Packaging] Error: Failed to install electron-builder
+        exit /b 1
+    )
+) else (
+    echo [Electron Packaging] electron-builder already installed, skipping...
 )
 
-rem Execute electron-builder
-call npx electron-builder
+rem 执行electron-builder，只构建Windows平台
+call npx electron-builder --win --x64
 if %errorlevel% neq 0 (
     echo [Electron Packaging] Error: Electron packaging failed
     exit /b 1

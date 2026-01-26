@@ -189,7 +189,7 @@ def execute(params):
                   type="text"
                   class="form-input"
                   placeholder="请输入属性名称（只能包含英文字母、数字和下划线）"
-                  maxlength="20"
+                  maxlength="30"
                   @input="param.name = param.name.replace(/[^a-zA-Z0-9_]/g, '')"
                   @blur="validateParamName(param.name, index)"
                 >
@@ -207,9 +207,9 @@ def execute(params):
                 <option value="string">文本/表达式</option>
                 <option value="number">数字</option>
                 <option value="boolean">布尔开关</option>
-                <option value="select">下拉单选框</option>
-                <option value="select_excelpath">excel数据源选择</option>
-                <option value="file">文件</option>
+                <option value="select">下拉单选</option>
+                <option value="select_excelpath">数据源选择</option>
+                <option value="file">文件上传</option>
                 <option value="button_event">按钮事件</option>
               </select>
               </div>
