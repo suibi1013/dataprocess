@@ -633,15 +633,6 @@
                 </div>
               </div>
             </div>
-
-            <div class="params-actions" style="margin-bottom: 10px;">
-              <el-button type="success" :loading="isExecuting" :disabled="!props.paramsPanel.selectedNode" @click="onHandleRunInstruction">
-                <el-icon>
-                  <VideoPlay />
-                </el-icon>
-                运行指令
-              </el-button>
-            </div>
           </div>
 
           <!-- 加载状态 -->
@@ -661,12 +652,11 @@
 </template>
 
 <script setup lang="ts">
-import { VideoPlay, DocumentChecked } from '@element-plus/icons-vue';
+import { DocumentChecked } from '@element-plus/icons-vue';
 import { ElNotification } from 'element-plus';
 import { ref, computed, watch} from 'vue';
 import VariableSelector from './VariableSelector.vue';
 import { useDataProcess } from '@/composables/useDataProcess';
-import { instructionService } from '@/services/instructionService';
 import { httpClient } from '@/services/httpClient';
 
 // 变量选择器状态
@@ -680,7 +670,6 @@ const processVariables = ref<Record<string, Array<{name: string; label: string; 
 const hoveredVariable = ref(''); // 用于鼠标悬停效果
 const expandedNodes = ref<Record<string, boolean>>({}); // 用于跟踪节点的展开/折叠状态
 // 执行状态控制
-const isExecuting = ref(false); // 用于"运行指令"按钮
 const executingButtons = ref<Record<string, boolean>>({}); // 用于按钮事件类型控件
 // 折叠功能已取消，不再需要isCollapsed状态
 
@@ -1425,23 +1414,6 @@ const onVariableItemMouseLeave = () => {
   hoveredVariable.value = '';
 };
 
-// 查找指令信息
-const findInstructionById = (instructionId: string) => {
-  // 假设instructionCategories是通过props传递的，如果不是，可以调整这个函数
-  if (!props.instructionCategories) {
-    console.warn('指令分类数据不可用');
-    return null;
-  }
-  
-  for (const category of props.instructionCategories) {
-    if (category.instructions && Array.isArray(category.instructions)) {
-      const instruction = category.instructions.find(inst => inst.id === instructionId);
-      if (instruction) return instruction;
-    }
-  }
-  return null;
-};
-
 // 处理按钮事件点击
 const onHandleButtonEventClick = async (item) => {
   if (!props.paramsPanel.selectedNode) {
@@ -1529,117 +1501,6 @@ const onHandleButtonEventClick = async (item) => {
   } finally {
     // 清除当前按钮的加载状态
     executingButtons.value[buttonKey] = false;
-  }
-};
-
-// 执行指令方法
-const onHandleRunInstruction = async () => {
-  if (!props.paramsPanel.selectedNode) {
-    return;
-  }
-  
-  const nodeData = props.paramsPanel.selectedNode.getData();
-  if (!nodeData || !nodeData.instructionId) {
-    // 可以添加错误提示
-    console.error('节点数据无效，缺少指令ID');
-    return;
-  }
-  
-  isExecuting.value = true;
-  
-  try {
-    // 获取节点参数
-    const params = props.paramsPanel.params || {};
-    
-    // 获取指令详情，用于类型转换
-    const instruction = findInstructionById(nodeData.instructionId);
-    
-    // 创建类型转换后的参数对象
-    const typedParams: Record<string, any> = { ...params };
-    
-    // 如果能获取到指令详情，根据参数类型进行转换
-    if (instruction && instruction.params) {
-      instruction.params.forEach(param => {
-        const paramName = param.name;
-        const paramValue = params[paramName];
-        
-        // 确保参数值存在且不为空字符串
-        if (paramValue !== undefined && paramValue !== null && paramValue !== '') {
-          // 根据参数类型进行转换
-          switch (param.display_type) {
-            case 'number':
-              // 转换为数字
-              typedParams[paramName] = Number(paramValue);
-              break;
-            case 'boolean':
-              // 转换为布尔值
-              typedParams[paramName] = paramValue === 'true' || paramValue === true || paramValue === 1;
-              break;
-            case 'array':
-              // 如果是字符串形式的数组，尝试解析
-              if (typeof paramValue === 'string' && 
-                  (paramValue.startsWith('[') && paramValue.endsWith(']') || 
-                   paramValue.includes(','))) {
-                try {
-                  // 尝试JSON解析
-                  if (paramValue.startsWith('[') && paramValue.endsWith(']')) {
-                    typedParams[paramName] = JSON.parse(paramValue);
-                  } else if (paramValue.includes(',')) {
-                    // 逗号分隔的字符串转换为数组
-                    typedParams[paramName] = paramValue.split(',').map((item: string) => item.trim());
-                  }
-                } catch (e) {
-                  // 如果解析失败，保持原字符串
-                  console.error('数组参数解析失败:', e);
-                }
-              }
-              break;
-          }
-        }
-      });
-    }
-    
-    // 获取intput_types属性
-    const intputTypes = nodeData.input_types || { t: [], e: [] };
-    
-    // 调用后端API来执行指令    
-    const result = await instructionService.executeInstruction(nodeData.instructionId, typedParams, intputTypes);
-    
-    if (result.success && result.data) {
-      let details = '';
-      // 处理返回的数据结构
-      if (result.data) {
-        // 将data_result以格式化的JSON字符串显示
-        details = JSON.stringify(result.data, null, 2);
-      }
-      
-      // 发送执行结果事件给父组件
-      emit('instruction-executed', {
-        success: result.success,
-        title: result.success ? '执行成功' : '执行失败',
-        message: result.message || '指令执行成功！',
-        details: details || undefined
-      });
-    } else {
-      // 发送失败结果事件给父组件
-      emit('instruction-executed', {
-        success: false,
-        title: '执行失败',
-        message: result.message || '指令执行失败'
-      });
-    }
-
-  } catch (error) {
-    console.error('执行指令失败:', error);
-    // 发送错误事件给父组件
-    emit('instruction-executed', {
-      success: false,
-      title: '执行失败',
-      message: '指令执行失败',
-      details: error instanceof Error ? error.message : '未知错误'
-    });
-  } finally {
-    isExecuting.value = false;
   }
 };
 </script>

@@ -109,7 +109,7 @@
         >
           <el-icon v-if="isExecuting"><Loading /></el-icon>
           <el-icon v-else><VideoPlay /></el-icon>
-          {{ isExecuting ? '终止执行' : '执行流程' }}
+          {{ isExecuting ? '终止调试' : '全局调试' }}
         </button>
         <button 
           type="button" 
@@ -813,9 +813,9 @@ function confirmSheetSelection(displaySheetName) {
 
 // 切换指令分类功能已移至InstructionPanel组件
 
-// 执行流程或终止执行
+// 全局调试或终止调试
 const executeProcess = async () => {
-  // 如果正在执行，则终止执行
+  // 如果正在调试，则终止调试
   if (isExecuting.value) {
     try {
       await terminateExecution();
@@ -823,13 +823,13 @@ const executeProcess = async () => {
       resultModalData.value = {
         success: true,
         title: '终止成功',
-        message: '流程已成功终止',
+        message: '调试已成功终止',
         details: undefined,
         finalResult: undefined
       };
       showResultModal.value = true;
     } catch (error) {
-      console.error('终止流程失败:', error);
+      console.error('终止调试失败:', error);
       resultModalData.value = {
         success: false,
         title: '终止失败',
@@ -844,11 +844,11 @@ const executeProcess = async () => {
     return;
   }
 
-  // 否则执行流程
+  // 否则执行调试
   processing.value = true;
   
   try {
-    // 执行流程并保存返回结果
+    // 执行调试并保存返回结果
     const result = await runProcess(); 
     
     if (result) {
@@ -1023,7 +1023,7 @@ const debugSelectedNode = async () => {
       }) // 包含选中节点之间的边
     };
     console.log("flow:",flow)
-    // 执行流程 - 调用与executeProcess相同的API，但只传递选中的节点
+    // 执行调试 - 调用与executeProcess相同的API，但只传递选中的节点
     const response = await dataProcessService.executeDataProcessFlow(flow);
     
     if (response) {

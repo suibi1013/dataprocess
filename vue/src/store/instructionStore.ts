@@ -166,7 +166,7 @@ export const useInstructionStore = defineStore('instruction', () => {
       executionStatus.value = {
         total: flow.nodes.length,
         current: 0,
-        currentStep: '开始执行流程...',
+        currentStep: '开始执行调试...',
         isRunning: true,
         results: {}
       };

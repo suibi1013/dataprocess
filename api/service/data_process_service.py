@@ -467,11 +467,11 @@ class DataProcessService(BaseService):
                     reverse_edges_dict[edge.target] = []
                 reverse_edges_dict[edge.target].append(edge.source)
             
-            # 使用DFS找到所有可以到达目标节点的前置节点
-            before_nodes = []
+            # 使用列表收集所有前置节点ID
+            before_node_ids = []
             visited = set()
             
-            # 先使用同步DFS找到所有前置节点ID
+            # 使用DFS找到所有可以到达目标节点的前置节点
             def dfs_find_predecessor_ids(current_id):
                 # 如果当前节点是目标节点，不添加到前置节点列表
                 if current_id == target_node_id:
@@ -501,9 +501,48 @@ class DataProcessService(BaseService):
                         if predecessor_id not in visited:
                             dfs_find_predecessor_ids(predecessor_id)
             
-            # 然后异步获取每个节点的详细信息
-            import asyncio
-            for current_id in visited:
+            # 找到所有没有入边的节点（源节点）
+            source_nodes = []
+            all_nodes = set(node_map.keys())
+            for node_id in visited:
+                if node_id not in reverse_edges_dict:
+                    source_nodes.append(node_id)
+            
+            # 计算每个节点到目标节点直接前置节点的层级（从目标节点向前追溯的距离）
+            def get_node_level(node_id, reverse_edges, level_cache):
+                if node_id in level_cache:
+                    return level_cache[node_id]
+                
+                # 如果节点是目标节点的直接前驱，层级为0
+                if target_node_id in reverse_edges and node_id in reverse_edges[target_node_id]:
+                    level_cache[node_id] = 0
+                    return 0
+                
+                # 否则，层级 = 所有后继节点层级最大值 + 1
+                max_level = 0
+                # 查找所有以当前节点为前驱的节点（后继节点）
+                for successor_id, predecessors in reverse_edges.items():
+                    if node_id in predecessors:
+                        if successor_id in visited:
+                            level = get_node_level(successor_id, reverse_edges, level_cache)
+                            max_level = max(max_level, level + 1)
+                
+                level_cache[node_id] = max_level
+                return max_level
+            
+            level_cache = {}
+            node_levels = {}
+            for node_id in visited:
+                level = get_node_level(node_id, reverse_edges_dict, level_cache)
+                node_levels[node_id] = level
+            
+            # 按层级降序排序（从目标节点的直接前置节点开始，向源节点方向追溯）
+            # 层级相同的按节点ID降序排序确保稳定性
+            before_node_ids = sorted(visited, key=lambda x: (-node_levels[x], x), reverse=True)
+            
+            # 然后获取每个节点的详细信息
+            before_nodes = []
+            for current_id in before_node_ids:
                 # 获取当前节点
                 node = node_map[current_id]
                 
