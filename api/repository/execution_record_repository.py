@@ -58,10 +58,8 @@ class ExecutionRecordRepository(BaseRepository[ExecutionRecord]):
                 "flow_id": record.result_data.flow_id,
                 "flow_name": record.result_data.flow_name,
                 "final_result": record.result_data.final_result,
-                "process_results": record.result_data.process_results,
                 "execution_order": record.result_data.execution_order,
-                "total_nodes_executed": record.result_data.total_nodes_executed,
-                "reached_end_node": record.result_data.reached_end_node
+                "total_nodes_executed": record.result_data.total_nodes_executed
             })
         
         data = {
@@ -92,10 +90,8 @@ class ExecutionRecordRepository(BaseRepository[ExecutionRecord]):
                 "flow_id": record.result_data.flow_id,
                 "flow_name": record.result_data.flow_name,
                 "final_result": record.result_data.final_result,
-                "process_results": record.result_data.process_results,
                 "execution_order": record.result_data.execution_order,
-                "total_nodes_executed": record.result_data.total_nodes_executed,
-                "reached_end_node": record.result_data.reached_end_node
+                "total_nodes_executed": record.result_data.total_nodes_executed
             })
         
         data = {

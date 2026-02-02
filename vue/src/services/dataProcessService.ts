@@ -140,6 +140,30 @@ export class DataProcessService {
   }
 
   /**
+   * 获取流程所有节点的执行状态
+   */
+  async getFlowNodeStatuses(flowId: string): Promise<ApiResponse<any>> {
+    try {
+      return await httpClient.get<any>(`/data-process/execute/node-status/${flowId}`);
+    } catch (error) {
+      console.error(`获取流程节点执行状态失败 (ID: ${flowId}):`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * 获取节点的详细执行信息
+   */
+  async getFlowNodeExecutionInfo(flowId: string, nodeId: string): Promise<ApiResponse<any>> {
+    try {
+      return await httpClient.get<any>(`/data-process/execute/node-status/${flowId}/${nodeId}`);
+    } catch (error) {
+      console.error(`获取节点执行信息失败 (Flow ID: ${flowId}, Node ID: ${nodeId}):`, error);
+      throw error;
+    }
+  }
+
+  /**
    * 终止正在执行的流程
    */
   async terminateDataProcessFlow(flowId: string): Promise<ApiResponse<any>> {

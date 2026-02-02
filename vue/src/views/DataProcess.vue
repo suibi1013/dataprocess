@@ -231,40 +231,7 @@
             </template>
           </div>
           <div v-else class="empty-detail">暂无最终结果</div>
-        </el-tab-pane>
-        <el-tab-pane label="过程数据" name="processResults">
-          <div v-if="currentExecutionResult.result_data.process_results" class="execution-detail-content">
-            <!-- 根据数据类型选择显示方式 -->
-            <template v-if="typeof currentExecutionResult.result_data.process_results === 'object'">
-              <div class="json-container">
-                <!-- 手动添加复制按钮 -->
-                <el-button 
-                  type="primary" 
-                  size="small" 
-                  class="manual-copy-btn"
-                  @click="copyToClipboard(JSON.stringify(currentExecutionResult.result_data.process_results, null, 2))"
-                >
-                  复制
-                </el-button>
-                <vue-json-pretty 
-                  :data="currentExecutionResult.result_data.process_results" 
-                  :deep="3" 
-                  :show-length="true" 
-                  :show-line-number="true"
-                  :highlight-hover="true"
-                  :selectable="true"
-                  copyable
-                  highlight-key
-                />
-              </div>
-            </template>
-            <template v-else>
-              <!-- 对于非对象类型，显示可点击的URL -->
-              <pre v-html="textToHtmlWithLinks(String(currentExecutionResult.result_data.process_results))"></pre>
-            </template>
-          </div>
-          <div v-else class="empty-detail">暂无过程数据</div>
-        </el-tab-pane>
+        </el-tab-pane>        
         <el-tab-pane label="执行顺序" name="executionOrder">
           <div v-if="currentExecutionResult.result_data.execution_order && currentExecutionResult.result_data.execution_order.length > 0" class="execution-detail-content">
             <ul class="execution-order-list">
@@ -311,7 +278,6 @@ interface ExecutionResult {
   executed_at: string
   result_data: {
     final_result?: any
-    process_results?: any
     execution_order?: string[]
   }
 }

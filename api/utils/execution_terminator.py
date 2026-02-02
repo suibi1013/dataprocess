@@ -129,6 +129,106 @@ class ExecutionTerminator:
         with self._lock:
             self.clear_terminate_flag(flow_id)
             self.set_flow_status(flow_id, self.STATUS_IDLE)
+    
+    def set_node_status(self, flow_id: str, node_id: str, node_status_info: dict):
+        """
+        设置节点执行状态
+        
+        Args:
+            flow_id: 流程ID
+            node_id: 节点ID
+            node_status_info: 节点状态信息，包含节点ID、状态、JSON文件路径等
+        """
+        with self._lock:
+            # 初始化节点状态存储
+            if not hasattr(self, 'node_statuses'):
+                self.node_statuses = {}
+            
+            # 初始化流程的节点状态存储
+            if flow_id not in self.node_statuses:
+                self.node_statuses[flow_id] = {}
+            
+            # 保存节点状态信息
+            self.node_statuses[flow_id][node_id] = node_status_info
+    def clear_node_status(self, flow_id: str):
+        """
+        清除流程所有节点的执行状态
+        
+        Args:
+            flow_id: 流程ID
+        """
+        with self._lock:
+            # 初始化节点状态存储
+            if not hasattr(self, 'node_statuses'):
+                self.node_statuses = {}
+            
+            # 初始化流程的节点状态存储            
+            self.node_statuses[flow_id] = {}
+    def get_node_status(self, flow_id: str, node_id: str) -> dict:
+        """
+        获取节点执行状态
+        
+        Args:
+            flow_id: 流程ID
+            node_id: 节点ID
+        
+        Returns:
+            dict: 节点状态信息
+        """
+        with self._lock:
+            if hasattr(self, 'node_statuses') and flow_id in self.node_statuses:
+                return self.node_statuses[flow_id].get(node_id, {})
+            return {}
+    
+    def get_all_node_statuses(self, flow_id: str) -> dict:
+        """
+        获取流程所有节点的执行状态
+        
+        Args:
+            flow_id: 流程ID
+        
+        Returns:
+            dict: 流程所有节点的执行状态
+        """
+        with self._lock:
+            if hasattr(self, 'node_statuses') and flow_id in self.node_statuses:
+                return self.node_statuses[flow_id].copy()
+            return {}
+    
+    def get_node_execution_info(self, flow_id: str, node_id: str) -> dict:
+        """
+        获取节点的执行信息，包括输入输出参数
+        
+        Args:
+            flow_id: 流程ID
+            node_id: 节点ID
+        
+        Returns:
+            dict: 节点的执行信息，包括输入输出参数
+        """
+        import json
+        import os
+        
+        with self._lock:
+            if hasattr(self, 'node_statuses') and flow_id in self.node_statuses:
+                node_status = self.node_statuses[flow_id].get(node_id, {})
+                json_filepath = node_status.get('json_filepath')
+                
+                # 如果有JSON文件路径，读取文件内容获取详细信息
+                if json_filepath and os.path.exists(json_filepath):
+                    try:
+                        with open(json_filepath, 'r', encoding='utf-8') as f:
+                            node_info = json.load(f)
+                        # 合并状态信息和详细信息
+                        return {
+                            **node_status,
+                            **node_info
+                        }
+                    except Exception as e:
+                        # 如果读取文件失败，返回基本状态信息
+                        return node_status
+                return node_status
+            return {}
 
 
 # 创建全局的执行终止管理器实例

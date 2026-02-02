@@ -1,5 +1,6 @@
 from typing import Any
 import io
+from json import loads
 class data_helper:
     def __init__(self):
         pass
@@ -27,19 +28,28 @@ class data_helper:
                     if not isinstance(value, io.IOBase):
                         raise ValueError("参数类型 'file' 要求 value 是文件对象")
                 case "dict":
-                    if not isinstance(value, dict):
-                        from json import loads
-                        value=dict(loads(value))
+                    if not value:
+                        value=dict()
+                    else:
+                        if not isinstance(value, dict):                         
+                            value=dict(loads(value))    
                 case "list":
-                    if not isinstance(value, list):
-                        value=list(value)
+                    if not value:
+                        value=dict()
+                    else:
+                        if not isinstance(value, list):
+                            value=list(loads(value))
                 case "tabledata":
-                    if not isinstance(value, list):
-                        value=list(value)
+                    if not value:
+                        value=dict()
+                    else:
+                        if not isinstance(value, list):
+                            value=list(loads(value))
                 case "any":
                     pass
                 case _:
                     pass
         except ValueError as e:
-            raise ValueError(f"参数类型 {param_type} 转换值失败: {str(e)}")
+            # raise ValueError(f"参数类型 {param_type} 转换值失败: {str(e)}")
+            print(f"参数类型 {param_type} 转换值失败: {str(e)}")
         return value

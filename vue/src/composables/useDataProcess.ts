@@ -50,6 +50,18 @@ const currentFlowId = ref<string | null | undefined>(null);
 // 当前加载的流程信息（保存名称和描述）
 const currentFlowInfo = ref<{ name: string; description: string } | null>(null);
 
+// 节点执行信息模态框状态
+const nodeExecutionModalState = reactive({
+  visible: false,
+  nodeName: '',
+  executionStatus: '',
+  message: '',
+  paramsIn: null,
+  paramsOut: null,
+  activeTab: 'paramsIn',
+  instructionId: ''
+});
+
 /**
  * 数据处理组合式函数 - 单例模式实现
  */
@@ -228,6 +240,9 @@ function createDataProcessInstance() {
         await loadProcessById(processId);
       }
 
+      // 流程初始化结束后，重置节点状态显示
+      resetNodeStatusDisplay();
+
     } catch (error) {
       console.error('❌ 初始化数据处理模态框失败:', error);
     } finally {
@@ -360,7 +375,7 @@ function createDataProcessInstance() {
         // canvasGraph.value?.zoomTo(1);
         // canvasGraph.value?.centerContent();
         canvasGraph.value.resize(rect.width, rect.height);
-        canvasGraph.value.positionContent('top-left',{ padding: { left: 50,top: 50 } })
+        canvasGraph.value.positionContent('top-left', { padding: { left: 50, top: 50 } })
       }
     }, 200);
   };
@@ -384,7 +399,6 @@ function createDataProcessInstance() {
 
     canvasContainer.value = container;
     container.innerHTML = '';
-
     // 创建X6图实例
     canvasGraph.value = new Graph({
       container: container,
@@ -612,7 +626,6 @@ function createDataProcessInstance() {
         });
         const nodeSize = node.getSize();
         const nodeData = node.getData();
-
         // 添加编辑按钮
         node.addTools([
           {
@@ -653,11 +666,11 @@ function createDataProcessInstance() {
               // 点击事件处理
               onClick: () => {
                 showNodeDescriptionEditor(node);
-              }
+              },
+              toolName: "editDesc"
             },
           },
         ]);
-
         // 使用全局tooltip显示节点信息
         if (globalTooltip && showNodeTooltips.value) {
           // 格式化参数信息 - 每个参数作为单独的表单项显示
@@ -709,7 +722,6 @@ function createDataProcessInstance() {
 
           // 获取节点在画布坐标系中的包围盒
           const bbox = node.getBBox();
-          console.log('bbox', bbox)
           // 将画布坐标转换为页面坐标（处理缩放和平移）
           const clientRect = canvasGraph.value!.localToClient(bbox);
 
@@ -725,7 +737,7 @@ function createDataProcessInstance() {
       }
     });
 
-    // 节点鼠标移出事件 - 隐藏连接桩，但保持tooltip显示
+    // 节点鼠标移出事件 - 隐藏连接桩和编辑描述按钮工具
     canvasGraph.value.on('node:mouseleave', ({ node }) => {
       if (node) {
         // 隐藏连接桩
@@ -733,9 +745,12 @@ function createDataProcessInstance() {
         ports.forEach((port: any) => {
           node.portProp(port.id, `attrs/circle/opacity`, 0);
         });
-        node.removeTools(); // 删除所有的工具
-
-        // 不再在这里隐藏tooltip，让tooltip在鼠标移出它自己时隐藏
+        // 移除编辑描述按钮
+        const tools = node.getTools();
+        const editDescToolIndex = tools?.items.findIndex((t: any) => t.args.toolName === 'editDesc');        
+        if (editDescToolIndex != null && editDescToolIndex !== -1) {
+          node.removeTool(editDescToolIndex);
+        }
       }
     });
 
@@ -1634,6 +1649,12 @@ function createDataProcessInstance() {
    */
   const cleanupCanvas = () => {
     try {
+      // 清除状态检查定时器
+      if (statusCheckInterval) {
+        clearInterval(statusCheckInterval);
+        statusCheckInterval = null;
+      }
+      
       // 清除拖拽事件监听器
       clearCanvasDragListeners();
       // 清理工具栏
@@ -1841,6 +1862,144 @@ function createDataProcessInstance() {
   };
 
   /**
+   * 获取流程节点执行状态
+   */
+  const getFlowNodeStatuses = async (flowId: string) => {
+    try {
+      const response = await dataProcessService.getFlowNodeStatuses(flowId);
+      return response;
+    } catch (error) {
+      console.error(`获取流程节点状态失败: ${flowId}`, error);
+      return null;
+    }
+  };
+
+  /**
+   * 获取节点详细执行信息
+   */
+  const getFlowNodeExecutionInfo = async (flowId: string, nodeId: string) => {
+    try {
+      const response = await dataProcessService.getFlowNodeExecutionInfo(flowId, nodeId);
+      return response;
+    } catch (error) {
+      console.error(`获取节点执行信息失败: ${flowId} - ${nodeId}`, error);
+      return null;
+    }
+  };
+
+  /**
+   * 更新节点的执行状态显示
+   */
+  const updateNodeStatusDisplay = async (flowId: string) => {
+    if (!canvasGraph.value) return;
+    const nodeStatusesResponse = await getFlowNodeStatuses(flowId);
+    if (nodeStatusesResponse && nodeStatusesResponse.success) {
+      const nodeStatuses = nodeStatusesResponse.data.node_statuses;
+      // 更新所有节点的状态显示
+      const nodes = canvasGraph.value.getNodes();
+      nodes.forEach(node => {
+        const nodeId = node.id;
+        const nodeStatus = nodeStatuses[nodeId];
+        // 获取节点显示名称
+        const nodeData = node.getData();
+        const nodeLabel = nodeData?.label || `Node ${nodeId}`;
+
+        // 先清除所有现有的工具
+        node.removeTools();
+
+        if (nodeStatus) {
+          // 根据节点状态设置不同的边框颜色
+          let strokeColor = '#1890ff'; // 默认蓝色
+          let strokeWidth = 1;
+
+          switch (nodeStatus.status) {
+            case 0: // 运行中
+              strokeColor = '#faad14'; // 黄色
+              strokeWidth = 2;
+              break;
+            case 1: // 执行成功
+              strokeColor = '#52c41a'; // 绿色
+              strokeWidth = 2;
+              break;
+            case 2: // 执行失败
+              strokeColor = '#f5222d'; // 红色
+              strokeWidth = 2;
+              break;
+          }
+
+          // 更新节点样式
+          node.attr('body/stroke', strokeColor);
+          node.attr('body/strokeWidth', strokeWidth);
+
+          // 添加状态按钮
+          node.addTools([
+            {
+              name: 'button',
+              args: {
+                markup: [
+                  {
+                    tagName: 'circle',
+                    selector: 'button',
+                    attrs: {
+                      r: 8,
+                      fill: strokeColor,
+                      stroke: '#fff',
+                      strokeWidth: 1,
+                      cursor: 'pointer',
+                      visibility: 'visible',
+                      opacity: 1,
+                      pointerEvents: 'visiblePainted'
+                    },
+                  },
+                  {
+                    tagName: 'text',
+                    selector: 'icon',
+                    textContent: nodeStatus.status === 0 ? '⏳' : nodeStatus.status === 1 ? '✅' : '❌',
+                    attrs: {
+                      y: '4',
+                      textAnchor: 'middle',
+                      textVerticalAnchor: 'middle',
+                      fontSize: 12,
+                      fill: '#fff',
+                      pointerEvents: 'none',
+                    },
+                  },
+                ],
+                x: 0,
+                y: 0,
+                offset: { x: 4, y: 4 },
+                onClick: async () => {
+                  // 点击状态按钮，获取节点详细执行信息并弹窗显示
+                  const nodeInfoResponse = await getFlowNodeExecutionInfo(flowId, nodeId);
+                  if (nodeInfoResponse && nodeInfoResponse.success) {
+                    const nodeInfo = nodeInfoResponse.data.node_execution_info;
+                    // 使用模态框显示节点执行信息
+                    // 优先使用节点对象的label属性作为节点名称，然后是API返回的node_name，最后是nodeId
+                    nodeExecutionModalState.nodeName = nodeLabel || nodeInfo.node_name || nodeId;
+                    nodeExecutionModalState.executionStatus = nodeInfo.status === 1 ? '成功' : '失败';
+                    nodeExecutionModalState.message = nodeInfo.message;
+                    nodeExecutionModalState.paramsIn = nodeInfo.params_in || {};
+                    nodeExecutionModalState.paramsOut = nodeInfo.params_out || {};
+                    nodeExecutionModalState.activeTab = 'paramsIn';
+                    nodeExecutionModalState.instructionId = nodeData.instructionId;
+                    nodeExecutionModalState.visible = true;
+                  }
+                },
+                toolName: 'exec-status-btn'
+              },
+            },
+          ]);
+        } else {
+          // 没有状态信息的节点，恢复默认样式
+          node.attr('body/stroke', '#1890ff');
+          node.attr('body/strokeWidth', 1);
+          node.prop('tools', []);
+        }
+      });
+    }
+  };
+
+  /**
    * 终止正在执行的流程
    */
   const terminateFlow = async () => {
@@ -1880,11 +2039,25 @@ function createDataProcessInstance() {
 
     currentExecutingFlowId = flowId;
 
-    // 每隔3秒检查一次状态
+    // 每隔2秒检查一次状态
     statusCheckInterval = window.setInterval(async () => {
+      // 检查组件是否仍然存在
+      if (!canvasGraph.value) {
+        console.warn('组件已销毁，停止状态检查');
+        if (statusCheckInterval) {
+          clearInterval(statusCheckInterval);
+          statusCheckInterval = null;
+        }
+        return;
+      }
+      
       const statusResponse = await getFlowStatus(flowId);
       if (statusResponse && statusResponse.success) {
         const status = statusResponse.data.status;
+
+        // 更新节点状态显示
+        await updateNodeStatusDisplay(flowId);
+
         // 如果状态不是running，清除定时器
         if (status !== 'running') {
           if (statusCheckInterval) {
@@ -1895,7 +2068,7 @@ function createDataProcessInstance() {
           }
         }
       }
-    }, 3000);
+    }, 2000);
   };
 
   /**
@@ -1911,6 +2084,9 @@ function createDataProcessInstance() {
       // 可以添加用户提示
       return null;
     }
+
+    // 点击全局调试和节点调试按钮开始时，重置节点状态显示
+    resetNodeStatusDisplay();
 
     modalState.executing = true;
     resetExecutionState();
@@ -2000,20 +2176,44 @@ function createDataProcessInstance() {
       // 执行流程 - 所有验证逻辑已移至后端
       const response = await dataProcessService.executeDataProcessFlow(flow);
 
+      // 检查组件是否仍然存在
+      if (!canvasGraph.value) {
+        console.warn('组件已销毁，停止更新状态');
+        return response;
+      }
+
       if (response.success) {
         // 直接使用response作为结果，保持类型一致性
         executionState.results = [response];
         executionState.progress = 100;
         executionState.currentStep = '执行完成';
+        // 更新节点状态显示
+        if (flowId) {
+          await updateNodeStatusDisplay(flowId);
+        }
       } else {
         executionState.error = response.message || '流程执行失败';
         executionState.currentStep = '执行失败';
         console.error('流程执行失败:', response.message);
+        // 更新节点状态显示，显示失败节点
+        if (flowId) {
+          await updateNodeStatusDisplay(flowId);
+        }
       }
 
       // 返回API响应给调用者
       return response;
     } catch (error: any) {
+      // 检查组件是否仍然存在
+      if (!canvasGraph.value) {
+        console.warn('组件已销毁，停止更新状态');
+        return {
+          success: false,
+          message: error.message || '执行流程时发生未知错误',
+          data: null
+        };
+      }
+      
       executionState.error = error.message || '执行流程时发生未知错误';
       console.error('执行数据处理流程失败:', error);
 
@@ -2024,13 +2224,16 @@ function createDataProcessInstance() {
         data: null
       };
     } finally {
-      // 清除状态检查定时器
-      if (statusCheckInterval) {
-        clearInterval(statusCheckInterval);
-        statusCheckInterval = null;
+      // 检查组件是否仍然存在
+      if (canvasGraph.value) {
+        // 清除状态检查定时器
+        if (statusCheckInterval) {
+          clearInterval(statusCheckInterval);
+          statusCheckInterval = null;
+        }
+        modalState.executing = false;
+        currentExecutingFlowId = null;
       }
-      modalState.executing = false;
-      currentExecutingFlowId = null;
     }
   };
   /**
@@ -2290,7 +2493,10 @@ function createDataProcessInstance() {
                 id: edge.id,
                 source: { cell: sourceNode.id, port: sourcePortId },
                 target: { cell: targetNode.id, port: targetPortId },
-                data: { label: 'label' in edge ? edge.label as string : '' }, // 使用类型保护和断言
+                data: {
+                  label: 'label' in edge ? edge.label as string : '',
+                  logic_express: 'logic_express' in edge ? edge.logic_express as string : ''
+                }, // 使用类型保护和断言
                 attrs: {
                   line: {
                     stroke: '#3199FF',
@@ -2535,6 +2741,24 @@ function createDataProcessInstance() {
     executionState.error = null;
   };
 
+  /**
+   * 重置节点状态显示
+   * 在流程初始化结束后、点击全局调试和节点调试按钮开始时调用
+   */
+  const resetNodeStatusDisplay = () => {
+    if (!canvasGraph.value) return;
+
+    // 清除所有节点上的状态按钮
+    const nodes = canvasGraph.value.getNodes();
+    nodes.forEach(node => {
+      // 清除所有工具
+      node.removeTools();      
+      // 恢复默认样式
+      node.attr('body/stroke', '#1890ff');
+      node.attr('body/strokeWidth', 1);
+    });
+  };
+
   // 切换节点描述信息显示状态
   const toggleNodeDescriptions = () => {
     showNodeDescriptions.value = !showNodeDescriptions.value;
@@ -2638,7 +2862,7 @@ function createDataProcessInstance() {
     return await terminateFlow();
   };
 
-  // ==================== 返回接口 ====================  
+  // ==================== 返回接口 ====================
 
   return {
     // 状态
@@ -2654,6 +2878,7 @@ function createDataProcessInstance() {
     executionState,
     showNodeDescriptions,
     showNodeTooltips,
+    nodeExecutionModalState,
 
     // 画布控制
     resizeCanvas,
@@ -2706,7 +2931,8 @@ function createDataProcessInstance() {
     // 流程执行
     executeProcess,
     saveDataProcess,
-    resetExecutionState
+    resetExecutionState,
+    resetNodeStatusDisplay
   };
 }
 /**

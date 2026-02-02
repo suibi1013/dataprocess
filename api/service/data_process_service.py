@@ -26,8 +26,10 @@ from repository.execution_record_repository import ExecutionRecordRepository
 from utils.python_script_utils import PythonScriptUtils
 from utils.common import CommonUtils
 from utils.data_heler import data_helper
+from utils.json_helper import json_helper
 from utils.execution_terminator import execution_terminator
 import inspect
+import shutil
 
 
 class DataProcessService(BaseService):
@@ -604,8 +606,7 @@ class DataProcessService(BaseService):
             result_data = ExecutionResultData(
                 flow_id=flow_id,
                 flow_name=flow_name,
-                final_result=execution_result.get('final_result',None) if execution_result else None,
-                process_results=execution_result.get('process_results', {}) if execution_result else {},
+                final_result=execution_result.get('final_result',None) if execution_result else None
             )
             
             # 创建执行记录对象
@@ -625,7 +626,7 @@ class DataProcessService(BaseService):
         except Exception as e:
             return False
     
-    async def execute_data_process_flow(self, flow: DataProcessFlow, start_node_id: str, end_node_ids: List[str] = None) -> Result[Dict[str, Any]]:
+    async def execute_data_process_flow(self, flow: DataProcessFlow, start_node_id: str, end_node_ids: List[str] = None,flow_mode=0) -> Result[Dict[str, Any]]:
         """
         执行数据处理流程
         根据连线标签文本的判断条件，查找满足条件第一条执行路径，作为当前执行流程的唯一有效执行流程
@@ -634,20 +635,21 @@ class DataProcessService(BaseService):
             flow: 数据处理流程对象
             start_node_id: 开始节点ID
             end_node_ids: 结束节点ID列表，用于控制流程终止
+            flow_mode:流程触发模式，0表示调试模式、1表示执行模式，默认为调试模式
             
         Returns:
             Result[Dict[str, Any]]: 执行结果，包含已执行节点的结果和失败信息（如果有）
         """
+        # 初始化
+        actual_execution_order = [] # 实际执行顺序列表
+        processed_final_result = None # 最终执行结果
+        current_run_node_io_info = None # 当前执行节点的输入输出信息
         try:
+            flow_time_begin=datetime.now()
+            flow_status= execution_terminator.STATUS_RUNNING
             # 构建节点ID到节点的映射
             node_map = {node.id: node for node in flow.nodes}
             current_node_id = start_node_id
-            # 跟踪实际执行的节点顺序
-            actual_execution_order = []            
-            process_results = {}
-            execution_result = None
-            # 记录失败的节点信息
-            failure_node_info = None
             
             # 构建正向边信息字典：{source: [{target, logic_express}]}
             edges_info: Dict[str, List[Dict[str, str]]] = {}
@@ -659,158 +661,206 @@ class DataProcessService(BaseService):
                     'logic_express': edge.logic_express
                 })
             
+            # 创建流程目录，用于保存节点参数信息JSON文件，路径格式为：流程id/flow_time_begin.strftime("%y%m%d%H%M%S")或调试模式debug/节点id.json
+            flow_directory = os.path.join(config.DATA_PROCESSES_FOLDER, 'process_flows', flow.id, flow_time_begin.strftime("%y%m%d%H%M%S") if flow_mode else 'debug')
+            shutil.rmtree(flow_directory, ignore_errors=True) # 删除目录，适用于flow_mode为调试模式的情况
+            os.makedirs(flow_directory, exist_ok=True)
+            
             # 重置流程状态和终止标志
             execution_terminator.reset_flow(flow.id)
+            # 清空流程所有节点执行状态
+            execution_terminator.clear_node_status(flow.id)
             # 设置流程状态为运行中
-            execution_terminator.set_flow_status(flow.id, execution_terminator.STATUS_RUNNING)
+            execution_terminator.set_flow_status(flow.id, flow_status)
             
             while not current_node_id in end_node_ids or not current_node_id in actual_execution_order:
                 import asyncio
                 await asyncio.sleep(0.01)
-                # 检查是否需要终止执行
-                if execution_terminator.should_terminate(flow.id):
-                    failure_node_info = {
-                        "node_id": current_node_id,
-                        "instruction_id": node_map[current_node_id].instructionId if current_node_id in node_map else "",
-                        "node_params": node_map[current_node_id].params if current_node_id in node_map else {},
-                        "error_message": "流程执行被用户终止",
-                        "error_type": "UserTerminatedError"
-                    }
-                    # 设置流程状态为终止
-                    execution_terminator.set_flow_status(flow.id, execution_terminator.STATUS_TERMINATED)
-                    break
                 # 如果当前节点不是结束节点，或没有执行过，就继续执行
                 actual_execution_order.append(current_node_id)
-                try:
-                    # 获取节点指令脚本 
-                    current_node = node_map[current_node_id]                
-                    # 异步获取指令信息（避免阻塞事件循环）
-                    instruction_info = await self.instruction_item_repo.find_by_id(current_node.instructionId)                
-                    if not instruction_info:
-                        raise Exception(f"未找到指令ID: {current_node.instructionId}")                
-                    python_script = instruction_info.python_script
+                
+                execution_time_begin=datetime.now()
+                # 获取节点指令脚本 
+                current_node = node_map[current_node_id]  
+                # 初始化节点参数信息
+                current_run_node_io_info = {
+                    "node_id": current_node_id,
+                    "instruction_id": current_node.instructionId,
+                    "flow_mode": flow_mode,
+                    "execution_time_begin": execution_time_begin.strftime("%Y-%m-%d %H:%M:%S"),
+                    "execution_time_end":None,
+                    "params_in":{},
+                    "params_ref":{},# 回写参数
+                    "params_out":{},
+                    "message":""
+                }  
+                processed_final_result=None
+                # 节点运行状态
+                node_status_info = {
+                    "node_id": current_node_id,
+                    "status": 0,  # 0表示运行中，1表示执行成功，2表示执行失败
+                    "json_filepath": None,
+                    "execution_time_begin": execution_time_begin.strftime("%Y-%m-%d %H:%M:%S"),     
+                    "execution_time_end":None,
+                    "flow_mode": flow_mode,
+                    "message":""
+                }
+                
+                try:    
+                    # 检查是否需要终止执行
+                    if execution_terminator.should_terminate(flow.id):
+                        current_run_node_io_info["message"]="流程执行被用户终止"
+                        current_run_node_io_info["params_in"]=current_node.params if current_node_id in node_map else {}
+                        node_status_info["status"]=2
+                        # 设置流程状态为终止 
+                        flow_status= execution_terminator.STATUS_TERMINATED
+                        execution_terminator.set_flow_status(flow.id, flow_status)
+                    else:                      
+                        # 异步获取指令信息（避免阻塞事件循环）
+                        instruction_info = await self.instruction_item_repo.find_by_id(current_node.instructionId)                
+                        if not instruction_info:
+                            raise Exception(f"未找到指令ID: {current_node.instructionId}")                
+                        python_script = instruction_info.python_script
 
-                    # 解析当前节点参数中的变量
-                    input_types=(current_node.input_types or {}).get('e', [])
-                    resolved_params = {}
-                    for param_name, param_value in current_node.params.items():
-                        # 解析节点参数中的变量
-                        if isinstance(param_value, str):
-                            result = param_value
-                            # 使用正则表达式查找所有{{节点id.变量名}}格式的变量
+                        # 解析当前节点参数中的变量
+                        input_types=(current_node.input_types or {}).get('e', [])
+                        resolved_params = {}
+                        node_params_dict_from_jsons: Dict[str, Any] = {} # 保存到json文件中的，当前节点动态参数相关的参数字典信息，key为节点id，value为json文件中的内容
+                        for param_name, param_value in current_node.params.items():
+                            # 解析节点参数中的变量
+                            if isinstance(param_value, str):
+                                result = param_value
+                                # 使用正则表达式查找所有{{节点id.变量名}}格式的变量
+                                import re
+                                matches = re.findall(r'\{\{([^}]*)\}\}', param_value)
+                                
+                                for match in matches:
+                                    if '.' in match:
+                                        node_id_part, var_name = match.split('.', 1)
+                                        # 从json文件中获取参数值
+                                        if node_id_part not in node_params_dict_from_jsons:
+                                            node_params_json=json_helper.read_json_file(os.path.join(flow_directory, f"{node_id_part}.json"))
+                                            node_params_dict_from_jsons[node_id_part] =  {**node_params_json["params_in"],**node_params_json["params_ref"],  **node_params_json["params_out"]}
+                                        placeholder = f"{{{{{match}}}}}"
+                                        ref_v=node_params_dict_from_jsons[node_id_part].get(var_name, None)
+                                        if placeholder==param_value:
+                                            result = ref_v
+                                        else:
+                                            result = result.replace(placeholder, str(ref_v))
+                                resolved_params[param_name] = result
+                            else:
+                                resolved_params[param_name] = param_value
+                            # 如果是表达式类型参数，执行表达式，结果赋值给当前变量
+                            if param_name in input_types:
+                                # 表达式解析
+                                try:
+                                    processed_value = eval(resolved_params[param_name])
+                                    resolved_params[param_name] = processed_value
+                                except Exception as e:
+                                    resolved_params[param_name] = param_value 
+                        # 获取节点对应指令的参数信息（异步执行数据库操作）
+                        input_params = {}
+                        back_param_name = None
+                        output_param_name = None
+                        instruction_parameters = await self.instruction_parameter_repo.find_by_instruction_id(current_node.instructionId)
+                        # 遍历指令参数，将解析后的参数变量转换类型，对未同步更新的参数赋予默认值（指令中的参数为最新，以指令为标准）
+                        for param in instruction_parameters:
+                            if param.direction == 0:  # 输入参数
+                                if param.name in resolved_params:
+                                    value=resolved_params[param.name]
+                                    # 值类型转换
+                                    value=data_helper.convert_value(value, param.value_type)
+                                    # 存在时，重新赋值
+                                    input_params[param.name] = value 
+                                else:
+                                    # 不存在时，使用指令中参数的默认值
+                                    input_params[param.name] = param.default_value                        
+                            elif param.direction ==1:  # 输出参数
+                                output_param_name = param.name                            
+                            elif param.direction ==2:  # 回写参数
+                                back_param_name = param.name 
+                        
+                        # 更新节点输入参数信息
+                        current_run_node_io_info["params_in"]=input_params
+                        # 执行节点指令脚本（异步执行，避免阻塞事件循环）
+                        import asyncio
+                        processed_final_result = await asyncio.to_thread(PythonScriptUtils._execute_python_script, python_script, input_params)                    
+                        
+                        # 回写参数
+                        if back_param_name:  # 回写参数
+                            temp_key=current_node.params.get(back_param_name,'')                            
                             import re
-                            matches = re.findall(r'\{\{([^}]*)\}\}', param_value)
+                            matches = re.findall(r'\{\{([^}]*)\}\}', temp_key)
                             
                             for match in matches:
                                 if '.' in match:
                                     node_id_part, var_name = match.split('.', 1)
-                                    ref_key = f"{node_id_part}.{var_name}"
-                                    
-                                    if ref_key in process_results:
-                                        placeholder = f"{{{{{match}}}}}"
-                                        if placeholder==param_value:
-                                            result = process_results[ref_key]
-                                        else:
-                                            result = result.replace(placeholder, str(process_results[ref_key]))
-                            
-                            resolved_params[param_name] = result
-                        else:
-                            resolved_params[param_name] = param_value
-                        # 如果是表达式类型参数，执行表达式，结果赋值给当前变量
-                        if param_name in input_types:
-                            # 表达式解析
-                            try:
-                                processed_value = eval(resolved_params[param_name])
-                                resolved_params[param_name] = processed_value
-                            except Exception as e:
-                                resolved_params[param_name] = param_value 
-                    # 获取节点对应指令的参数信息（异步执行数据库操作）
-                    input_params = {}
-                    back_param_name = None
-                    output_param_name = None
-                    instruction_parameters = await self.instruction_parameter_repo.find_by_instruction_id(current_node.instructionId)
-                    # 遍历指令参数，将解析后的参数变量转换类型，对未同步更新的参数赋予默认值（指令中的参数为最新，以指令为标准）
-                    for param in instruction_parameters:
-                        if param.direction == 0:  # 输入参数
-                            if param.name in resolved_params:
-                                value=resolved_params[param.name]
-                                # 值类型转换
-                                value=data_helper.convert_value(value, param.value_type)
-                                # 存在时，重新赋值
-                                input_params[param.name] = value 
-                            else:
-                                # 不存在时，使用指令中参数的默认值
-                                input_params[param.name] = param.default_value                        
-                        elif param.direction ==1:  # 输出参数
-                            output_param_name = param.name                            
-                        elif param.direction ==2:  # 回写参数
-                            back_param_name = param.name 
+                                    # 为当前节点的回写参数赋值
+                                    current_run_node_io_info["params_ref"]={var_name:processed_final_result}
+                                    # 为回写参数中的节点参数赋值
+                                    instruction_parameters = await self.instruction_parameter_repo.find_by_instruction_id(node_map[current_node_id].instructionId)                                    
+                                    direction = next((item.direction for item in instruction_parameters if item.name == var_name),None)
+                                    attr_name="params_ref" if direction == 2 else "params_out" if direction == 1 else "params_in"
+                                    node_params_dict_from_jsons[node_id_part][var_name]=processed_final_result
+                                    # 更新json文件中的回写参数值
+                                    if temp_key and node_params_dict_from_jsons[node_id_part].get(var_name,''):                                        
+                                        json_helper.update_json_file(os.path.join(flow_directory, f"{node_id_part}.json"), f"{attr_name}.{var_name}", processed_final_result)
+
+                        # 更新节点输出参数信息
+                        if output_param_name:
+                            current_run_node_io_info["params_out"]={output_param_name:processed_final_result}
+                        current_run_node_io_info["message"]="success"
+                        node_status_info["status"]=1
+                        node_status_info["message"]="success"
+                except Exception as e:
+                    # 记录失败节点信息
+                    current_run_node_io_info["message"]=str(e)  
+                    node_status_info["status"]=2   
+                    node_status_info["message"]=str(e)
+                finally:
+                    execution_time_end=datetime.now()
+                    current_run_node_io_info["execution_time_end"]=execution_time_end.strftime("%Y-%m-%d %H:%M:%S")
+                    # 每个节点id生成一个JSON文件
+                    json_filepath = os.path.join(flow_directory, f"{current_node_id}.json")
                     
-                    # 执行节点指令脚本（异步执行，避免阻塞事件循环）
-                    import asyncio
-                    execution_result = await asyncio.to_thread(PythonScriptUtils._execute_python_script, python_script, input_params)                    
+                    # 写入JSON文件
+                    # serialized_node_io_info = CommonUtils.deep_serialize(current_run_node_io_info)
+                    with open(json_filepath, 'w', encoding='utf-8') as f:
+                        # json.dump(serialized_node_io_info, f, ensure_ascii=False, indent=2)
+                        json.dump(current_run_node_io_info, f, ensure_ascii=False, indent=2)
                     
-                    # 保存输入参数
-                    for param_name, param_value in input_params.items():
-                        temp_key = f"{current_node_id}.{param_name}"
-                        process_results[temp_key] = param_value              
-                    # 回写参数
-                    if back_param_name:  # 回写参数
-                        temp_key=current_node.params.get(back_param_name,'')
-                        if temp_key and process_results.get(temp_key[2:-2],''):
-                            process_results[temp_key[2:-2]] = execution_result  
-                    # 保存输出参数
-                    if output_param_name:
-                        temp_key = f"{current_node_id}.{output_param_name}"
-                        process_results[temp_key] = execution_result
+                    # 更新节点执行状态信息
+                    node_status_info["execution_time_end"]=execution_time_end.strftime("%Y-%m-%d %H:%M:%S")
+                    node_status_info["json_filepath"]=json_filepath
                     
+                    # execution_terminator保存节点状态
+                    execution_terminator.set_node_status(flow.id, current_node_id, node_status_info)
+
+                    if node_status_info["status"]==2:
+                        # 如果当前节点执行失败,设置流程状态为失败
+                        flow_status= execution_terminator.STATUS_FAILED
+                        execution_terminator.set_flow_status(flow.id, flow_status)
+                        raise Exception(f"节点执行失败: {current_node_id}，错误信息: {current_run_node_io_info["message"]}")
                     # 检查当前节点是否有出边
                     if current_node_id not in edges_info:
                         break
                     
                     # 获取下一个节点
-                    next_node_id = self.find_next_node_id(current_node_id,output_param_name, edges_info, process_results)
+                    next_node_id = self.find_next_node_id(current_node_id,output_param_name, edges_info, node_params_dict_from_jsons,flow_directory)
 
                     if current_node_id ==next_node_id:
                         break
                     # 更新下一个节点为当前节点
                     current_node_id = next_node_id
-                
-                except Exception as e:
-                    # 记录失败节点信息
-                    failure_node_info = {
-                        "node_id": current_node_id,
-                        "instruction_id": current_node.instructionId,
-                        "node_params": input_params,
-                        "error_message": str(e),
-                        "error_type": type(e).__name__
-                    }
-                    # 设置流程状态为失败
-                    execution_terminator.set_flow_status(flow.id, execution_terminator.STATUS_FAILED)
-                    break
-            
-            # 执行结束，根据结果设置状态
-            if failure_node_info:
-                # 如果有失败信息且不是被终止的，设置为失败状态
-                if failure_node_info["error_type"] != "UserTerminatedError":
-                    execution_terminator.set_flow_status(flow.id, execution_terminator.STATUS_FAILED)
-            else:
-                # 没有失败信息，说明执行成功
-                execution_terminator.set_flow_status(flow.id, execution_terminator.STATUS_COMPLETED)
-            
-            # 执行结束后清除终止标志
-            execution_terminator.clear_terminate_flag(flow.id)
-            
-            # 3. 处理最终节点的执行结果，特别是文件下载相关
-            processed_final_result = execution_result
-            
+
+            # 3. 处理最终节点的执行结果，特别是文件下载相关            
             # 检查是否是BytesIO类型（可能来自文件下载指令）
-            if isinstance(execution_result, BytesIO):
+            if isinstance(processed_final_result, BytesIO):
                 try:
                     # 重置文件指针
-                    execution_result.seek(0)
+                    processed_final_result.seek(0)
                     # 读取内容并进行base64编码
-                    file_data = execution_result.read()
+                    file_data = processed_final_result.read()
                     base64_encoded = base64.b64encode(file_data).decode('utf-8')
                     
                     # 尝试从文件名参数或默认值获取文件名
@@ -827,64 +877,56 @@ class DataProcessService(BaseService):
                     print(f"处理文件流失败: {str(e)}")
                     processed_final_result = {"error": str(e)}
             # 检查是否已经是标准的文件流响应格式（来自download_file_to_base64_dict函数）
-            elif isinstance(execution_result, dict) and "file_data" in execution_result:
+            elif isinstance(processed_final_result, dict) and "file_data" in processed_final_result:
                 # 已经是正确的格式，直接使用
-                print(f"检测到标准文件流格式: {execution_result.get('file_name', 'unknown')}")
-                processed_final_result = execution_result
+                processed_final_result = processed_final_result
             # 检查是否是错误格式
-            elif isinstance(execution_result, dict) and "error" in execution_result:
-                print(f"文件处理错误: {execution_result.get('error')}")
-                processed_final_result = execution_result
+            elif isinstance(processed_final_result, dict) and "error" in processed_final_result:
+                print(f"文件处理错误: {processed_final_result.get('error')}")
+                processed_final_result = processed_final_result
             
             # 确保返回有效的结果，而不是空数组或None
             if processed_final_result is None or processed_final_result == []:
-                print("警告: 检测到空结果，将替换为有效响应")
                 processed_final_result = {"message": "执行成功，但未返回数据"}
             
             # 确保final_result不是空数组
             if "final_result" in locals() and (final_result is None or final_result == []):
-                print("严重警告: final_result为空，将强制替换")
                 final_result = {"message": "执行成功，但返回数据异常"}
             
             # 使用CommonUtils的深度序列化方法处理结果
-            processed_final_result = CommonUtils.deep_serialize(processed_final_result)            
-            serialized_process_results = CommonUtils.deep_serialize(process_results)
+            # processed_final_result = CommonUtils.deep_serialize(processed_final_result)    
             
             # 构建最终返回结果
             final_result = {
                 "flow_id": flow.id,
                 "flow_name": flow.name,
-                "final_result": processed_final_result,
-                "process_results": serialized_process_results,
+                "final_result": processed_final_result if processed_final_result else current_run_node_io_info,
                 "execution_order": actual_execution_order,
-                "total_nodes_executed": len(actual_execution_order),
-                "failure_node_info": failure_node_info,
-                "reached_end_node": failure_node_info is not None,
+                "total_nodes_executed": len(actual_execution_order)
             }
-            if failure_node_info:
-                return Result.fail(f"执行流程失败: 未到达结束节点", final_result)
-            else:
+            
+            # 执行结束，根据结果设置状态
+            if flow_status != execution_terminator.STATUS_FAILED:
+                flow_status=execution_terminator.STATUS_COMPLETED
+                # 没有失败信息，说明执行成功
+                execution_terminator.set_flow_status(flow.id, execution_terminator.STATUS_COMPLETED)
                 return Result.success(final_result)
             
-        except Exception as e:            
-            # 构建错误结果，确保所有数据都能被序列化
-            error_process_results = CommonUtils.deep_serialize(process_results)
+            # 执行结束后清除终止标志
+            execution_terminator.clear_terminate_flag(flow.id)
+            return Result.fail(f"执行流程失败: 未到达结束节点", final_result)                
             
-            # 构建错误结果，避免包含可能导致循环引用的复杂数据
+        except Exception as e:            
             error_result = {
                 "flow_id": flow.id,
                 "flow_name": flow.name,
-                "final_result": f"执行流程（{failure_node_info.get('node_id','') if failure_node_info else ''}）失败: {str(e)}",
-                # 只保留简单类型的处理结果，避免循环引用
-                "process_results": error_process_results,
+                "final_result": processed_final_result if processed_final_result else str(e),
                 "execution_order": actual_execution_order,
-                "total_nodes_executed": len(actual_execution_order),
-                # 只保留错误信息的关键字段
-                "reached_end_node": failure_node_info
+                "total_nodes_executed": len(actual_execution_order)
             }
             
             return Result.fail(f"执行流程失败: {str(e)}", error_result)
-    def find_next_node_id(self, current_node_id: str,output_param_name: str, edges_info: Dict[str, List[Dict[str, str]]], process_results: Dict[str, Any]) -> Optional[str]:
+    def find_next_node_id(self, current_node_id: str,output_param_name: str, edges_info: Dict[str, List[Dict[str, str]]], node_params_dict_from_jsons: Dict[str, Any], flow_directory: str) -> Optional[str]:
         """
         根据当前节点ID和目标节点ID，返回下一个节点ID
         
@@ -892,7 +934,7 @@ class DataProcessService(BaseService):
             current_node_id: 当前节点ID
             output_param_name: 当前节点输出参数属性名
             edges_info: 边信息字典
-            process_results: 处理结果字典
+            node_params_dict_from_jsons: 处理结果字典
             
         Returns:
             Optional[str]: 下一个节点ID，如果未找到则返回None
@@ -916,17 +958,17 @@ class DataProcessService(BaseService):
                 resolved_logic_express = edge_logic_express
                 if isinstance(edge_logic_express, str):
                     import re
-                    matches = re.findall(r'\{\{([^}]*)\}\}', edge_logic_express)
-                    
+                    matches = re.findall(r'\{\{([^}]*)\}\}', edge_logic_express)                    
                     for match in matches:
                         if '.' in match:
                             node_id_part, var_name = match.split('.', 1)
-                            ref_key = f"{node_id_part}.{var_name}"
-                            
-                            if ref_key in process_results:
-                                placeholder = f"{{{{{match}}}}}"
-                                resolved_logic_express = resolved_logic_express.replace(placeholder, str(process_results[ref_key]))
-                                print(f"解析边标签中的变量: {{node_id.var_name}} -> {ref_key} = {process_results[ref_key]}")
+                            # 从json文件中获取参数值
+                            if node_id_part not in node_params_dict_from_jsons:
+                                node_params_json=json_helper.read_json_file(os.path.join(flow_directory, f"{node_id_part}.json"))
+                                node_params_dict_from_jsons[node_id_part] =  {**node_params_json["params_in"],**node_params_json["params_ref"],  **node_params_json["params_out"]}
+                            placeholder = f"{{{{{match}}}}}"
+                            ref_v=node_params_dict_from_jsons[node_id_part].get(var_name, None)
+                            resolved_logic_express = resolved_logic_express.replace(placeholder, str(ref_v))
                 
                 # 构建条件表达式并评估
                 try:
@@ -936,9 +978,9 @@ class DataProcessService(BaseService):
                     # 添加当前节点的输出值到上下文
                     if output_param_name:
                         source_output_key = f"{current_node_id}.{output_param_name}"
-                        if source_output_key in process_results:
-                            context['output'] = process_results[source_output_key]
-                            context['value'] = process_results[source_output_key]
+                        if source_output_key in node_params_dict_from_jsons[current_node_id]:
+                            context['output'] = node_params_dict_from_jsons[current_node_id][source_output_key]
+                            context['value'] = node_params_dict_from_jsons[current_node_id][source_output_key]
                     
                     # 检查是否是简单的比较表达式
                     if resolved_logic_express.startswith('==') or resolved_logic_express.startswith('!=') or \
@@ -971,6 +1013,7 @@ class DataProcessService(BaseService):
         # 如果没有找到满足条件的下一个节点，结束流程
         if not found_next_node:
             return None
+    
     async def execute_data_process_flow_by_id(self, flow_id: str) -> Result[Dict[str, Any]]:
         """
         根据流程ID执行数据处理流程
@@ -1059,8 +1102,7 @@ class DataProcessService(BaseService):
                     record_dict["result_data"] = {
                         "flow_id": record.result_data.flow_id,
                         "flow_name": record.result_data.flow_name,
-                        "final_result": record.result_data.final_result,
-                        "process_results": record.result_data.process_results
+                        "final_result": record.result_data.final_result
                     }
                 
                 history.append(record_dict)

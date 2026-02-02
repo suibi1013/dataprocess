@@ -1038,7 +1038,6 @@ const updateEdgeLabel = (value: string) => {
   if (!props.paramsPanel.selectedEdge) return;  
   // 更新参数面板的params
   const updatedParams = { ...props.paramsPanel.params, label: value };
-  
   // 获取当前的paramsPanel对象，并更新params属性
   const updatedParamsPanel = {
     ...props.paramsPanel,
@@ -1060,7 +1059,6 @@ const updateEdgeLogicExpress = (value: string) => {
   
   // 更新参数面板的params
   const updatedParams = { ...props.paramsPanel.params, logic_express: value };
-  
   // 获取当前的paramsPanel对象，并更新params属性
   const updatedParamsPanel = {
     ...props.paramsPanel,
@@ -1158,8 +1156,7 @@ const initFormItemOptions = (item: any) => {
             return;
           }
         } catch (secondError) {
-          // 两种解析都失败，说明不是JSON格式的数组数据，继续作为API接口处理
-          // console.log('JSON解析失败，作为API接口处理:', secondError);
+          console.error('处理错误时发生异常:', secondError);
         }
       }      
       // 如果是普通字符串则作为API请求接口

@@ -108,7 +108,7 @@ class InstructionService:
                                 label=param_entity.label,
                                 description=param_entity.description,
                                 display_type=param_entity.display_type,
-                                value_type=param_entity.display_type,
+                                value_type=param_entity.value_type,
                                 required=param_entity.required,
                                 default_value=param_entity.default_value,
                                 direction=param_entity.direction,

@@ -218,7 +218,7 @@ async def execute_data_process_flow(
     instruction_service: InstructionService = Depends(lambda: inject(InstructionService))
 ) -> dict:
     """
-    执行数据处理流程
+    执行数据处理流程（编辑模式：执行流程中指定节点）
     
     Args:
         flow_data: 流程数据，包含节点和边信息
@@ -364,8 +364,7 @@ async def execute_data_process_flow(
             return {
                 "success": True,
                 "data": {
-                    "result": execution_result.data,
-                    "execution_time": execution_time
+                    "execution_time": execution_time,**execution_result.data
                 },
                 "message": execution_result.message or "流程执行成功"
             }
@@ -375,8 +374,7 @@ async def execute_data_process_flow(
             return {
                 "success": False,
                 "data": {
-                    "result": execution_result.data,
-                    "execution_time": execution_time
+                    "execution_time": execution_time,"execution_time": execution_time,**execution_result.data
                 },
                 "message": execution_result.error or "流程执行失败"
             }
@@ -405,7 +403,7 @@ async def execute_data_process_flow_by_id(
     instruction_service: InstructionService = Depends(lambda: inject(InstructionService))
 ) -> dict:
     """
-    根据流程ID执行数据处理流程
+    根据流程ID执行数据处理流程(执行模式：执行所有节点)
     
     Args:
         flow_id: 流程ID
@@ -550,8 +548,7 @@ async def execute_data_process_flow_by_id(
             return {
                 "success": True,
                 "data": {
-                    "result": execution_result.data,
-                    "execution_time": execution_time
+                    "execution_time": execution_time,**execution_result.data
                 },
                 "message": execution_result.message or "流程执行成功"
             }
@@ -560,8 +557,7 @@ async def execute_data_process_flow_by_id(
             return {
                 "success": False,
                 "data": {
-                    "result": execution_result.data,
-                    "execution_time": execution_time
+                    "execution_time": execution_time,**execution_result.data
                 },
                 "message": execution_result.error or "流程执行失败"
             }
@@ -776,3 +772,75 @@ async def get_all_flows_execution_status() -> dict:
     except Exception as e:
         logger.error(f"查询所有流程状态失败: {str(e)}")
         raise HTTPException(status_code=500, detail=f"查询所有流程状态失败: {str(e)}")
+
+
+@router.get("/execute/node-status/{flow_id}")
+async def get_flow_node_statuses(
+    flow_id: str
+) -> dict:
+    """
+    获取流程所有节点的执行状态
+    
+    Args:
+        flow_id: 流程ID
+        
+    Returns:
+        dict: 流程所有节点的执行状态响应
+    """
+    try:
+        # 获取流程所有节点的执行状态
+        node_statuses = execution_terminator.get_all_node_statuses(flow_id)
+        
+        logger.info(f"查询流程 {flow_id} 的所有节点执行状态，共 {len(node_statuses)} 个节点")
+        
+        # 返回成功响应
+        return {
+            "success": True,
+            "message": f"成功查询流程 {flow_id} 的所有节点执行状态",
+            "data": {
+                "flow_id": flow_id,
+                "node_statuses": node_statuses,
+                "total_nodes": len(node_statuses)
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"查询流程节点状态失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"查询流程节点状态失败: {str(e)}")
+
+
+@router.get("/execute/node-status/{flow_id}/{node_id}")
+async def get_flow_node_execution_info(
+    flow_id: str,
+    node_id: str
+) -> dict:
+    """
+    获取节点的详细执行信息，包括输入输出参数
+    
+    Args:
+        flow_id: 流程ID
+        node_id: 节点ID
+        
+    Returns:
+        dict: 节点的详细执行信息响应
+    """
+    try:
+        # 获取节点的详细执行信息
+        node_execution_info = execution_terminator.get_node_execution_info(flow_id, node_id)
+        
+        logger.info(f"查询流程 {flow_id} 节点 {node_id} 的详细执行信息")
+        
+        # 返回成功响应
+        return {
+            "success": True,
+            "message": f"成功查询流程 {flow_id} 节点 {node_id} 的详细执行信息",
+            "data": {
+                "flow_id": flow_id,
+                "node_id": node_id,
+                "node_execution_info": node_execution_info
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"查询节点执行信息失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"查询节点执行信息失败: {str(e)}")

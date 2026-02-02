@@ -9,28 +9,49 @@
     :close-on-click-modal="false"
     :close-on-press-escape="false"
     :center="true"
+    width="50%"
+    height="70%"
     @ok="onHandleResultModalOk"
   >
     <div class="result-modal-container">
       <div v-if="resultModalData" class="result-content">
-        <!-- 状态文本区域 -->
-        <div class="status-section">
-          <div class="status-text">
-            执行状态：{{ resultModalData.success ? '成功' : '失败' }}
+        <!-- 基本信息区域 -->
+        <div class="basic-info-section">
+          <div class="basic-info-row">
+            <div class="basic-info-item">
+              <span class="info-label">流程名称：</span>
+              <span class="info-value">{{ flowData?.flow_name || '-' }}</span>
+            </div>
+            <div class="basic-info-item">
+              <span class="info-label">执行状态：</span>
+              <span :class="['info-value', resultModalData.success ? 'status-success' : 'status-failed']">
+                {{ resultModalData.success ? '成功' : '失败' }}
+              </span>
+            </div>
+          </div>
+          <div class="basic-info-row">
+            <div class="basic-info-item">
+              <span class="info-label">执行耗时：</span>
+              <span class="info-value">{{ flowData?.execution_time || 0 }}秒</span>
+            </div>
+            <div class="basic-info-item">
+              <span class="info-label">执行节点数量：</span>
+              <span class="info-value">{{ flowData?.total_nodes_executed || 0 }}个</span>
+            </div>
           </div>
         </div>
         
         <!-- 结果标签页 -->
-        <div v-if="resultModalData">
+        <div class="result-tabs">
           <el-tabs :model-value="activeTab" type="border-card" @update:model-value="onUpdateActiveTab">
-            <!-- 最终结果标签页 -->
+            <!-- 执行结果标签页 -->
             <el-tab-pane 
-              label="最终结果"
+              label="执行结果"
               name="finalResult"
               :closable="false"
             >
               <div class="tab-content">
-                <div v-if="isJsonString(resultModalData.finalResult)" class="json-container">
+                <div v-if="isJsonString(flowData?.final_result) && (typeof flowData?.final_result === 'object' || (typeof flowData?.final_result === 'string' && isJsonObjectString(flowData.final_result)))" class="json-container">
                   <el-tree
                     v-if="finalResultTreeData.length > 0"
                     :data="finalResultTreeData"
@@ -59,52 +80,28 @@
                       </div>
                     </template>
                   </el-tree>
+                  <div v-else class="text-container">
+                    <div class="url-content">{{ flowData?.final_result || '-' }}</div>
+                  </div>
                 </div>
                 <div v-else class="text-container">
-                  <div class="url-content" v-html="formatTextWithUrls(resultModalData.finalResult || '')"></div>
+                  <div class="url-content">{{ flowData?.final_result || '-' }}</div>
                 </div>
               </div>
             </el-tab-pane>
             
-            <!-- 执行详情标签页 -->
+            <!-- 执行顺序标签页 -->
             <el-tab-pane 
-              label="执行详情"
-              name="details"
+              label="执行顺序"
+              name="executionOrder"
               :closable="false"
             >
               <div class="tab-content">
-                <div v-if="isJsonString(resultModalData.details)" class="json-container">
-                  <el-tree
-                    v-if="detailsTreeData"
-                    :data="detailsTreeData"
-                    :load="loadTreeNode"
-                    lazy
-                    node-key="key"
-                    :expand-on-click-node="false"
-                    :default-expand-all="false"
-                  >
-                    <template #default="{ data }">
-                      <div class="tree-node-content">
-                        <!-- 键名 -->
-                        <span class="tree-node-key">{{ data.label }}: </span>
-                        <!-- 值 -->
-                        <span :class="['tree-node-value', `tree-node-value-${getValueType(data.value)}`]">
-                          {{ formatValue(data.value) }}
-                        </span>
-                        <!-- 复制按钮 -->
-                        <el-button
-                          size="small"
-                          type="text"
-                          :icon="DocumentCopy"
-                          @click="onCopyNodeValue(data.value)"
-                          class="copy-button"
-                        />
-                      </div>
-                    </template>
-                  </el-tree>
-                </div>
-                <div v-else class="text-container">
-                  <div class="url-content" v-html="formatTextWithUrls(resultModalData.details || '')"></div>
+                <div class="execution-order-container">
+                  <div v-for="(nodeId, index) in flowData?.execution_order" :key="index" class="execution-order-item">
+                    <span class="order-index">{{ index + 1 }}.</span>
+                    <span class="order-node">{{ nodeId }}</span>
+                  </div>
                 </div>
               </div>
             </el-tab-pane>
@@ -148,7 +145,9 @@ const emit = defineEmits<Emits>();
 
 // 树数据状态
 const finalResultTreeData = ref<any[]>([]);
-const detailsTreeData = ref<any>({});
+
+// 流程数据
+const flowData = ref<any>(null);
 
 // 更新可见性
 const onUpdateVisible = (visible: boolean) => {
@@ -166,11 +165,22 @@ const onHandleResultModalOk = () => {
 };
 
 // 判断是否为JSON字符串
-const isJsonString = (str: string | undefined): boolean => {
+const isJsonString = (str: any): boolean => {
   if (!str) return false;
   try {
-    JSON.parse(str);
+    JSON.parse(typeof str === 'string' ? str : JSON.stringify(str));
     return true;
+  } catch (e) {
+    return false;
+  }
+};
+
+// 判断是否为JSON对象字符串
+const isJsonObjectString = (str: string): boolean => {
+  if (!str) return false;
+  try {
+    const parsed = JSON.parse(str);
+    return typeof parsed === 'object' && parsed !== null;
   } catch (e) {
     return false;
   }
@@ -186,20 +196,7 @@ const parseJson = (str: string | undefined): any => {
   }
 };
 
-// 将文本中的URL转换为可点击链接
-const formatTextWithUrls = (text: string): string => {
-  if (!text) return '';
-  // URL匹配正则表达式
-  const urlPattern = /(https?:\/\/[\w\-_~:?#[\]@!$&'()*+,;=]+)|(ftp:\/\/[\w\-_~:?#[\]@!$&'()*+,;=]+)|(mailto:[\w\-_~:?#[\]@!$&'()*+,;=]+)/g;
-  
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;')
-    .replace(urlPattern, '<a href="$&" target="_blank" class="url-link">$&</a>');
-};
+
 
 // 将JSON数据转换为树节点数据
 const convertJsonToTreeNode = (data: any, parentKey: string = ''): any[] => {
@@ -315,33 +312,25 @@ const onCopyNodeValue = (value: any) => {
 // 监听结果数据变化，更新树数据
 watch(() => props.resultModalData, (newData) => {
   if (newData) {
-    // 更新最终结果树数据
-    if (newData.finalResult && isJsonString(newData.finalResult)) {
-      const parsedData = parseJson(newData.finalResult);
+    // 解析流程数据
+    if (newData.details && isJsonString(newData.details)) {
+      const parsedData = parseJson(newData.details);
       if (parsedData) {
         // 检查parsedData是否包含data属性，如果有则使用data属性的内容，否则直接使用parsedData
-        const dataToDisplay = parsedData.data || parsedData;
-        finalResultTreeData.value = convertJsonToTreeNode(dataToDisplay);
-      } else {
+        flowData.value = parsedData.data || parsedData;
+      }
+    }
+    
+    // 更新最终结果树数据
+    if (flowData.value?.final_result && isJsonString(flowData.value.final_result)) {
+      try {
+        const finalResult = typeof flowData.value.final_result === 'string' ? JSON.parse(flowData.value.final_result) : flowData.value.final_result;
+        finalResultTreeData.value = convertJsonToTreeNode(finalResult);
+      } catch (e) {
         finalResultTreeData.value = [];
       }
     } else {
       finalResultTreeData.value = [];
-    }
-    
-    // 更新执行详情树数据
-    detailsTreeData.value = {};
-    if (newData.details && isJsonString(newData.details)) {
-      const parsedData = parseJson(newData.details);
-      if (parsedData) {
-        // 总是优先使用data属性内部的内容，无论其他属性是什么
-        // 确保只显示接口返回结果中的data属性对象内容
-        const dataToDisplay = parsedData.data || parsedData;
-        const arr=convertJsonToTreeNode(dataToDisplay)        
-        for (const item of arr) {
-          detailsTreeData.value[item.key] = item.value;
-        }
-      } 
     }
   }
 }, { immediate: true, deep: true });
@@ -350,25 +339,107 @@ watch(() => props.resultModalData, (newData) => {
 <style scoped>
 /* 结果模态框样式 */
 .result-modal-container {
-  padding: 20px;
-  min-height: 200px;
+  padding: 10px;
+  min-height: 180px;
 }
 
 .result-content {
   width: 100%;
 }
 
-.status-section {
+/* 基本信息区域样式 */
+.basic-info-section {
+  background-color: #f5f7fa;
+  border-radius: 8px;
+  padding: 14px;
   margin-bottom: 16px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
-.status-text {
-  font-size: 16px;
+.basic-info-row {
+  display: flex;
+  margin-bottom: 10px;
+}
+
+.basic-info-row:last-child {
+  margin-bottom: 0;
+}
+
+.basic-info-item {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  margin-right: 10px;
+}
+
+.basic-info-item:last-child {
+  margin-right: 0;
+}
+
+.info-label {
   font-weight: 500;
-  color: #303133;
-  line-height: 1.5;
+  color: #606266;
+  width: 120px;
+  font-size: 14px;
 }
 
+.info-value {
+  font-size: 14px;
+  color: #303133;
+  flex: 1;
+}
+
+.status-success {
+  color: #67c23a !important;
+}
+
+.status-failed {
+  color: #f56c6c !important;
+}
+
+/* 结果标签页样式 */
+.result-tabs {
+  margin-top: 16px;
+}
+
+.tab-content {
+  padding: 16px;
+  background-color: #ffffff;
+  min-height: 250px;
+}
+
+/* 执行顺序容器样式 */
+.execution-order-container {
+  background-color: #fafafa;
+  border-radius: 4px;
+  padding: 16px;
+}
+
+.execution-order-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.execution-order-item:last-child {
+  border-bottom: none;
+}
+
+.order-index {
+  font-weight: 500;
+  color: #1890ff;
+  margin-right: 12px;
+  width: 30px;
+}
+
+.order-node {
+  font-size: 14px;
+  color: #303133;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+/* JSON容器样式 */
 .json-container {
   background-color: #fafafa;
   border-radius: 4px;
@@ -378,6 +449,7 @@ watch(() => props.resultModalData, (newData) => {
   overflow-y: auto;
 }
 
+/* 文本容器样式 */
 .text-container {
   background-color: #fafafa;
   border-radius: 4px;
@@ -395,65 +467,31 @@ watch(() => props.resultModalData, (newData) => {
   word-wrap: break-word;
 }
 
-.url-link {
-  color: #1890ff;
-  text-decoration: underline;
-  cursor: pointer;
-  transition: color 0.3s ease;
-}
-
-.url-link:hover {
-  color: #40a9ff;
-}
-
-/* 标签页内容样式 */
-.el-tabs {
-  margin-top: 20px;
-}
-
-.tab-content {
-  padding: 20px;
-  background-color: #ffffff;
-  min-height: 300px;
-}
-
 /* 当只有一个标签页时，隐藏关闭按钮 */
 .el-tabs--border-card > .el-tabs__header .el-tabs__nav-wrap::after {
   height: 1px;
 }
 
-/* 动画效果 */
-@keyframes successPulse {
-  0% {
-    transform: scale(0.8);
-    opacity: 0.5;
-  }
-  50% {
-    transform: scale(1.1);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
 /* 滚动条美化 */
-.json-container::-webkit-scrollbar {
+.json-container::-webkit-scrollbar,
+.text-container::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
-.json-container::-webkit-scrollbar-track {
+.json-container::-webkit-scrollbar-track,
+.text-container::-webkit-scrollbar-track {
   background: #f1f1f1;
 }
 
-.json-container::-webkit-scrollbar-thumb {
+.json-container::-webkit-scrollbar-thumb,
+.text-container::-webkit-scrollbar-thumb {
   background: #c0c4cc;
   border-radius: 3px;
 }
 
-.json-container::-webkit-scrollbar-thumb:hover {
+.json-container::-webkit-scrollbar-thumb:hover,
+.text-container::-webkit-scrollbar-thumb:hover {
   background: #909399;
 }
 

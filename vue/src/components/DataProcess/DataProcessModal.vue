@@ -41,6 +41,23 @@
         @handle-result-modal-ok="handleResultModalOk"
       />
       
+      <!-- 节点执行信息模态框 -->
+      <NodeExecutionModal
+        :visible="nodeExecutionModalState.visible"
+        :node-name="nodeExecutionModalState.nodeName"
+        :execution-status="nodeExecutionModalState.executionStatus"
+        :message="nodeExecutionModalState.message"
+        :params-in="nodeExecutionModalState.paramsIn"
+        :params-out="nodeExecutionModalState.paramsOut"
+        :active-tab="nodeExecutionModalState.activeTab"
+        :instruction-id="nodeExecutionModalState.instructionId"
+        :params-panel="paramsPanelState"
+        :instruction-categories="displayInstructionCategories"
+        @update:visible="(visible) => { nodeExecutionModalState.visible = visible }"
+        @update:active-tab="(tab) => { nodeExecutionModalState.activeTab = tab }"
+        @handle-ok="() => { nodeExecutionModalState.visible = false }"
+      />
+      
       <div class="modal-body">
         <!-- 数据处理工作区 -->
         <div class="data-process-workspace">
@@ -118,7 +135,7 @@
           :disabled="isExecuting || !hasSelectedNodes"
         >
           <el-icon><HelpFilled /></el-icon>
-          调试节点
+          节点调试
         </button>
         <button 
           type="button" 
@@ -146,10 +163,11 @@ import { httpClient } from '@/services/httpClient';
 // import { downloadFile } from '@/utils/fileUtils'; // 移除未使用的导入
 
 import DataPreviewModal from '@/components/Common/DataPreviewModal.vue';
-  import ExecutionResultModal from '@/components/DataProcess/ExecutionResultModal.vue';
-  import InstructionPanel from '@/components/DataProcess/InstructionPanel.vue';
-  import ProcessCanvas from '@/components/DataProcess/ProcessCanvas.vue';
-  import ParameterPanel from '@/components/DataProcess/ParameterPanel.vue';
+import ExecutionResultModal from '@/components/DataProcess/ExecutionResultModal.vue';
+import NodeExecutionModal from '@/components/DataProcess/NodeExecutionModal.vue';
+import InstructionPanel from '@/components/DataProcess/InstructionPanel.vue';
+import ProcessCanvas from '@/components/DataProcess/ProcessCanvas.vue';
+import ParameterPanel from '@/components/DataProcess/ParameterPanel.vue';
   import type { SheetData, DataSelection } from '@/types/dataExtraction';
   import { downloadFile } from '@/utils/fileUtils';
 
@@ -187,7 +205,8 @@ const {
   resetExecutionState,
   modalState,
   canvasGraph,
-  resizeCanvas
+  resizeCanvas,
+  nodeExecutionModalState
 } = useDataProcess();
 
 // 导入数据处理服务
@@ -949,7 +968,6 @@ const executeProcess = async () => {
 
 // 调试选中节点
 const debugSelectedNode = async () => {
-  console.log('debugSelectedNode')
   // 检查是否有选中的节点
   const selectedCells = canvasGraph.value.getPlugin('selection')?.getSelectedCells() || [];
   const selectedNodes = selectedCells.filter(cell => cell.isNode());
@@ -1022,7 +1040,6 @@ const debugSelectedNode = async () => {
         };
       }) // 包含选中节点之间的边
     };
-    console.log("flow:",flow)
     // 执行调试 - 调用与executeProcess相同的API，但只传递选中的节点
     const response = await dataProcessService.executeDataProcessFlow(flow);
     
