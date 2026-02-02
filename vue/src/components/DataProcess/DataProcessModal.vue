@@ -875,7 +875,7 @@ const executeProcess = async () => {
       // 处理结果数据
       if (result.data) {
         // 判断是否为文件流结果
-        const resultData = result.data.result?.final_result || result.data;
+        const resultData = result.data.final_result || result.data;
         
         // 判断是否为文件流：检查是否包含特定的文件流标识字段
         if (resultData && typeof resultData === 'object' && 
