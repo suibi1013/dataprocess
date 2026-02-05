@@ -115,6 +115,29 @@
         </div>
       </div>
       
+      <div class="version-history-section">
+        <h2>系统版本更新记录</h2>
+        <div class="version-list">
+          <div 
+            v-for="version in versionHistory" 
+            :key="version.version"
+            class="version-item"
+          >
+            <div class="version-header">
+              <h3 class="version-number">{{ version.version }}</h3>
+              <span class="version-date">{{ version.date }}</span>
+            </div>
+            <div class="version-changes">
+              <ul>
+                <li v-for="(change, index) in version.changes" :key="index">
+                  {{ change }}
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+      
       <div class="contact-section">
         <h2>联系信息</h2>
         <div class="contact-grid">
@@ -148,6 +171,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { systemService, type BackupFile } from '../services/systemService';
+import { versionHistory } from '../data/versionHistory';
 
 // 状态变量
 const isLoading = ref(false);
@@ -307,7 +331,8 @@ onMounted(() => {
 .tech-section,
 .contact-section,
 .system-info,
-.backup-section {
+.backup-section,
+.version-history-section {
   background: white;
   padding: 30px;
   border-radius: 12px;
@@ -319,7 +344,8 @@ onMounted(() => {
 .tech-section h2,
 .contact-section h2,
 .system-info h2,
-.backup-section h2 {
+.backup-section h2,
+.version-history-section h2 {
   color: #2c3e50;
   margin-bottom: 20px;
   font-size: 1.5rem;
@@ -631,6 +657,62 @@ onMounted(() => {
   font-style: italic;
 }
 
+/* 版本更新记录样式 */
+.version-list {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+}
+
+.version-item {
+  border: 1px solid #ecf0f1;
+  border-radius: 8px;
+  padding: 20px;
+  transition: all 0.2s ease;
+}
+
+.version-item:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  transform: translateY(-2px);
+}
+
+.version-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #ecf0f1;
+}
+
+.version-number {
+  color: #3498db;
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.version-date {
+  color: #7f8c8d;
+  font-size: 0.9rem;
+  font-family: 'Courier New', monospace;
+}
+
+.version-changes ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.version-changes li {
+  color: #2c3e50;
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+.version-changes li:last-child {
+  margin-bottom: 0;
+}
+
 @media (max-width: 768px) {
   .SystemInfo-page {
     padding: 20px;
@@ -652,7 +734,8 @@ onMounted(() => {
   .tech-section,
   .contact-section,
   .system-info,
-  .backup-section {
+  .backup-section,
+  .version-history-section {
     padding: 20px;
   }
   
@@ -668,6 +751,12 @@ onMounted(() => {
   
   .backup-actions {
     align-self: flex-end;
+  }
+  
+  .version-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
   }
 }
 </style>
