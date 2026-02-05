@@ -1049,7 +1049,7 @@ const debugSelectedNode = async () => {
       // 处理结果数据
       if (response.data) {
         // 判断是否为文件流结果
-        const resultData = response.data.result?.final_result || response.data;
+        const resultData = response.data.final_result || response.data;
         
         // 判断是否为文件流：检查是否包含特定的文件流标识字段
         if (resultData && typeof resultData === 'object' && 
