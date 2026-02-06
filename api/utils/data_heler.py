@@ -43,8 +43,8 @@ class data_helper:
                     if not value:
                         value=dict()
                     else:
-                        if not isinstance(value, list):
-                            value=list(loads(value))
+                        if not isinstance(value, dict):
+                            value=dict(loads(value))
                 case "any":
                     pass
                 case _:

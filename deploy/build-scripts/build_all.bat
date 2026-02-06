@@ -37,23 +37,23 @@ echo [1/6] Environment Check Passed!>>"%LOG_FILE%"
 call :timer_stop
 echo.>>"%LOG_FILE%"
 
-rem 2. Version Bump
-echo [2/6] Running Version Bump...
-echo [2/6] Running Version Bump...>>"%LOG_FILE%"
-call :timer_start
-rem 进入 sourcefiles 目录执行版本号更新脚本
-pushd "%PROJECT_ROOT%\deploy\sourcefiles"
-node bump-version.js >>"%LOG_FILE%" 2>&1
-if %errorlevel% neq 0 (
-    echo [ERROR] Version Bump Failed! Check build_all.log for details.
-    echo [ERROR] Version Bump Failed!>>"%LOG_FILE%"
-    popd
-    goto BUILD_FAILED
-)
-popd
-echo [2/6] Version Bump Completed!>>"%LOG_FILE%"
-call :timer_stop
-echo.>>"%LOG_FILE%"
+@REM rem 2. Version Bump
+@REM echo [2/6] Running Version Bump...
+@REM echo [2/6] Running Version Bump...>>"%LOG_FILE%"
+@REM call :timer_start
+@REM rem 进入 sourcefiles 目录执行版本号更新脚本
+@REM pushd "%PROJECT_ROOT%\deploy\sourcefiles"
+@REM node bump-version.js >>"%LOG_FILE%" 2>&1
+@REM if %errorlevel% neq 0 (
+@REM     echo [ERROR] Version Bump Failed! Check build_all.log for details.
+@REM     echo [ERROR] Version Bump Failed!>>"%LOG_FILE%"
+@REM     popd
+@REM     goto BUILD_FAILED
+@REM )
+@REM popd
+@REM echo [2/6] Version Bump Completed!>>"%LOG_FILE%"
+@REM call :timer_stop
+@REM echo.>>"%LOG_FILE%"
 
 rem 3. Build Preparation
 echo [3/6] Running Build Preparation...

@@ -46,12 +46,13 @@ export class InstructionService implements InstructionApiService {
           }));
           
           return {
-            id: apiCategory.id,
-            name: apiCategory.name,
-            description: apiCategory.description,
-            expanded: true,
-            instructions: instructions
-          };
+          id: apiCategory.id,
+          name: apiCategory.name,
+          description: apiCategory.description,
+          expanded: true,
+          sort_order: apiCategory.sort_order || 1,
+          instructions: instructions
+        };
         });
         
         return {
@@ -99,6 +100,7 @@ export class InstructionService implements InstructionApiService {
             name: apiCategory.name,
             description: apiCategory.description,
             expanded: true,
+            sort_order: apiCategory.sort_order || 1,
             instructions: instructions
           };
         });
@@ -131,6 +133,7 @@ export class InstructionService implements InstructionApiService {
           name: apiCategory.name,
           description: apiCategory.description,
           expanded: true,
+          sort_order: apiCategory.sort_order || 1,
           instructions: [] // 稍后填充
         }));
         

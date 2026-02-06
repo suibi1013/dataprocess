@@ -219,6 +219,10 @@ class ExecutionTerminator:
                     try:
                         with open(json_filepath, 'r', encoding='utf-8') as f:
                             node_info = json.load(f)
+                            # 为了避免前端无法渲染过多数据，限制列表长度为100个元素
+                            for key in node_info:
+                                if isinstance(node_info[key], list):
+                                    node_info[key] = node_info[key][:100]
                         # 合并状态信息和详细信息
                         return {
                             **node_status,

@@ -49,6 +49,8 @@
         :message="nodeExecutionModalState.message"
         :params-in="nodeExecutionModalState.paramsIn"
         :params-out="nodeExecutionModalState.paramsOut"
+        :execution-time-begin="nodeExecutionModalState.executionTimeBegin"
+        :execution-time-end="nodeExecutionModalState.executionTimeEnd"
         :active-tab="nodeExecutionModalState.activeTab"
         :instruction-id="nodeExecutionModalState.instructionId"
         :params-panel="paramsPanelState"

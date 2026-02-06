@@ -1,4 +1,5 @@
 import json
+# import orjson
 import os
 
 class json_helper:
@@ -19,6 +20,8 @@ class json_helper:
         try:
             with open(filepath, 'r', encoding='utf-8') as f:
                 return json.load(f)
+            # with open(filepath, 'rb') as f:
+            #     return orjson.loads(f.read())
         except json.JSONDecodeError as e:
             raise ValueError(f"JSON 格式无效 ({filepath}): {e}")
 

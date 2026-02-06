@@ -23,6 +23,12 @@
               {{ executionStatus || '-' }}--{{ message || '-' }}
             </span>
           </div>
+          <div class="basic-info-item">
+            <span class="info-label">执行时间：</span>
+            <span class="info-value">
+              {{ executionTimeBegin || '-' }}--{{ executionTimeEnd || '-' }}
+            </span>
+          </div>
         </div>
       </div>
       
@@ -121,6 +127,8 @@ interface Props {
   visible: boolean;
   nodeName?: string;
   executionStatus?: string;
+  executionTimeBegin?: string;
+  executionTimeEnd?: string;
   message?: string;
   paramsIn?: any;
   paramsOut?: any;

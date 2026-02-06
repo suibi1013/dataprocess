@@ -237,15 +237,8 @@ export default defineComponent({
         );
       }
       
-      // 提取所有指令
-      return instructions.sort((a, b) => {
-        // 先按分类ID排序
-        if (a.category !== b.category) {
-          return a.category.localeCompare(b.category);
-        }
-        // 再按排序号排序
-        return (a.sort_order || 1) - (b.sort_order || 1);
-      });
+      // 保持后端返回的原始顺序，不进行额外排序
+      return instructions;
     });
     
     // 从store获取分类数据

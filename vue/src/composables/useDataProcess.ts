@@ -55,6 +55,8 @@ const nodeExecutionModalState = reactive({
   visible: false,
   nodeName: '',
   executionStatus: '',
+  executionTimeBegin: '',
+  executionTimeEnd: '',
   message: '',
   paramsIn: null,
   paramsOut: null,
@@ -747,8 +749,8 @@ function createDataProcessInstance() {
         });
         // 移除编辑描述按钮
         const tools = node.getTools();
-        const editDescToolIndex = tools?.items.findIndex((t: any) => t.args.toolName === 'editDesc');        
-        if (editDescToolIndex != null && editDescToolIndex !== -1) {
+        const editDescToolIndex = tools?.items ? tools.items.findIndex((t: any) => t.args.toolName === 'editDesc') : -1;        
+        if (editDescToolIndex !== -1) {
           node.removeTool(editDescToolIndex);
         }
       }
@@ -1977,6 +1979,8 @@ function createDataProcessInstance() {
                     // 优先使用节点对象的label属性作为节点名称，然后是API返回的node_name，最后是nodeId
                     nodeExecutionModalState.nodeName = nodeLabel || nodeInfo.node_name || nodeId;
                     nodeExecutionModalState.executionStatus = nodeInfo.status === 1 ? '成功' : '失败';
+                    nodeExecutionModalState.executionTimeBegin = nodeInfo.execution_time_begin;
+                    nodeExecutionModalState.executionTimeEnd = nodeInfo.execution_time_end;
                     nodeExecutionModalState.message = nodeInfo.message;
                     nodeExecutionModalState.paramsIn = nodeInfo.params_in || {};
                     nodeExecutionModalState.paramsOut = nodeInfo.params_out || {};

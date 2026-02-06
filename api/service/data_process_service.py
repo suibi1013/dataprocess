@@ -705,7 +705,6 @@ class DataProcessService(BaseService):
                     "flow_mode": flow_mode,
                     "message":""
                 }
-                
                 try:    
                     # 检查是否需要终止执行
                     if execution_terminator.should_terminate(flow.id):
@@ -715,7 +714,9 @@ class DataProcessService(BaseService):
                         # 设置流程状态为终止 
                         flow_status= execution_terminator.STATUS_TERMINATED
                         execution_terminator.set_flow_status(flow.id, flow_status)
-                    else:                      
+                    else:
+                        # 设置节点初始状态为运行中
+                        execution_terminator.set_node_status(flow.id, current_node_id, node_status_info)                      
                         # 异步获取指令信息（避免阻塞事件循环）
                         instruction_info = await self.instruction_item_repo.find_by_id(current_node.instructionId)                
                         if not instruction_info:
