@@ -8,6 +8,13 @@ export interface VersionInfo {
 
 export const versionHistory: VersionInfo[] = [
   {
+    version: '1.1.1',
+    date: '2026-02-09',
+    changes: [
+      '优化指令-pv数据结构化指令：增加分区逻辑，以两个以上连续空行为分区标识'
+    ]
+  },
+  {
     version: '1.1.0',
     date: '2026-02-05',
     changes: [

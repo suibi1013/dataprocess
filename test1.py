@@ -895,28 +895,30 @@ def structure_custom_table_with_style_dynamic(
 
 
 # 读取测试数据
-file_path=r"E:\temp\source.xlsx"
+file_path=r"E:\temp\aaa.xlsx"
 sheet_name="Sheet1"
 start_row="1"
 end_row=""
 start_col="A"
 end_col=""
-include_styles=True
+include_styles=False
 import time
 time_begin=time.time()
 print(f"开始读取数据")
 data=read_excel_range_data(file_path,sheet_name,start_row,end_row,start_col,end_col,include_styles)
-time_end=time.time()
-print(f"读取数据耗时: {time_end-time_begin} 秒")
-print(f"数据规模: {len(data['data'])} 行, {len(data['data'][0])} 列")
 import json
-print(json.dumps(data['style_map'], ensure_ascii=False))
-print(json.dumps(data['data'][:10], ensure_ascii=False))
-print(f"数据规模: {len(data['data'])} 行, {len(data['data'][0])} 列")
-print(f"数据规模:size: {len(data['style_map'])}")
-print(f"数据规模:data: {len(json.dumps(data['data'][:10], ensure_ascii=False))}")
+print(json.dumps(data, ensure_ascii=False))
+# time_end=time.time()
+# print(f"读取数据耗时: {time_end-time_begin} 秒")
+# print(f"数据规模: {len(data['data'])} 行, {len(data['data'][0])} 列")
+# import json
+# print(json.dumps(data['style_map'], ensure_ascii=False))
+# print(json.dumps(data['data'][:10], ensure_ascii=False))
+# print(f"数据规模: {len(data['data'])} 行, {len(data['data'][0])} 列")
+# print(f"数据规模:size: {len(data['style_map'])}")
+# print(f"数据规模:data: {len(json.dumps(data['data'][:10], ensure_ascii=False))}")
 
-ptint(structure_custom_table_with_style_dynamic(data))
+# ptint(structure_custom_table_with_style_dynamic(data))
 
 # import time
 # import json
