@@ -71,7 +71,7 @@
 import { ref, onMounted } from 'vue';
 
 // 写死的授权码
-const LICENSE_KEY = '1MjAyNy0w-Mi0xMToz-ZDIzODc5-YzMwNDAy-Yjg0OTc2-OWNkODlm-NDE2ZjZh-MGMzODZh-NWE4YjI1-YjZmZDM1-OGFmYTgw-OTFkZWFl-ZjEy'; // 生成的有效授权码
+const LICENSE_KEY = 'MjAyNy0w-Mi0xMToz-ZDIzODc5-YzMwNDAy-Yjg0OTc2-OWNkODlm-NDE2ZjZh-MGMzODZh-NWE4YjI1-YjZmZDM1-OGFmYTgw-OTFkZWFl-ZjEy'; // 生成的有效授权码
 
 // 授权码验证状态
 const isLicenseValid = ref(false);
