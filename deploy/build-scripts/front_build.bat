@@ -23,7 +23,10 @@ if %errorlevel% neq 0 (
     echo [Frontend Build] Error: Frontend build failed
     exit /b 1
 )
-
+rem first delete front directory
+if exist "%BUILD_FRONT_DIR%" (
+    rd /s /q "%BUILD_FRONT_DIR%"
+)
 rem Create deploy directory if it doesn't exist
 mkdir "%BUILD_FRONT_DIR%" 2>nul
 

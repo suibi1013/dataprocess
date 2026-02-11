@@ -24,10 +24,15 @@ if not exist "%BUILD_READY_DIR%" (
     rem Create build-ready directory if it doesn't exist
     mkdir %BUILD_READY_DIR%
 )
+if not exist "%BUILD_READY_DIR%\build" (
+    rem Create build-ready/build directory if it doesn't exist
+    mkdir %BUILD_READY_DIR%\build
+)
 
 rem Copy Python
 echo Copying Python...
 robocopy %SOURCEFILES_DIR%\python-3.13.0-embed-amd64 %BUILD_READY_DIR%\python-embed /E
+robocopy %SOURCEFILES_DIR%\build %BUILD_READY_DIR%\build /E
 
 rem Copy get-pip.py
 copy %SOURCEFILES_DIR%\get-pip.py %BUILD_READY_DIR%\python-embed

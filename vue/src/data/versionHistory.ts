@@ -6,11 +6,18 @@ export interface VersionInfo {
   changes: string[];
 }
 
-export const versionHistory: VersionInfo[] = [
+export const versionHistory: VersionInfo[] = [{
+    version: '1.1.2',
+    date: '2026-02-11',
+    changes: [
+      '取消业务数据备份和还原功能，改为自动更新'
+    ]
+  },
   {
     version: '1.1.1',
     date: '2026-02-09',
     changes: [
+      '优化指令-excel数据提取：调整读取结构结构，包含data（二维列表，每个元素为 {"value":"xx","abs_pos":[],"style_id":0}）和 style_map（样式ID到样式字典的映射）',
       '优化指令-pv数据结构化指令：增加分区逻辑，以两个以上连续空行为分区标识'
     ]
   },

@@ -7,7 +7,7 @@
       </div>
       
       <!-- 导航菜单 -->
-      <ul class="nav-menu">
+      <ul v-if="isLicenseValid" class="nav-menu">
         <li class="nav-item">
           <router-link 
             to="/" 
@@ -68,7 +68,51 @@
 </template>
 
 <script setup lang="ts">
-// Vue 3 组合式 API
+import { ref, onMounted } from 'vue';
+
+// 写死的授权码
+const LICENSE_KEY = '1MjAyNy0w-Mi0xMToz-ZDIzODc5-YzMwNDAy-Yjg0OTc2-OWNkODlm-NDE2ZjZh-MGMzODZh-NWE4YjI1-YjZmZDM1-OGFmYTgw-OTFkZWFl-ZjEy'; // 生成的有效授权码
+
+// 授权码验证状态
+const isLicenseValid = ref(false);
+const isLoading = ref(true);
+
+// 调用后端接口验证授权码
+const validateLicenseFromBackend = async (licenseKey: string): Promise<boolean> => {
+  try {
+    const response = await fetch('/api/system/license/validate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ license_key: licenseKey })
+    });
+    console.log('授权码验证接口响应:', response);
+    if (!response.ok) {
+      console.error('授权码验证接口请求失败:', response.status);
+      return false;
+    }
+    
+    const result = await response.json();
+    console.log('后端授权码验证结果:', result);
+    
+    return result.success === true;
+  } catch (error) {
+    console.error('授权码验证失败:', error);
+    return false;
+  }
+};
+
+// 页面挂载时验证授权码
+onMounted(async () => {
+  isLoading.value = true;
+  try {
+    isLicenseValid.value = await validateLicenseFromBackend(LICENSE_KEY);
+    console.log('授权码验证结果:', isLicenseValid.value);
+  } finally {
+    isLoading.value = false;
+  }
+});
 </script>
 
 <style scoped>

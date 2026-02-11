@@ -894,20 +894,250 @@ def structure_custom_table_with_style_dynamic(
 
 
 
-# 读取测试数据
-file_path=r"E:\temp\aaa.xlsx"
-sheet_name="Sheet1"
-start_row="1"
-end_row=""
-start_col="A"
-end_col=""
-include_styles=False
-import time
-time_begin=time.time()
-print(f"开始读取数据")
-data=read_excel_range_data(file_path,sheet_name,start_row,end_row,start_col,end_col,include_styles)
+import pandas as pd
+import re
+from typing import List, Tuple, Dict, Any, Union
 import json
-print(json.dumps(data, ensure_ascii=False))
+
+def _col_to_index_0based(col: Union[str, int],max_col: int) -> int:
+    """将列索引转换为 0-based 的列索引
+    :param col: 列索引（1-based 或字母表示）
+    :param max_col: 最大列索引（用于验证,1-based）
+    :return: 0-based 的列索引
+    """
+    if isinstance(col, str):
+        if col.strip()=="": col=max_col
+        else:
+            # 先尝试将字符串转换为整数
+            if not col.isalpha(): 
+                col = int(col)
+    if isinstance(col, int):
+        # 验证列索引是否在有效范围内,写入时，允许超出最大索引
+        # if col > max_col: raise ValueError(f"Column index must be <= {max_col}")
+        if col==0: raise ValueError(f"Column index can't be 0")
+        # 转换为 0-based 索引
+        if col < 0:col=max_col+col
+        else:col-=1
+        return col
+    elif isinstance(col, str):        
+        col = col.upper().strip()
+        idx = 0
+        for ch in col:
+            if not ch.isalpha(): raise ValueError(f"Invalid column letter: {col}")
+            idx = idx * 26 + (ord(ch) - ord('A') + 1)
+        return idx-1   
+def make_regex(s: str) -> str:
+    if not s:
+        raise ValueError("字符串不能为空")
+    # 转义特殊字符
+    escaped_s = re.escape(s)
+    if len(set(s))==1:
+        # 纯字符,只需匹配后边不以第一位字符开头即可
+        escaped_s0 = re.escape(s[0])
+        return f"^{escaped_s}(?!{escaped_s0})"
+    return f"^{escaped_s}(?!{escaped_s})"
+def group_rows_by_feature_segments(
+    data: List[List[Dict[str, Any]]],
+    split_column: Union[str, int],
+    beginstr: Union[str, List[str]]=None,
+    pattern_regex: Union[str, List[str]]=None
+) -> List[Tuple[int, int]]:
+    """
+    根据指定列的值是否匹配任一正则表达式，将数据行分段。
+
+    参数:
+        df: 输入表格（不含 header）
+        split_column: 分段列索引(1-based,如 "A" 或 1)
+        beginstr: 开头字符串特征列表,格式为["xx1","xx2"]，如["   ","  "]，表示以两个或三个空格开头的特征值
+        pattern_regex: 正则表达式特征列表,如["[\\u4e00-\\u9fff]"],表示包含中文的特征值
+
+    返回:
+        List[Tuple[int, int]]: 分组范围 [(start_row, end_row), ...]（Excel 行号）
+    """
+    if not data or not split_column:
+        return []
+    # 转换字符串为数组类型
+    
+    # 只在beginstr是字符串时才进行JSON解析
+    if beginstr and isinstance(beginstr, str):
+        try:
+            beginstr=json.loads(beginstr)
+        except Exception as e:
+            raise ValueError(f"beginstr数据格式错误: {e}")
+    
+    # 只在pattern_regex是字符串时才进行JSON解析
+    if pattern_regex and isinstance(pattern_regex, str):
+        try:
+            pattern_regex=json.loads(pattern_regex)
+        except Exception as e:
+            raise ValueError(f"pattern_regex数据格式错误: {e}")
+
+    # 提取列名和数据值
+    headers = data[0]
+    # 从每个列头字典中提取value作为实际列名
+    column_names = [header['value'] for header in headers]
+    # 将数据行转换为仅包含值的列表
+    rows_values = [[cell['value'] for cell in row] for row in data[1:]]
+    df = pd.DataFrame(rows_values, columns=column_names)
+
+    # 获取分段列索引（0-based）
+    num_rows = len(data)
+    num_cols = len(data[0]) if num_rows > 0 else 0    
+    split_column_index = _col_to_index_0based(split_column, num_cols)
+    # 获取列名
+    split_column_name = column_names[split_column_index]
+
+    # 构建正则表达式列表
+    patterns=[]
+    if beginstr:
+        # 统一为列表
+        beginstr=[beginstr] if isinstance(beginstr, str) else beginstr
+        patterns.extend([make_regex(s) for s in beginstr])
+    if pattern_regex:
+        # 统一为列表
+        pattern_regex=[pattern_regex] if isinstance(pattern_regex, str) else pattern_regex
+        patterns.extend(pattern_regex)
+    if not patterns:
+        return []
+
+    # 预编译所有正则
+    compiled_patterns = [re.compile(p) for p in patterns]
+
+    segment_starts: List[int] = []
+
+    # 遍历每一行
+    for idx, value in enumerate(df[split_column_name]):
+        if not isinstance(value, str):
+            continue
+
+        # 只要匹配任意一个正则，就记录为起始行
+        for cp in compiled_patterns:
+            if cp.search(value):                
+                segment_starts.append(idx+1)
+                break  # 匹配一个即可，避免重复添加
+
+    if not segment_starts:
+        return []
+
+    segments: List[Tuple[int, int]] = []
+    n_rows = len(df)
+    print('segment_starts:',segment_starts,n_rows)
+    for i, start_idx in enumerate[any](segment_starts):
+        if i == len(segment_starts) - 1:
+            end_idx = n_rows
+        else:
+            end_idx = segment_starts[i + 1] - 1
+
+        excel_start = start_idx + 1
+        excel_end = end_idx + 1
+        segments.append((excel_start, excel_end))
+
+    return segments
+
+from typing import List, Dict, Any, Union, Callable, Optional
+
+def data_grouprow_split_by_column(
+    data: Dict[str, Any],  
+    split_column: Union[str, int],    
+    beginstr: Union[str, List[str]]=None,
+    pattern_regex: Union[str, List[str]]=None,
+    new_col_header_name:str="new_col",
+    new_col_position="left",
+    charecter_cell_replace_value:str=None
+) -> Dict[str, Any]:
+    """
+    数据行分组按列拆分，返回新的表格数据。
+
+    :param data:表格数据，包含 'data'（二维列表，每个元素为 {"value":"xx","abs_pos":[],"style_id":0}）和 'style_map'（样式ID到样式字典的映射）
+    :param split_column: 特征值列索引(1-based,如 "A" 或 1)
+    :param segments: 分组范围 [(start_row, end_row), ...]（Excel 行号）
+    :param beginstr: 开头字符串特征列表,格式为["xx1","xx2"]，如["   ","  "]，表示以两个或三个空格开头的特征值
+    :param pattern_regex: 正则表达式特征列表,如["[\\u4e00-\\u9fff]"],表示包含中文的特征值
+    :param new_col_header_name: 新列标题名称
+    :param new_col_position: 新列位置,相对于拆分列的位置，左侧或右侧（left/right）, [{"value": "left", "label":"左侧"},{"value": "right", "label":"右侧"}]
+    :param charecter_cell_replace_value: 分组内特征单元格值替换为（可选）
+    :return: 新的表格数据，包含 'data'（二维列表，每个元素为 {"value":"xx","abs_pos":[],"style_id":0}）和 'style_map'（样式ID到样式字典的映射）
+    """
+    if not data or not data.get('data') or not data['data'][0]:
+        return data
+    # 获取数据和样式映射
+    excel_data = data['data']
+
+    num_rows = len(excel_data)
+    num_cols = len(excel_data[0]) if num_rows > 0 else 0
+
+    # 查找新列插入位置
+    insert_at_col_index = _col_to_index_0based(split_column,num_cols)+1
+    if new_col_position=="right":
+        insert_at_col_index = insert_at_col_index
+    else:
+        insert_at_col_index = insert_at_col_index-1
+    
+    # 将数据行，按特征分段
+    segments = group_rows_by_feature_segments(
+        data=excel_data,
+        split_column=split_column,
+        beginstr=beginstr,  # 如两个空格开头，第三个不是空格
+        pattern_regex=pattern_regex
+    )
+    print("分组范围（Excel 行号）:",segments)
+    # 构建新数据
+    new_data = []
+    # 添加标题行
+    new_row = []
+    new_row.extend(excel_data[0][:insert_at_col_index])
+    # 新列标题也应该是一个字典对象
+    new_col_header = {
+        'value': new_col_header_name,
+        'style': {},
+        'abs_pos': [1, insert_at_col_index + 1]  # 1-based 逻辑位置
+    }
+    new_row.append(new_col_header)
+    new_row.extend(excel_data[0][insert_at_col_index:])
+    new_data.append(new_row)
+
+    # 处理数据行
+    for start_row, end_row in segments:
+        segment_rows = excel_data[start_row-1:end_row]
+        # 获取特征值        
+        charecter_cell = segment_rows[0][insert_at_col_index]
+        # 提取特征值的value
+        charecter_cell_value = charecter_cell['value']
+        if charecter_cell_replace_value:
+            segment_rows[0][insert_at_col_index]['value'] = charecter_cell_replace_value
+        # 处理数据行
+        for row_idx, row in enumerate(segment_rows):  
+            new_row = []
+            new_row.extend(row[:insert_at_col_index])            
+
+            # 新单元格（abs_pos 使用逻辑位置：行号不变，列设为 insert_at_col_index+1）
+            # 单元格样式暂未设置
+            new_cell = {
+                'value': charecter_cell_value,
+                'style': {},
+                'abs_pos': [row_idx + 2, insert_at_col_index + 1]  # 1-based 逻辑位置
+            }
+            new_row.append(new_cell)
+            new_row.extend(row[insert_at_col_index:])
+            new_data.append(new_row)
+    data['data'] = new_data
+
+    return data
+
+# 读取测试数据
+# file_path=r"E:\temp\25P12规格表原始数据-24P12sheet - 副本.xlsx"
+# sheet_name="Sheet1"
+# start_row="1"
+# end_row=""
+# start_col="A"
+# end_col=""
+# include_styles=False
+# import time
+# time_begin=time.time()
+# print(f"开始读取数据")
+# data=read_excel_range_data(file_path,sheet_name,start_row,end_row,start_col,end_col,include_styles)
+# import json
+# print(json.dumps(data, ensure_ascii=False))
 # time_end=time.time()
 # print(f"读取数据耗时: {time_end-time_begin} 秒")
 # print(f"数据规模: {len(data['data'])} 行, {len(data['data'][0])} 列")
@@ -949,5 +1179,10 @@ print(json.dumps(data, ensure_ascii=False))
 # print(f"写入数据耗时: {time_end-time_begin} 秒")
 
     
+
+data={"data":[[{"value":"WPOCITY","style":{},"abs_pos":[0,0]},{"value":"AUTOCHKT","style":{},"abs_pos":[0,1]},{"value":"GroupName","style":{},"abs_pos":[0,2]},{"value":"RowName","style":{},"abs_pos":[0,3]},{"value":"Weighted RESPONSE Spend (M.RMB)","abs_pos":[3,2],"style_id":None},{"value":"Weighted RESPONSE Spend (RMB) Vert %","abs_pos":[3,3],"style_id":None},{"value":"Weighted RESPONSE Volume (000000)","abs_pos":[3,4],"style_id":None},{"value":"Weighted RESPONSE Volume (KG/Litre) Vert %","abs_pos":[3,5],"style_id":None},{"value":"Weighted RESP Price per Volume","abs_pos":[3,6],"style_id":None},{"value":"Weighted Penetration %","abs_pos":[3,7],"style_id":None},{"value":"Weighted RESP Avge Volume per Buyer","abs_pos":[3,8],"style_id":None},{"value":"Weighted RESP Frequency","abs_pos":[3,9],"style_id":None},{"value":"Weighted RESP Avg Volume per Purchase Occ","abs_pos":[3,10],"style_id":None},{"value":"Purchases","abs_pos":[3,11],"style_id":None}],[{"value":"全国","style":{},"abs_pos":[1,1]},{"value":"24P12","style":{},"abs_pos":[2,1]},{"value":"渠道整体  ","abs_pos":[4,1],"style_id":None},{"value":"  酱油整体  ","abs_pos":[5,1],"style_id":None},{"value":2279.38,"abs_pos":[5,2],"style_id":None},{"value":100,"abs_pos":[5,3],"style_id":None},{"value":171.7017,"abs_pos":[5,4],"style_id":None},{"value":100,"abs_pos":[5,5],"style_id":None},{"value":13.2752,"abs_pos":[5,6],"style_id":None},{"value":36.6105,"abs_pos":[5,7],"style_id":None},{"value":1.734,"abs_pos":[5,8],"style_id":None},{"value":1.3046,"abs_pos":[5,9],"style_id":None},{"value":1.3292,"abs_pos":[5,10],"style_id":None},{"value":32002,"abs_pos":[5,11],"style_id":None}],[{"value":"全国","style":{},"abs_pos":[1,1]},{"value":"24P12","style":{},"abs_pos":[2,1]},{"value":"渠道整体  ","abs_pos":[4,1],"style_id":None},{"value":"       <300ml  ","abs_pos":[6,1],"style_id":None},{"value":79.3943,"abs_pos":[6,2],"style_id":None},{"value":3.4832,"abs_pos":[6,3],"style_id":None},{"value":2.6865,"abs_pos":[6,4],"style_id":None},{"value":1.5646,"abs_pos":[6,5],"style_id":None},{"value":29.5531,"abs_pos":[6,6],"style_id":None},{"value":2.659,"abs_pos":[6,7],"style_id":None},{"value":0.3736,"abs_pos":[6,8],"style_id":None},{"value":1.0798,"abs_pos":[6,9],"style_id":None},{"value":0.346,"abs_pos":[6,10],"style_id":None},{"value":1586,"abs_pos":[6,11],"style_id":None}],[{"value":"全国","style":{},"abs_pos":[1,1]},{"value":"24P12","style":{},"abs_pos":[2,1]},{"value":"渠道整体  ","abs_pos":[4,1],"style_id":None},{"value":"       300ml-699ml  ","abs_pos":[7,1],"style_id":None},{"value":741.3121,"abs_pos":[7,2],"style_id":None},{"value":32.5225,"abs_pos":[7,3],"style_id":None},{"value":36.3501,"abs_pos":[7,4],"style_id":None},{"value":21.1705,"abs_pos":[7,5],"style_id":None},{"value":20.3937,"abs_pos":[7,6],"style_id":None},{"value":17.2645,"abs_pos":[7,7],"style_id":None},{"value":0.7785,"abs_pos":[7,8],"style_id":None},{"value":1.1816,"abs_pos":[7,9],"style_id":None},{"value":0.6588,"abs_pos":[7,10],"style_id":None},{"value":13667,"abs_pos":[7,11],"style_id":None}],[{"value":"全国","style":{},"abs_pos":[1,1]},{"value":"24P12","style":{},"abs_pos":[2,1]},{"value":"渠道整体  ","abs_pos":[4,1],"style_id":None},{"value":"       700ml-1199ml  ","abs_pos":[8,1],"style_id":None},{"value":459.9085,"abs_pos":[8,2],"style_id":None},{"value":20.1769,"abs_pos":[8,3],"style_id":None},{"value":32.5013,"abs_pos":[8,4],"style_id":None},{"value":18.9289,"abs_pos":[8,5],"style_id":None},{"value":14.1505,"abs_pos":[8,6],"style_id":None},{"value":9.1768,"abs_pos":[8,7],"style_id":None},{"value":1.3095,"abs_pos":[8,8],"style_id":None},{"value":1.1345,"abs_pos":[8,9],"style_id":None},{"value":1.1542,"abs_pos":[8,10],"style_id":None},{"value":6018,"abs_pos":[8,11],"style_id":None}],[{"value":"全国","style":{},"abs_pos":[1,1]},{"value":"24P12","style":{},"abs_pos":[2,1]},{"value":"渠道整体  ","abs_pos":[4,1],"style_id":None},{"value":"       1200ml-1599ml  ","abs_pos":[9,1],"style_id":None},{"value":299.8661,"abs_pos":[9,2],"style_id":None},{"value":13.1556,"abs_pos":[9,3],"style_id":None},{"value":26.4885,"abs_pos":[9,4],"style_id":None},{"value":15.427,"abs_pos":[9,5],"style_id":None},{"value":11.3206,"abs_pos":[9,6],"style_id":None},{"value":5.8007,"abs_pos":[9,7],"style_id":None},{"value":1.6883,"abs_pos":[9,8],"style_id":None},{"value":1.106,"abs_pos":[9,9],"style_id":None},{"value":1.5265,"abs_pos":[9,10],"style_id":None},{"value":3632,"abs_pos":[9,11],"style_id":None}],[{"value":"全国","style":{},"abs_pos":[1,1]},{"value":"24P12","style":{},"abs_pos":[2,1]},{"value":"渠道整体  ","abs_pos":[4,1],"style_id":None},{"value":"       >=1600ml  ","abs_pos":[10,1],"style_id":None},{"value":698.8994,"abs_pos":[10,2],"style_id":None},{"value":30.6618,"abs_pos":[10,3],"style_id":None},{"value":73.6753,"abs_pos":[10,4],"style_id":None},{"value":42.9089,"abs_pos":[10,5],"style_id":None},{"value":9.4862,"abs_pos":[10,6],"style_id":None},{"value":10.4491,"abs_pos":[10,7],"style_id":None},{"value":2.6069,"abs_pos":[10,8],"style_id":None},{"value":1.1583,"abs_pos":[10,9],"style_id":None},{"value":2.2507,"abs_pos":[10,10],"style_id":None},{"value":7099,"abs_pos":[10,11],"style_id":None}],[{"value":"全国","style":{},"abs_pos":[1,1]},{"value":"24P12","style":{},"abs_pos":[2,1]},{"value":"渠道整体  ","abs_pos":[4,1],"style_id":None},{"value":"       蒸鱼酱油  ","abs_pos":[11,1],"style_id":None},{"value":78.932,"abs_pos":[11,2],"style_id":None},{"value":3.4629,"abs_pos":[11,3],"style_id":None},{"value":3.4238,"abs_pos":[11,4],"style_id":None},{"value":1.9941,"abs_pos":[11,5],"style_id":None},{"value":23.0536,"abs_pos":[11,6],"style_id":None},{"value":2.2769,"abs_pos":[11,7],"style_id":None},{"value":0.556,"abs_pos":[11,8],"style_id":None},{"value":1.0577,"abs_pos":[11,9],"style_id":None},{"value":0.5256,"abs_pos":[11,10],"style_id":None},{"value":1425,"abs_pos":[11,11],"style_id":None}],[{"value":"全国","style":{},"abs_pos":[1,1]},{"value":"24P12","style":{},"abs_pos":[2,1]},{"value":"渠道整体  ","abs_pos":[4,1],"style_id":None},{"value":"          <300ml  ","abs_pos":[12,1],"style_id":None},{"value":5.8763,"abs_pos":[12,2],"style_id":None},{"value":0.2578,"abs_pos":[12,3],"style_id":None},{"value":0.1657,"abs_pos":[12,4],"style_id":None},{"value":0.0965,"abs_pos":[12,5],"style_id":None},{"value":35.4645,"abs_pos":[12,6],"style_id":None},{"value":0.2867,"abs_pos":[12,7],"style_id":None},{"value":0.2137,"abs_pos":[12,8],"style_id":None},{"value":1.0605,"abs_pos":[12,9],"style_id":None},{"value":0.2015,"abs_pos":[12,10],"style_id":None},{"value":159,"abs_pos":[12,11],"style_id":None}],[{"value":"全国","style":{},"abs_pos":[1,1]},{"value":"24P12","style":{},"abs_pos":[2,1]},{"value":"渠道整体  ","abs_pos":[4,1],"style_id":None},{"value":"          300ml-699ml  ","abs_pos":[13,1],"style_id":None},{"value":63.5846,"abs_pos":[13,2],"style_id":None},{"value":2.7896,"abs_pos":[13,3],"style_id":None},{"value":2.5452,"abs_pos":[13,4],"style_id":None},{"value":1.4823,"abs_pos":[13,5],"style_id":None},{"value":24.9825,"abs_pos":[13,6],"style_id":None},{"value":1.8565,"abs_pos":[13,7],"style_id":None},{"value":0.5069,"abs_pos":[13,8],"style_id":None},{"value":1.0514,"abs_pos":[13,9],"style_id":None},{"value":0.4821,"abs_pos":[13,10],"style_id":None},{"value":1183,"abs_pos":[13,11],"style_id":None}],[{"value":"全国","style":{},"abs_pos":[1,1]},{"value":"24P12","style":{},"abs_pos":[2,1]},{"value":"渠道整体  ","abs_pos":[4,1],"style_id":None},{"value":"          700ml-1199ml  ","abs_pos":[14,1],"style_id":None},{"value":2.8207,"abs_pos":[14,2],"style_id":None},{"value":0.1238,"abs_pos":[14,3],"style_id":None},{"value":0.1395,"abs_pos":[14,4],"style_id":None},{"value":0.0812,"abs_pos":[14,5],"style_id":None},{"value":20.2223,"abs_pos":[14,6],"style_id":None},{"value":0.0497,"abs_pos":[14,7],"style_id":None},{"value":1.0385,"abs_pos":[14,8],"style_id":None},{"value":1.1393,"abs_pos":[14,9],"style_id":None},{"value":0.9115,"abs_pos":[14,10],"style_id":None},{"value":35,"abs_pos":[14,11],"style_id":None}],[{"value":"全国","style":{},"abs_pos":[1,1]},{"value":"24P12","style":{},"abs_pos":[2,1]},{"value":"渠道整体  ","abs_pos":[4,1],"style_id":None},{"value":"          1200ml-1599ml  ","abs_pos":[15,1],"style_id":None},{"value":0.0303,"abs_pos":[15,2],"style_id":None},{"value":0.0013,"abs_pos":[15,3],"style_id":None},{"value":0.0024,"abs_pos":[15,4],"style_id":None},{"value":0.0014,"abs_pos":[15,5],"style_id":None},{"value":12.5,"abs_pos":[15,6],"style_id":None},{"value":0.0007,"abs_pos":[15,7],"style_id":None},{"value":1.2777,"abs_pos":[15,8],"style_id":None},{"value":0.9982,"abs_pos":[15,9],"style_id":None},{"value":1.28,"abs_pos":[15,10],"style_id":None},{"value":1,"abs_pos":[15,11],"style_id":None}],[{"value":"全国","style":{},"abs_pos":[1,1]},{"value":"24P12","style":{},"abs_pos":[2,1]},{"value":"渠道整体  ","abs_pos":[4,1],"style_id":None},{"value":"          >=1600ml  ","abs_pos":[16,1],"style_id":None},{"value":6.6201,"abs_pos":[16,2],"style_id":None},{"value":0.2904,"abs_pos":[16,3],"style_id":None},{"value":0.5711,"abs_pos":[16,4],"style_id":None},{"value":0.3326,"abs_pos":[16,5],"style_id":None},{"value":11.5923,"abs_pos":[16,6],"style_id":None},{"value":0.0886,"abs_pos":[16,7],"style_id":None},{"value":2.3839,"abs_pos":[16,8],"style_id":None},{"value":1.082,"abs_pos":[16,9],"style_id":None},{"value":2.2032,"abs_pos":[16,10],"style_id":None},{"value":47,"abs_pos":[16,11],"style_id":None}],[{"value":"全国1","style":{},"abs_pos":[19,1]},{"value":"24P12","style":{},"abs_pos":[20,1]},{"value":"渠道整体  1","abs_pos":[22,1],"style_id":None},{"value":"  酱油整体  1","abs_pos":[23,1],"style_id":None},{"value":2279.38,"abs_pos":[23,2],"style_id":None},{"value":100,"abs_pos":[23,3],"style_id":None},{"value":171.7017,"abs_pos":[23,4],"style_id":None},{"value":100,"abs_pos":[23,5],"style_id":None},{"value":13.2752,"abs_pos":[23,6],"style_id":None},{"value":36.6105,"abs_pos":[23,7],"style_id":None},{"value":1.734,"abs_pos":[23,8],"style_id":None},{"value":1.3046,"abs_pos":[23,9],"style_id":None},{"value":1.3292,"abs_pos":[23,10],"style_id":None},{"value":32002,"abs_pos":[23,11],"style_id":None}],[{"value":"全国1","style":{},"abs_pos":[19,1]},{"value":"24P12","style":{},"abs_pos":[20,1]},{"value":"渠道整体  1","abs_pos":[22,1],"style_id":None},{"value":"       <300ml  ","abs_pos":[24,1],"style_id":None},{"value":79.3943,"abs_pos":[24,2],"style_id":None},{"value":3.4832,"abs_pos":[24,3],"style_id":None},{"value":2.6865,"abs_pos":[24,4],"style_id":None},{"value":1.5646,"abs_pos":[24,5],"style_id":None},{"value":29.5531,"abs_pos":[24,6],"style_id":None},{"value":2.659,"abs_pos":[24,7],"style_id":None},{"value":0.3736,"abs_pos":[24,8],"style_id":None},{"value":1.0798,"abs_pos":[24,9],"style_id":None},{"value":0.346,"abs_pos":[24,10],"style_id":None},{"value":1586,"abs_pos":[24,11],"style_id":None}],[{"value":"全国1","style":{},"abs_pos":[19,1]},{"value":"24P12","style":{},"abs_pos":[20,1]},{"value":"渠道整体  1","abs_pos":[22,1],"style_id":None},{"value":"       300ml-699ml  ","abs_pos":[25,1],"style_id":None},{"value":741.3121,"abs_pos":[25,2],"style_id":None},{"value":32.5225,"abs_pos":[25,3],"style_id":None},{"value":36.3501,"abs_pos":[25,4],"style_id":None},{"value":21.1705,"abs_pos":[25,5],"style_id":None},{"value":20.3937,"abs_pos":[25,6],"style_id":None},{"value":17.2645,"abs_pos":[25,7],"style_id":None},{"value":0.7785,"abs_pos":[25,8],"style_id":None},{"value":1.1816,"abs_pos":[25,9],"style_id":None},{"value":0.6588,"abs_pos":[25,10],"style_id":None},{"value":13667,"abs_pos":[25,11],"style_id":None}],[{"value":"全国1","style":{},"abs_pos":[19,1]},{"value":"24P12","style":{},"abs_pos":[20,1]},{"value":"渠道整体  1","abs_pos":[22,1],"style_id":None},{"value":"       700ml-1199ml  ","abs_pos":[26,1],"style_id":None},{"value":459.9085,"abs_pos":[26,2],"style_id":None},{"value":20.1769,"abs_pos":[26,3],"style_id":None},{"value":32.5013,"abs_pos":[26,4],"style_id":None},{"value":18.9289,"abs_pos":[26,5],"style_id":None},{"value":14.1505,"abs_pos":[26,6],"style_id":None},{"value":9.1768,"abs_pos":[26,7],"style_id":None},{"value":1.3095,"abs_pos":[26,8],"style_id":None},{"value":1.1345,"abs_pos":[26,9],"style_id":None},{"value":1.1542,"abs_pos":[26,10],"style_id":None},{"value":6018,"abs_pos":[26,11],"style_id":None}],[{"value":"全国1","style":{},"abs_pos":[19,1]},{"value":"24P12","style":{},"abs_pos":[20,1]},{"value":"渠道整体  1","abs_pos":[22,1],"style_id":None},{"value":"       1200ml-1599ml  ","abs_pos":[27,1],"style_id":None},{"value":299.8661,"abs_pos":[27,2],"style_id":None},{"value":13.1556,"abs_pos":[27,3],"style_id":None},{"value":26.4885,"abs_pos":[27,4],"style_id":None},{"value":15.427,"abs_pos":[27,5],"style_id":None},{"value":11.3206,"abs_pos":[27,6],"style_id":None},{"value":5.8007,"abs_pos":[27,7],"style_id":None},{"value":1.6883,"abs_pos":[27,8],"style_id":None},{"value":1.106,"abs_pos":[27,9],"style_id":None},{"value":1.5265,"abs_pos":[27,10],"style_id":None},{"value":3632,"abs_pos":[27,11],"style_id":None}],[{"value":"全国1","style":{},"abs_pos":[19,1]},{"value":"24P12","style":{},"abs_pos":[20,1]},{"value":"渠道整体  1","abs_pos":[22,1],"style_id":None},{"value":"       >=1600ml  ","abs_pos":[28,1],"style_id":None},{"value":698.8994,"abs_pos":[28,2],"style_id":None},{"value":30.6618,"abs_pos":[28,3],"style_id":None},{"value":73.6753,"abs_pos":[28,4],"style_id":None},{"value":42.9089,"abs_pos":[28,5],"style_id":None},{"value":9.4862,"abs_pos":[28,6],"style_id":None},{"value":10.4491,"abs_pos":[28,7],"style_id":None},{"value":2.6069,"abs_pos":[28,8],"style_id":None},{"value":1.1583,"abs_pos":[28,9],"style_id":None},{"value":2.2507,"abs_pos":[28,10],"style_id":None},{"value":7099,"abs_pos":[28,11],"style_id":None}],[{"value":"全国1","style":{},"abs_pos":[19,1]},{"value":"24P12","style":{},"abs_pos":[20,1]},{"value":"渠道整体  1","abs_pos":[22,1],"style_id":None},{"value":"       蒸鱼酱油  ","abs_pos":[29,1],"style_id":None},{"value":78.932,"abs_pos":[29,2],"style_id":None},{"value":3.4629,"abs_pos":[29,3],"style_id":None},{"value":3.4238,"abs_pos":[29,4],"style_id":None},{"value":1.9941,"abs_pos":[29,5],"style_id":None},{"value":23.0536,"abs_pos":[29,6],"style_id":None},{"value":2.2769,"abs_pos":[29,7],"style_id":None},{"value":0.556,"abs_pos":[29,8],"style_id":None},{"value":1.0577,"abs_pos":[29,9],"style_id":None},{"value":0.5256,"abs_pos":[29,10],"style_id":None},{"value":1425,"abs_pos":[29,11],"style_id":None}],[{"value":"全国1","style":{},"abs_pos":[19,1]},{"value":"24P12","style":{},"abs_pos":[20,1]},{"value":"渠道整体  1","abs_pos":[22,1],"style_id":None},{"value":"          <300ml  ","abs_pos":[30,1],"style_id":None},{"value":5.8763,"abs_pos":[30,2],"style_id":None},{"value":0.2578,"abs_pos":[30,3],"style_id":None},{"value":0.1657,"abs_pos":[30,4],"style_id":None},{"value":0.0965,"abs_pos":[30,5],"style_id":None},{"value":35.4645,"abs_pos":[30,6],"style_id":None},{"value":0.2867,"abs_pos":[30,7],"style_id":None},{"value":0.2137,"abs_pos":[30,8],"style_id":None},{"value":1.0605,"abs_pos":[30,9],"style_id":None},{"value":0.2015,"abs_pos":[30,10],"style_id":None},{"value":159,"abs_pos":[30,11],"style_id":None}],[{"value":"全国1","style":{},"abs_pos":[19,1]},{"value":"24P12","style":{},"abs_pos":[20,1]},{"value":"渠道整体  1","abs_pos":[22,1],"style_id":None},{"value":"          300ml-699ml  ","abs_pos":[31,1],"style_id":None},{"value":63.5846,"abs_pos":[31,2],"style_id":None},{"value":2.7896,"abs_pos":[31,3],"style_id":None},{"value":2.5452,"abs_pos":[31,4],"style_id":None},{"value":1.4823,"abs_pos":[31,5],"style_id":None},{"value":24.9825,"abs_pos":[31,6],"style_id":None},{"value":1.8565,"abs_pos":[31,7],"style_id":None},{"value":0.5069,"abs_pos":[31,8],"style_id":None},{"value":1.0514,"abs_pos":[31,9],"style_id":None},{"value":0.4821,"abs_pos":[31,10],"style_id":None},{"value":1183,"abs_pos":[31,11],"style_id":None}],[{"value":"全国1","style":{},"abs_pos":[19,1]},{"value":"24P12","style":{},"abs_pos":[20,1]},{"value":"渠道整体  1","abs_pos":[22,1],"style_id":None},{"value":"          700ml-1199ml  ","abs_pos":[32,1],"style_id":None},{"value":2.8207,"abs_pos":[32,2],"style_id":None},{"value":0.1238,"abs_pos":[32,3],"style_id":None},{"value":0.1395,"abs_pos":[32,4],"style_id":None},{"value":0.0812,"abs_pos":[32,5],"style_id":None},{"value":20.2223,"abs_pos":[32,6],"style_id":None},{"value":0.0497,"abs_pos":[32,7],"style_id":None},{"value":1.0385,"abs_pos":[32,8],"style_id":None},{"value":1.1393,"abs_pos":[32,9],"style_id":None},{"value":0.9115,"abs_pos":[32,10],"style_id":None},{"value":35,"abs_pos":[32,11],"style_id":None}],[{"value":"全国1","style":{},"abs_pos":[19,1]},{"value":"24P12","style":{},"abs_pos":[20,1]},{"value":"渠道整体  1","abs_pos":[22,1],"style_id":None},{"value":"          1200ml-1599ml  ","abs_pos":[33,1],"style_id":None},{"value":0.0303,"abs_pos":[33,2],"style_id":None},{"value":0.0013,"abs_pos":[33,3],"style_id":None},{"value":0.0024,"abs_pos":[33,4],"style_id":None},{"value":0.0014,"abs_pos":[33,5],"style_id":None},{"value":12.5,"abs_pos":[33,6],"style_id":None},{"value":0.0007,"abs_pos":[33,7],"style_id":None},{"value":1.2777,"abs_pos":[33,8],"style_id":None},{"value":0.9982,"abs_pos":[33,9],"style_id":None},{"value":1.28,"abs_pos":[33,10],"style_id":None},{"value":1,"abs_pos":[33,11],"style_id":None}],[{"value":"全国1","style":{},"abs_pos":[19,1]},{"value":"24P12","style":{},"abs_pos":[20,1]},{"value":"渠道整体  1","abs_pos":[22,1],"style_id":None},{"value":"          >=1600ml  ","abs_pos":[34,1],"style_id":None},{"value":6.6201,"abs_pos":[34,2],"style_id":None},{"value":0.2904,"abs_pos":[34,3],"style_id":None},{"value":0.5711,"abs_pos":[34,4],"style_id":None},{"value":0.3326,"abs_pos":[34,5],"style_id":None},{"value":11.5923,"abs_pos":[34,6],"style_id":None},{"value":0.0886,"abs_pos":[34,7],"style_id":None},{"value":2.3839,"abs_pos":[34,8],"style_id":None},{"value":1.082,"abs_pos":[34,9],"style_id":None},{"value":2.2032,"abs_pos":[34,10],"style_id":None},{"value":47,"abs_pos":[34,11],"style_id":None}]],"style_map":{}}
+print(len(data['data']))
+result=data_grouprow_split_by_column(data, split_column="D", beginstr=["   ","  "], pattern_regex={}, new_col_header_name="品牌", new_col_position="left", charecter_cell_replace_value="酱油总体")
+print(len(data['data']),len(result['data']))
 
 

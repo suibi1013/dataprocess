@@ -618,7 +618,7 @@ class DataProcessService(BaseService):
                 error_message=error_message,
                 execution_time=execution_time,
                 executed_at=datetime.now().isoformat(),
-                result_data=result_data
+                result_data=result_data["final_result"]
             )
             
             # 使用仓储保存执行记录

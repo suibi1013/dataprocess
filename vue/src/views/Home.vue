@@ -9,17 +9,17 @@
         <div class="card">
           <h3>📊 数据源</h3>
           <p>配置和管理您的数据源连接</p>
-          <router-link to="/datasource" class="card-link">前往数据源</router-link>
+          <!-- <router-link to="/datasource" class="card-link">前往数据源</router-link> -->
         </div>
         <div class="card">
           <h3>🎨 模板管理</h3>
           <p>管理和自定义您的PPT转换模板</p>
-          <router-link to="/template" class="card-link">前往模板管理</router-link>
+          <!-- <router-link to="/template" class="card-link">前往模板管理</router-link> -->
         </div>
         <div class="card">
           <h3>ℹ️ 数据流程</h3>
           <p>可视化设计数据处理流程</p>
-          <router-link to="/process" class="card-link">前往数据流程</router-link>
+          <!-- <router-link to="/process" class="card-link">前往数据流程</router-link> -->
         </div>
       </div>
     </div>

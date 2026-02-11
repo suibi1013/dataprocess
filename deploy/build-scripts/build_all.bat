@@ -41,7 +41,7 @@ rem 2. Version Bump
 echo [2/6] Running Version Bump...
 echo [2/6] Running Version Bump...>>"%LOG_FILE%"
 call :timer_start
-rem 进入 sourcefiles 目录执行版本号更新脚本
+rem update version in sourcefiles
 pushd "%PROJECT_ROOT%\deploy\sourcefiles"
 node bump-version.js >>"%LOG_FILE%" 2>&1
 if %errorlevel% neq 0 (
@@ -142,17 +142,22 @@ exit /b 1
 
 :timer_start
 set timer_start=%time%
-echo 开始时间： %timer_start%
+echo time start: %timer_start%
 exit /b
 
 :timer_stop
 set timer_end=%time%
-echo 结束时间：%timer_end%
+echo time end: %timer_end%
+
+rem calculate time duration
 set /a timer_start_int = %timer_start:~0,2%*3600 + %timer_start:~3,2%*60 + %timer_start:~6,2%
 set /a timer_end_int   = %timer_end:~0,2%*3600 + %timer_end:~3,2%*60 + %timer_end:~6,2%
+
+rem calculate time duration in seconds
 if %timer_end_int% lss %timer_start_int% (
     set /a timer_end_int += 86400
 )
+
 set /a duration = timer_end_int - timer_start_int
-echo 阶段耗时: %duration% 秒
+echo time duration: %duration% seconds
 exit /b

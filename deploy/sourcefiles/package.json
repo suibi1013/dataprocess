@@ -1,6 +1,6 @@
 {
   "name": "dataprocess",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "数据流程可视化",
   "main": "main.js",
   "scripts": {
@@ -69,7 +69,11 @@
       "installerIcon": "icon-resources/icon.ico",
       "uninstallerIcon": "icon-resources/icon.ico",
       "installerHeaderIcon": "icon-resources/icon.ico",
-      "shortcutName": "数据流程可视化工具"
+      "shortcutName": "数据流程可视化工具",
+      "deleteAppDataOnUninstall": false,
+      "runAfterFinish": true,
+      "include": "build/installer.nsh",
+      "differentialPackage": true
     }
   },
   "dependencies": {
