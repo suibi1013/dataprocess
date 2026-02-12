@@ -391,16 +391,16 @@ async def upload_multiple_excel(
     except Exception as exc:
         return await handle_internal_error(exc)
 
-@router.get("/datasource/{data_source_id}/data")
+@router.get("/datasource/file-data")
 async def get_data_source_data(
-    data_source_id: str = PathParam(..., description="数据源ID"),
+    file_path: str = Query(..., description="Excel文件路径"),
     sheet_name: Optional[str] = Query(None, description="工作表名称"),
     limit: int = Query(100, description="返回数据行数限制"),
     data_source_service: DataSourceservice = Depends(lambda: inject(DataSourceservice))
 ):
-    """获取数据源数据"""
+    """获取Excel文件数据"""
     try:
-        result = await data_source_service.get_data_source_data(data_source_id, sheet_name, limit)
+        result = await data_source_service.get_data_source_by_file_path(file_path, sheet_name, limit)
         
         if result.success:
             return {
@@ -414,7 +414,7 @@ async def get_data_source_data(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"获取数据源数据失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"获取Excel文件数据失败: {str(e)}")
 
 @router.post("/datasource/{data_source_id}/range")
 async def get_data_source_range(
@@ -560,3 +560,35 @@ async def get_all_data_source_options(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"获取数据源选项失败: {str(e)}")
+
+@router.get("/datasource/file-sheets")
+async def get_data_source_file_sheets(
+    file_path: str = Query(..., description="Excel文件路径"),
+    data_source_service: DataSourceservice = Depends(lambda: inject(DataSourceservice))
+):
+    """获取Excel文件的sheet名称集合
+    
+    返回结构：
+    {
+        "success": true,
+        "message": "成功获取文件 \"文件名\" 的sheet名称集合",
+        "data": {
+            "file": {
+                "file_name": "文件名",
+                "file_path": "文件路径",
+                "sheets": ["Sheet1", "Sheet2"]
+            },
+            "sheets": ["Sheet1", "Sheet2"]
+        }
+    }
+    """
+    try:
+        # 调用服务层获取sheet名称集合
+        result = await data_source_service.get_excel_file_sheets(file_path)
+        
+        return result
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"获取文件sheet名称失败: {str(e)}")

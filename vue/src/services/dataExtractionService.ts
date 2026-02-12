@@ -125,6 +125,30 @@ export class DataSourceService {
   }
 
   /**
+   * 通过文件路径获取工作表列表
+   * @param filePath 文件路径
+   * @returns 工作表列表
+   */
+  async getFileSheets(
+    filePath: string
+  ): Promise<ApiResponse<string[]>> {
+    try {
+      // 构建查询参数
+      const params = new URLSearchParams({
+        file_path: filePath
+      });
+      
+      return await httpClient.get(`/datasource/file-sheets?${params}`);
+    } catch (error) {
+      console.error('获取文件工作表列表失败:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : '网络请求失败'
+      };
+    }
+  }
+
+  /**
    * 解析数据源路径
    * @param source_data_path 源数据路径 (格式: "数据源ID:工作表名")
    * @returns 解析后的数据源ID和工作表名

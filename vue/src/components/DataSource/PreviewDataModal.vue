@@ -7,46 +7,86 @@
       </div>
       <div class="modal-body">
         <div class="preview-section">
-          <!-- 加载状态 -->
-          <div v-if="loading" class="loading-container">
-            <div class="loading-spinner">
-              <i class="el-icon-loading"></i>
-            </div>
-            <p class="loading-text">正在加载数据...</p>
-          </div>
-          
-          <!-- 错误状态 -->
-          <div v-else-if="error" class="error-container">
-            <div class="error-icon">
-              <i class="el-icon-error"></i>
-            </div>
-            <h4 class="error-title">数据加载失败</h4>
-            <p class="error-message">{{ error }}</p>
-            <button class="btn btn-primary" @click="handleRetry">
-              <i class="el-icon-refresh"></i>
-              重试
-            </button>
-          </div>
-          
-          <!-- Excel风格工作表标签 -->
-          <div v-else-if="allSheetsData && Object.keys(allSheetsData).length > 0" class="sheet-tabs-container">
-            <div class="sheet-tabs">
-              <div 
-                v-for="sheetName in Object.keys(allSheetsData)" 
-                :key="sheetName"
-                class="sheet-tab"
-                :class="{ active: currentSelectedSheet === sheetName }"
-                @click="selectSheetTab(sheetName)"
-              >
-                {{ sheetName }}
+          <!-- 文件选择和sheet选择 -->
+          <div class="data-source-controls">
+            <div v-if="props.dataSource?.type === 'excel'" class="selectors-container">
+              <!-- 文件选择框 -->
+              <div v-if="fileList.length > 0" class="file-selector inline">
+                <label class="control-label">选择文件：</label>
+                <select 
+                  v-model="currentSelectedFile" 
+                  @change="handleFileChange()"
+                  class="file-select"
+                >
+                  <option 
+                    v-for="file in fileList" 
+                    :key="file.file_name"
+                    :value="file.file_path"
+                  >
+                    {{ file.file_name}}
+                  </option>
+                </select>
+              </div>
+              
+              <!-- 工作表下拉选择框 -->
+              <div class="sheet-selector inline">
+                <label class="control-label">选择工作表：</label>
+                <select 
+                  v-model="currentSelectedSheet" 
+                  class="sheet-select"
+                  :disabled="Object.keys(allSheetsData).length === 0"
+                >
+                  <option value="" disabled>
+                    {{ Object.keys(allSheetsData).length === 0 ? '请先选择文件' : '请选择工作表' }}
+                  </option>
+                  <option 
+                    v-for="sheetName in Object.keys(allSheetsData)" 
+                    :key="sheetName"
+                    :value="sheetName"
+                  >
+                    {{ sheetName }}
+                  </option>
+                </select>
+                <button 
+                  type="button" 
+                  class="btn btn-primary ml-2"
+                  @click="selectSheetTab(currentSelectedSheet)"
+                  :disabled="!currentSelectedSheet || loading"
+                >
+                  {{ loading ? '加载中...' : '加载数据' }}
+                </button>
+                <span v-if="loading && currentSelectedSheet" class="sheet-loading-indicator">
+                  <i class="el-icon-loading"></i>
+                </span>
               </div>
             </div>
-            <div class="add-sheet-tab">+</div>
           </div>
           
           <!-- 数据预览容器 -->
-          <div v-if="excelPreviewData.length > 0" class="data-preview-container">
-            <div class="table-preview-wrapper">
+          <div class="data-preview-container">
+            <!-- 数据加载状态 -->
+            <div v-if="loading" class="data-loading-container">
+              <div class="loading-spinner">
+                <i class="el-icon-loading"></i>
+              </div>
+              <p class="loading-text">正在加载数据...</p>
+            </div>
+            
+            <!-- 数据加载错误 -->
+            <div v-else-if="error" class="data-error-container">
+              <div class="error-icon">
+                <i class="el-icon-error"></i>
+              </div>
+              <h4 class="error-title">数据加载失败</h4>
+              <p class="error-message">{{ error }}</p>
+              <button class="btn btn-primary" @click="handleRetry">
+                <i class="el-icon-refresh"></i>
+                重试
+              </button>
+            </div>
+            
+            <!-- 数据显示 -->
+            <div v-else-if="excelPreviewData.length > 0" class="table-preview-wrapper">
               <table id="data-preview-table" class="preview-table">
                 <thead>
                   <tr>
@@ -83,14 +123,15 @@
                 </tbody>
               </table>
             </div>
-          </div>
-          <!-- 无数据状态 -->
-          <div  v-if="excelPreviewData.length == 0 && !loading && !error" class="empty-data">
-            <div class="empty-icon">
-              <i class="el-icon-document-empty"></i>
+            
+            <!-- 无数据状态 -->
+            <div v-else class="empty-data">
+              <div class="empty-icon">
+                <i class="el-icon-document-empty"></i>
+              </div>
+              <h4 class="empty-title">暂无数据</h4>
+              <p class="empty-message">该数据源中没有找到任何数据</p>
             </div>
-            <h4 class="empty-title">暂无数据</h4>
-            <p class="empty-message">该数据源中没有找到任何数据</p>
           </div>
         </div>
           <!-- 选择信息 -->
@@ -144,6 +185,9 @@ const selectedCellRange = ref<string>('');
 const excelPreviewData = ref<any[]>([]);
 const excelPreviewColumns = ref<string[]>([]);
 const allSheetsData = ref<Record<string, any>>({});
+// 文件选择相关状态
+const currentSelectedFile = ref<string>('');
+const fileList = ref<any[]>([]);
 
 // 单元格选择相关状态（暂时注释，后续实现时启用）
 // const isSelecting = ref(false);
@@ -153,7 +197,7 @@ const allSheetsData = ref<Record<string, any>>({});
 // 监听弹窗显示状态和数据源变化
 watch([() => props.visible, () => props.dataSource], ([visible, dataSource]) => {
   if (visible && dataSource) {
-    openDataPreviewModal(dataSource.id);
+    openDataPreviewModal();
   } else if (!visible) {
     // 清理状态
     clearPreviewData();
@@ -175,71 +219,95 @@ const mergeRowsWithStyles = (rows: any[]) => {
   return rows || [];
 };
 
-// 打开数据预览模态框 - 优化为优先使用缓存
-const openDataPreviewModal = async (dataSourceId: string) => {
+// 打开数据预览模态框 - 取消调用API，仅初始化UI
+const openDataPreviewModal = async () => {
   loading.value = true;
   error.value = '';
   
   // 清空选择状态
   selectedCellRange.value = '';
+  currentSelectedFile.value = '';
+  currentSelectedSheet.value = '';
+  excelPreviewData.value = [];
+  excelPreviewColumns.value = [];
+  allSheetsData.value = {};
   
   try {
-    let data = null;
-    
-    // 优先从缓存获取数据
-    if (dataSourceInfoCache.value.has(dataSourceId)) {
-      const cachedData = dataSourceInfoCache.value.get(dataSourceId);
-      
-      // 将缓存数据转换为预览模态框需要的格式
-      if (cachedData) {
-        data = {
-          success: true,
-          data: cachedData
-        };
-      } 
-    }
-    
-    // 如果缓存中没有数据，则调用API（兜底方案）
-    if (!data) {      
-      data = await httpClient.get(`/datasource/${encodeURIComponent(dataSourceId)}/data`);
-      
-      // 将API响应数据存入缓存
-      if (data.success) {
-        dataSourceInfoCache.value.set(dataSourceId, data.data);
-      }
-    }
-    
-    if (data.success && data.data && data.data.data && Object.keys(data.data.data).length > 0) {
-      // 存储所有工作表数据
-      allSheetsData.value = data.data.data;
-      
-      // 默认选择第一个工作表
-      const sheetNames = Object.keys(data.data.data);
-      if (sheetNames.length > 0) {
-        const firstSheet = sheetNames[0];
-        currentSelectedSheet.value = firstSheet;
-        
-        // 直接使用返回的数据渲染表格
-        const sheetData = data.data.data[firstSheet] || {};
-        
-        // 直接使用原始行数据
-        excelPreviewData.value = mergeRowsWithStyles(sheetData.rows || []);
-        excelPreviewColumns.value = sheetData.columns || [];
-      }
+    // 1. 首先初始化文件选择下拉框
+    if (props.dataSource?.type === 'excel' && props.dataSource.config?.files) {
+      fileList.value = props.dataSource.config.files;
     } else {
-      throw new Error('未找到工作表或工作表为空');
+      fileList.value = [];
+      currentSelectedFile.value = '';
     }
+    
+    // 2. 初始化sheet选择，设置为空结构
+    allSheetsData.value = {};
+    currentSelectedSheet.value = '';
+    
+    // 3. 清空预览数据
+    excelPreviewData.value = [];
+    excelPreviewColumns.value = [];
+    
   } catch (err) {
-    console.error('加载工作表失败:', err);
-    error.value = err instanceof Error ? err.message : '加载工作表失败';
+    console.error('初始化预览窗口失败:', err);
+    error.value = err instanceof Error ? err.message : '初始化预览窗口失败';
   } finally {
     loading.value = false;
   }
 };
 
+// 处理文件选择变化
+const handleFileChange = async () => {
+  // 使用参数或currentSelectedFile.value
+  const fileValue = currentSelectedFile.value;
+  
+  // 清空当前数据
+  currentSelectedSheet.value = '';
+  excelPreviewData.value = [];
+  excelPreviewColumns.value = [];
+  allSheetsData.value = {};
+  
+  // 如果选择了文件且数据源存在，则调用API获取该文件的sheet名称
+  if (fileValue && props.dataSource) {
+    loading.value = true;
+    error.value = '';
+    
+    try {      
+      // 调用更新后的API接口，传递file_path参数
+      const response = await httpClient.get('/datasource/file-sheets', {
+        file_path: currentSelectedFile.value
+      });
+      if (response.success && response.data) {
+        // 获取sheets数组
+        let sheets = response.data.sheets;
+        
+        // 更新sheet数据
+        allSheetsData.value = {};
+        sheets.forEach((sheetName: string) => {
+          allSheetsData.value[sheetName] = {};
+        });
+        // 默认选择第一个sheet
+        if (sheets.length > 0) {
+          currentSelectedSheet.value = sheets[0];
+          // 不再自动加载数据，等待用户点击加载数据按钮
+        }
+      } else {
+        console.error('API响应失败:', response);
+        throw new Error('API响应失败');
+      }
+    } catch (err) {
+      console.error('获取文件sheet名称失败:', err);
+      error.value = err instanceof Error ? err.message : '获取文件sheet名称失败';
+    } finally {
+      loading.value = false;
+    }
+  } 
+};
+
 // 选择工作表标签 - 按照HTML版本逻辑
-const selectSheetTab = (sheetName: string) => {
-  if (!sheetName || !allSheetsData.value[sheetName]) {
+const selectSheetTab = async (sheetName: string) => {
+  if (!sheetName) {
     return;
   }
   
@@ -247,12 +315,58 @@ const selectSheetTab = (sheetName: string) => {
   currentSelectedSheet.value = sheetName;
   selectedCellRange.value = '';
   
-  // 从缓存数据中加载选中工作表的数据
-  const sheetData = allSheetsData.value[sheetName];
+  // 清空当前数据，显示加载状态
+  excelPreviewData.value = [];
+  excelPreviewColumns.value = [];
+  loading.value = true;
   
-  // 直接使用原始行数据
-  excelPreviewData.value = mergeRowsWithStyles(sheetData.rows || []);
-  excelPreviewColumns.value = sheetData.columns || [];
+  try {
+    // 从缓存或API中获取完整的sheet数据
+    let sheetData = null;
+    
+    // 首先检查缓存
+    if (currentSelectedFile.value && dataSourceInfoCache.value.has(currentSelectedFile.value+sheetName)) {
+      const cachedData = dataSourceInfoCache.value.get(currentSelectedFile.value+sheetName);
+      if (cachedData) {
+        // 缓存中直接存储工作表数据
+        sheetData = cachedData;
+      }
+    }
+    
+    // 如果缓存中没有数据，则重新获取完整数据
+    if (!sheetData && currentSelectedFile.value) {
+      try {
+        // 调用更新后的API接口，传递file_path参数
+        const data = await httpClient.get('/datasource/file-data', {
+          file_path: currentSelectedFile.value,
+          sheet_name: sheetName,
+          limit: 100
+        });
+        if (data.success && data.data) {
+          // API现在直接返回工作表数据
+          sheetData = data.data;
+          // 更新缓存
+          dataSourceInfoCache.value.set(currentSelectedFile.value+sheetName, sheetData);
+        }
+      } catch (err) {
+        console.error('调用Excel文件数据API失败:', err);
+      }
+    }
+    
+    // 加载选中工作表的数据
+    if (sheetData) {
+      // 直接使用原始行数据
+      excelPreviewData.value = mergeRowsWithStyles(sheetData.rows || []);
+      excelPreviewColumns.value = sheetData.columns || [];
+    } else {
+      throw new Error('未找到工作表数据');
+    }
+  } catch (err) {
+    console.error('加载工作表数据失败:', err);
+    error.value = err instanceof Error ? err.message : '加载工作表数据失败';
+  } finally {
+    loading.value = false;
+  }
 };
 
 // 获取单元格数据 - 按照HTML版本逻辑
@@ -429,136 +543,93 @@ const handleOverlayClick = (event: Event) => {
   height: 100%;
 }
 
-/* 加载和错误状态样式 */
-.loading-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 20px;
-  text-align: center;
-}
+/* 数据加载和错误状态样式已移至 .data-loading-container 和 .data-error-container */
 
-.loading-spinner {
+/* 数据源控制区域样式 */
+.data-source-controls {
   margin-bottom: 16px;
 }
 
-.loading-spinner i {
-  font-size: 32px;
-  color: #1890ff;
-  animation: spin 1s linear infinite;
-}
-
-.loading-text {
-  margin: 0;
-  font-size: 16px;
-  color: #595959;
-}
-
-.error-container {
+/* 选择器容器样式 */
+.selectors-container {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 60px 20px;
-  text-align: center;
+  gap: 20px;
+  flex-wrap: wrap;
 }
 
-.error-icon {
-  margin-bottom: 16px;
+/* 文件选择器样式 */
+.file-selector {
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.error-icon i {
-  font-size: 48px;
-  color: #ff4d4f;
+.file-selector.inline {
+  margin-bottom: 0;
 }
 
-.error-title {
-  margin: 0 0 8px 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: #262626;
+/* 工作表选择器样式 */
+.sheet-selector {
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.error-message {
-  margin: 0 0 24px 0;
+.sheet-selector.inline {
+  margin-bottom: 0;
+}
+
+.control-label {
   font-size: 14px;
-  color: #8c8c8c;
-  max-width: 400px;
-}
-
-/* Excel风格工作表标签样式 */
-.sheet-tabs-container {
-  display: flex;
-  align-items: center;
-  border-bottom: 1px solid #ddd;
-  margin-bottom: 2px;
-  background-color: #f8f9fa;
-  padding: 0 5px;
-  position: relative;
-  height: 32px;
-}
-
-.sheet-tabs {
-  display: flex;
-  overflow-x: auto;
-  flex: 1;
+  font-weight: 500;
+  color: #333;
   white-space: nowrap;
-  -ms-overflow-style: none;
-  scrollbar-width: none;
 }
 
-.sheet-tabs::-webkit-scrollbar {
-  display: none;
-}
-
-.sheet-tab {
-  padding: 5px 15px;
-  margin-right: 2px;
-  background-color: #e0e0e0;
-  border: 1px solid #ccc;
-  border-bottom: none;
-  border-top-left-radius: 5px;
-  border-top-right-radius: 5px;
-  cursor: pointer;
-  font-size: 12px;
-  font-family: Arial, sans-serif;
-  height: 25px;
-  display: flex;
-  align-items: center;
-  transition: all 0.2s;
-}
-
-.sheet-tab:hover {
-  background-color: #f0f0f0;
-}
-
-.sheet-tab.active {
+.file-select,
+.sheet-select {
+  padding: 6px 12px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  font-size: 14px;
   background-color: white;
-  border-bottom: 1px solid white;
-  z-index: 1;
-  position: relative;
-}
-
-.add-sheet-tab {
-  width: 25px;
-  height: 25px;
-  background-color: #e0e0e0;
-  border: 1px solid #ccc;
-  border-bottom: none;
-  border-top-left-radius: 5px;
-  border-top-right-radius: 5px;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-  margin-left: 5px;
-  transition: background-color 0.2s;
+  min-width: 200px;
+  outline: none;
 }
 
-.add-sheet-tab:hover {
-  background-color: #f0f0f0;
+.file-select:hover,
+.sheet-select:hover {
+  border-color: #40a9ff;
+}
+
+.file-select:focus,
+.sheet-select:focus {
+  border-color: #40a9ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+}
+
+.file-select:disabled,
+.sheet-select:disabled {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
+  color: #999;
+}
+
+.sheet-loading-indicator {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  font-size: 12px;
+  color: #1890ff;
+}
+
+.sheet-loading-indicator i {
+  animation: spin 1s linear infinite;
+  font-size: 12px;
 }
 
 /* 数据预览容器样式 */
@@ -566,6 +637,73 @@ const handleOverlayClick = (event: Event) => {
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-height: 300px;
+}
+
+/* 数据加载状态样式 */
+.data-loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  min-height: 300px;
+}
+
+.data-loading-container .loading-spinner {
+  margin-bottom: 16px;
+}
+
+.data-loading-container .loading-spinner i {
+  font-size: 32px;
+  color: #1890ff;
+  animation: spin 1s linear infinite;
+}
+
+.data-loading-container .loading-text {
+  margin: 0;
+  font-size: 14px;
+  color: #8c8c8c;
+  font-weight: 500;
+}
+
+/* 数据错误状态样式 */
+.data-error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  min-height: 300px;
+}
+
+.data-error-container .error-icon {
+  margin-bottom: 16px;
+}
+
+.data-error-container .error-icon i {
+  font-size: 48px;
+  color: #ff4d4f;
+}
+
+.data-error-container .error-title {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #262626;
+}
+
+.data-error-container .error-message {
+  margin: 0 0 24px 0;
+  font-size: 14px;
+  color: #8c8c8c;
+  max-width: 400px;
+}
+
+.data-error-container .btn {
+  margin-top: 8px;
 }
 
 .table-preview-wrapper {

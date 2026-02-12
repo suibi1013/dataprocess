@@ -14,17 +14,30 @@
       </div>
     </template>
     
-    <div v-loading="props.loading" element-loading-text="正在加载数据，请稍候..." element-loading-background="rgba(255, 255, 255, 0.8)" class="modal-body">
-      <!-- 工作表选择标签 -->
-      <div v-if="props.availableSheets && props.availableSheets.length > 0" class="sheet-tabs">
-        <div 
-          v-for="sheet in props.availableSheets" 
-          :key="sheet"
-          class="sheet-tab"
-          :class="{ 'active': sheet === props.currentSheet }"
-          @click="handleSheetChange(sheet)"
-        >
-          {{ sheet }}
+    <div v-loading="isLoading" element-loading-text="正在加载数据，请稍候..." element-loading-background="rgba(255, 255, 255, 0.8)" class="modal-body">
+      <!-- 工作表选择下拉列表 -->
+      <div class="sheet-selection">
+        <div class="flex items-center gap-2">
+          <el-select 
+            v-model="selectedSheet" 
+            placeholder="请选择工作表"
+            style="width: 240px"
+          >
+            <el-option 
+              v-for="sheet in sheetsList" 
+              :key="sheet"
+              :label="sheet"
+              :value="sheet"
+            />
+          </el-select>
+          <el-button 
+            type="primary" 
+            @click="handleSheetChange"
+            :loading="isLoading"
+            style="margin: 0px 10px"
+          >
+            加载数据
+          </el-button>
         </div>
       </div>
       <!-- 数据表格容器 -->
@@ -77,7 +90,7 @@
           </table>
         </div>
         
-        <div v-else-if="!loading" class="empty-data">
+        <div v-else class="empty-data">
           <el-empty description="暂无数据" />
         </div>
       </div>
@@ -103,32 +116,21 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue';
-import { ElDialog, ElButton, ElEmpty } from 'element-plus';
+import { ElDialog, ElButton, ElEmpty, ElSelect, ElOption } from 'element-plus';
 import type { SheetData, DataSelection, SelectionState, CellData } from '@/types/dataExtraction';
+import { dataSourceService } from '@/services/dataExtractionService';
 
 // Props
 interface Props {
   /** 模态框显示状态 */
   visible: boolean;
-  /** 工作表数据 */
-  sheetData: SheetData | null;
-  /** 工作表名称 */
-  sheetName: string;
-  /** 可用工作表列表 */
-  availableSheets: string[];
-  /** 当前选中的工作表 */
-  currentSheet: string;
-  /** 加载状态 */
-  loading?: boolean;
+  /** 文件路径 */
+  filePath: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   visible: false,
-  sheetData: null,
-  sheetName: '',
-  availableSheets: () => [],
-  currentSheet: '',
-  loading: false
+  filePath: ''
 });
 
 // Emits
@@ -141,8 +143,8 @@ interface Emits {
   (_e: 'confirm-sheet', _sheetName: string): void;
   /** 取消 */
   (_e: 'cancel'): void;
-  /** 工作表切换 */
-  (_e: 'sheet-change', _sheetName: string): void;
+  /** 更新工作表数据 */
+  (_e: 'update-sheet-data', _sheetData: SheetData | null): void;
 }
 
 const emit = defineEmits<Emits>();
@@ -167,6 +169,18 @@ const dialogVisible = computed({
   get: () => props.visible,
   set: (value) => emit('update:visible', value)
 });
+
+// 工作表列表
+const sheetsList = ref<string[]>([]);
+
+// 当前选中的工作表
+const selectedSheet = ref('');
+
+// 工作表数据
+const sheetData = ref<SheetData | null>(null);
+
+// 加载状态
+const isLoading = ref(false);
 
 // 选择状态
 const selectionState = ref<SelectionState>({
@@ -326,14 +340,11 @@ const resetSelection = () => {
 // 处理确认选择数据区域 - 功能已合并到handleConfirm函数中
 
 
-/**
- * 处理工作表切换
- */
-const handleSheetChange = (sheetName: string) => {
-  if (sheetName !== props.currentSheet) {
-    emit('sheet-change', sheetName);
-  }
-};
+
+
+
+
+
 
 /**
  * 取消
@@ -350,11 +361,75 @@ watch(
       // 重置选择状态
       resetSelection();
       
+      // 重置工作表列表和选中状态
+      sheetsList.value = [];
+      selectedSheet.value = '';
+      
       // 等待DOM更新后初始化
       await nextTick();
+      
+      // 如果文件路径存在，获取工作表列表
+      if (props.filePath) {
+        await loadSheetsList();
+      }
     }
   }
 );
+
+/**
+ * 加载工作表列表
+ */
+const loadSheetsList = async () => {
+  if (!props.filePath) return;
+  
+  isLoading.value = true;
+  try {
+    // 调用API获取工作表列表
+    const response = await dataSourceService.getFileSheets(props.filePath);
+    if (response.success) {
+      sheetsList.value = response.data.sheets || [];
+      // 如果有工作表，默认选择第一个
+      if (sheetsList.value.length > 0 && !selectedSheet.value) {
+        selectedSheet.value = sheetsList.value[0];
+        // 不再自动加载数据，等待用户点击加载数据按钮
+      }
+    } else {
+      console.error('获取工作表列表失败:', response.error);
+      sheetsList.value = [];
+    }
+  } catch (error) {
+    console.error('获取工作表列表异常:', error);
+    sheetsList.value = [];
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+/**
+ * 处理工作表切换
+ */
+const handleSheetChange = async () => {
+  const sheetName = selectedSheet.value;
+  if (sheetName && props.filePath) {
+    isLoading.value = true;
+    try {
+      // 调用API获取工作表数据
+      const response = await dataSourceService.getDataSourceDataByFilePath(props.filePath, sheetName, 100);
+      if (response.success) {
+        // 更新工作表数据
+        sheetData.value = response.data;
+      } else {
+        console.error('获取工作表数据失败:', response.error);
+        sheetData.value = null;
+      }
+    } catch (error) {
+      console.error('获取工作表数据异常:', error);
+      sheetData.value = null;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+};
 
 /**
  * 获取单元格内容
@@ -455,6 +530,15 @@ const getCellBackgroundStyle = (cellData: any): Record<string, string> => {
   flex-direction: column;
   gap: 15px;
   padding: 1px;
+}
+
+.sheet-selection {
+  padding: 0px 10px;
+  margin-bottom: 10px;
+}
+
+.sheet-selection .el-select {
+  font-size: 12px;
 }
 
 .sheet-tabs {

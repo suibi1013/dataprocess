@@ -10,6 +10,7 @@ import os
 import uuid
 import traceback
 import requests
+import asyncio
 from datetime import datetime
 from typing import Optional, List, Tuple, Dict, Any
 from utils.excel_helper import ExcelHelper
@@ -444,31 +445,38 @@ class DataSourceservice:
             # 使用ExcelHelper读取Excel文件
             excel_data = await ExcelHelper.read_excel_file(file_path, sheet_name, limit)
             
-            # 构建结果数据
-            result_data = {
-                'files': [{
-                    'file_name': os.path.basename(file_path),
-                    'file_path': file_path,
-                    'original_file_name': os.path.basename(file_path),
-                    'sheets': excel_data.get('sheet_names', [])
-                }],
-                'sheets': excel_data.get('sheet_names', []),
-                'data': {
-                    f"{os.path.basename(file_path)}_{sheet_name}": {
-                        'file_name': os.path.basename(file_path),
-                        'sheet_name': sheet_name,
-                        'columns': excel_data.get('columns', []),
-                        'rows': excel_data.get('rows', []),
-                        'total_rows': excel_data.get('total_rows', 0),
-                        'displayed_rows': len(excel_data.get('rows', []))
-                    }
-                }
+            # 检查ExcelHelper返回值
+            if not excel_data.get('success') or not excel_data.get('data'):
+                return ApiResponse(
+                    success=False,
+                    message=f'读取Excel文件失败: {excel_data.get("message", "未知错误")}',
+                    data=None
+                )
+            
+            # 获取ExcelHelper返回的data部分
+            excel_data_content = excel_data.get('data', {})
+            
+            # 构建直接返回的工作表数据
+            sheet_data = {
+                'file_name': os.path.basename(file_path),
+                'sheet_name': sheet_name,
+                'columns': [],
+                'rows': [],
+                'total_rows': 0,
+                'displayed_rows': 0
             }
-                
+            
+            # 从ExcelHelper返回的数据中提取工作表数据
+            if excel_data_content.get('data'):
+                # 查找对应的工作表数据
+                sheet_key = f"{os.path.basename(file_path)}_{sheet_name}"
+                if excel_data_content['data'].get(sheet_key):
+                    sheet_data = excel_data_content['data'][sheet_key]
+            
             return ApiResponse(
                 success=True,
                 message=f'成功获取文件 {os.path.basename(file_path)} 中工作表 {sheet_name} 的数据',
-                data=result_data
+                data=sheet_data
             )
                 
         except Exception as e:
@@ -661,4 +669,61 @@ class DataSourceservice:
                 'success': False,
                 'message': f'读取Excel范围数据失败: {str(e)}',
                 'data': None
-            }        
+            }
+
+    async def get_excel_file_sheets(self, file_path: str) -> ApiResponse[Dict[str, Any]]:
+        """获取Excel文件的sheet名称集合
+        
+        Args:
+            file_path: Excel文件路径
+        """
+        try:
+            # 验证文件是否存在
+            if not os.path.exists(file_path):
+                return ApiResponse(
+                    success=False,
+                    message=f'文件不存在: {file_path}',
+                    data=None
+                )
+            
+            # 验证文件类型
+            if not file_path.lower().endswith(('.xlsx', '.xls')):
+                return ApiResponse(
+                    success=False,
+                    message=f'不支持的文件类型: {file_path}',
+                    data=None
+                )
+            
+            # 调用ExcelHelper获取sheet名称（异步执行）
+            import asyncio
+            sheet_names = await asyncio.to_thread(ExcelHelper.get_excel_sheet_names, file_path)
+            
+            # 获取文件名
+            file_name = os.path.basename(file_path)
+            if file_name.endswith(('.xlsx', '.xls')):
+                file_name = os.path.splitext(file_name)[0]
+            
+            # 构建返回数据
+            result_data = {
+                'file': {
+                    'file_name': file_name,
+                    'file_path': file_path,
+                    'sheets': sheet_names
+                },
+                'sheets': sheet_names
+            }
+            
+            return ApiResponse(
+                success=True,
+                message=f'成功获取文件 "{file_name}" 的sheet名称集合',
+                data=result_data
+            )
+                
+        except Exception as e:
+            print(f"获取文件sheet名称失败: {str(e)}")
+            traceback.print_exc()
+            return ApiResponse(
+                success=False,
+                message=f'获取文件sheet名称失败: {str(e)}',
+                data=None
+            )

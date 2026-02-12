@@ -480,6 +480,56 @@ class ExcelHelper:
                 print(f"清理Excel应用程序时出错: {str(cleanup_error)}")
     
     @staticmethod
+    def get_excel_sheet_names(file_path: str) -> List[str]:
+        """
+        获取Excel文件中所有工作表的名称
+        
+        Args:
+            file_path: Excel文件路径
+            
+        Returns:
+            List[str]: 工作表名称列表
+        """
+        app = None
+        workbook = None
+        
+        try:
+            # 验证文件存在
+            if not os.path.exists(file_path):
+                raise FileNotFoundError(f'文件不存在: {file_path}')
+            
+            # 验证文件类型
+            file_ext = os.path.splitext(file_path)[1].lower()
+            if file_ext not in ExcelHelper.EXCEL_EXTENSIONS:
+                raise ValueError(f'不支持的文件类型: {file_ext}')
+            
+            # 使用xlwings读取Excel文件
+            app = xw.App(visible=False, add_book=False)
+            workbook = app.books.open(file_path)
+            
+            # 获取所有工作表的名称
+            sheet_names = [sheet.name for sheet in workbook.sheets]
+            
+            return sheet_names
+            
+        except Exception as e:
+            print(f"获取Excel工作表名称失败: {str(e)}")
+            raise
+        finally:
+            # 确保关闭Excel应用程序
+            if workbook:
+                try:
+                    workbook.close()
+                except Exception as close_error:
+                    print(f"关闭工作簿时出错: {str(close_error)}")
+            
+            if app:
+                try:
+                    app.quit()
+                except Exception as quit_error:
+                    print(f"退出Excel应用程序时出错: {str(quit_error)}")
+    
+    @staticmethod
     async def read_excel_file(file_path: str, sheet_name: str = None, limit: int = 100) -> Dict[str, Any]:
         """
         读取Excel文件数据和格式信息

@@ -19,14 +19,10 @@
       <!-- 数据预览模态框 -->
       <DataPreviewModal
         :visible="showPreviewModal"
-        :sheet-data="previewSheetData"
-        :sheet-name="previewSheetName"
-        :available-sheets="getAvailableSheets()"
-        :current-sheet="previewSheetName"
         :loading="previewLoading"
+        :filePath="currentPreviewFilePath"
         @confirm-selection="handleDataSelectionConfirm"
         @confirm-sheet="confirmSheetSelection"
-        @sheet-change="handleSheetChange"
         @cancel="handleDataSelectionCancel"
         @close="showPreviewModal = false"
       />
@@ -160,7 +156,7 @@
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
 import { useDataProcess } from '@/composables/useDataProcess';
 import { useInstructionParams } from '@/composables/useInstructionParams';
-import { httpClient } from '@/services/httpClient';
+
 // ElementPlusIconsVue已移至InstructionPanel组件
 // import { downloadFile } from '@/utils/fileUtils'; // 移除未使用的导入
 
@@ -307,174 +303,18 @@ const currentPreviewParamName = ref('');
 // 保存当前预览的文件路径
 const currentPreviewFilePath = ref('');
 
-// 本地存储工作表列表的Map
-const fileSheetsMap = ref(new Map());
-
-// 获取可用工作表列表
-const getAvailableSheets = () => {
-  if (!currentPreviewFilePath.value) {
-    return [];
-  }
-  
-  const sheets = fileSheetsMap.value.get(currentPreviewFilePath.value) || [];
-  
-  // 确保返回的是基于sheet_name的工作表名称列表
-  // 这个函数返回的列表将直接用于DataPreviewModal的标签显示
-  return sheets;
-};
-
-// 设置文件的工作表列表
-const setFileSheets = (filePath: string, sheets: string[]) => {
-  fileSheetsMap.value.set(filePath, sheets);
-};
-
-
-
-// 生成缓存键的函数
-const getCacheKey = (filePath) => `excel_data_${filePath}`;
-
-// 从缓存中获取数据的函数
-const getCachedData = (filePath) => {
-  try {
-    const cacheKey = getCacheKey(filePath);
-    const cachedData = sessionStorage.getItem(cacheKey);
-    if (cachedData) {
-      return JSON.parse(cachedData);
-    }
-  } catch (error) {
-    console.error('从缓存读取数据失败:', error);
-  }
-  return null;
-};
-
-// 将数据存入缓存的函数
-const setCachedData = (filePath, data) => {
-  try {
-    const cacheKey = getCacheKey(filePath);
-    sessionStorage.setItem(cacheKey, JSON.stringify(data));
-  } catch (error) {
-    console.error('写入缓存失败:', error);
-  }
-};
-
 // 处理参数面板发出的数据预览请求
 const handleShowDataPreview = async (previewData) => {
   if (!previewData.filePath) {
     return;
   }
-  try {
-    // 设置当前参数名和文件路径
-    currentPreviewParamName.value = previewData.paramName || '';
-    currentPreviewFilePath.value = previewData.filePath || '';
-    
-    // 立即显示预览窗口，初始状态为加载中
-    previewLoading.value = true;
-    showPreviewModal.value = true;
-    
-    // 首先尝试从缓存中获取数据
-    const cachedResult = getCachedData(currentPreviewFilePath.value);
-    if (cachedResult) {
-      // 处理缓存的数据
-      const apiData = cachedResult.data;
-      let sheetData = null;
-      
-      // 查找数据对象中的第一个有效表格数据
-      if (apiData.data && typeof apiData.data === 'object') {
-        // 获取所有工作表名称，优先使用sheet_name属性
-        const sheetNames = Object.values(apiData.data).map(sheet => sheet.sheet_name || Object.keys(apiData.data)[Object.values(apiData.data).indexOf(sheet)]);
-        
-        // 使用本地Map存储工作表列表
-        setFileSheets(currentPreviewFilePath.value, sheetNames);
-        
-        // 获取第一个表格数据（假设只有一个表格或默认使用第一个）
-        const firstSheetKey = sheetNames[0];
-        if (firstSheetKey) {
-          // 遍历找到与第一个工作表名称匹配的数据
-          let foundSheetData = null;
-          for (const [key, sheet] of Object.entries(apiData.data)) {
-            if (sheet.sheet_name === firstSheetKey || key === firstSheetKey) {
-              foundSheetData = sheet;
-              break;
-            }
-          }
-          
-          if (foundSheetData) {
-            sheetData = foundSheetData;
-            // 设置工作表名称为显示名称（即sheetNames[0]），确保与标签页名称一致
-            previewSheetName.value = firstSheetKey;
-          }
-        }
-      }
-      
-      // 如果找到了表格数据，则设置预览数据
-      if (sheetData) {
-        previewSheetData.value = sheetData;
-      } else {
-        // 如果没有找到表格数据，设置空数据
-        previewSheetData.value = { columns: [], rows: [] };
-        previewSheetName.value = previewData.sheetName || 'Sheet1';
-        console.warn('未找到有效的表格数据');
-      }
-      previewLoading.value = false;
-      return;
-    }
-    
-    // 如果缓存中没有数据，调用/api/file/excel_data_and_style接口获取数据
-    const result = await httpClient.get(`/file/excel_data_and_style?file_path=${encodeURIComponent(currentPreviewFilePath.value)}`);
-    
-    // 将API返回的结果存入缓存
-    setCachedData(currentPreviewFilePath.value, result);
-      
-      if (result.success && result.data) {
-        // 从API返回的数据中提取正确的表格数据
-        const apiData = result.data;
-        let sheetData = null;
-        
-        // 查找数据对象中的第一个有效表格数据
-        if (apiData.data && typeof apiData.data === 'object') {
-          // 获取所有工作表名称，优先使用sheet_name属性
-          const sheetNames = Object.values(apiData.data).map(sheet => sheet.sheet_name || Object.keys(apiData.data)[Object.values(apiData.data).indexOf(sheet)]);
-          
-          // 使用本地Map存储工作表列表
-          setFileSheets(currentPreviewFilePath.value, sheetNames);
-          
-          // 获取第一个表格数据（假设只有一个表格或默认使用第一个）
-          const firstSheetKey = sheetNames[0];
-          if (firstSheetKey) {
-            // 遍历找到与第一个工作表名称匹配的数据
-            let foundSheetData = null;
-            for (const [key, sheet] of Object.entries(apiData.data)) {
-              if (sheet.sheet_name === firstSheetKey || key === firstSheetKey) {
-                foundSheetData = sheet;
-                break;
-              }
-            }
-            
-            if (foundSheetData) {
-              sheetData = foundSheetData;
-              // 设置工作表名称为显示名称（即sheetNames[0]），确保与标签页名称一致
-              previewSheetName.value = firstSheetKey;
-            }
-          }
-        }
-        
-        // 如果找到了表格数据，则设置预览数据
-        if (sheetData) {
-          previewSheetData.value = sheetData;
-        } else {
-          // 如果没有找到表格数据，设置空数据
-          previewSheetData.value = { columns: [], rows: [] };
-          previewSheetName.value = previewData.sheetName || 'Sheet1';
-          console.warn('未找到有效的表格数据');
-        }
-      } else {
-        console.error('获取数据失败:', result.message || '未知错误');
-      }
-  } catch (error) {
-    console.error('显示数据预览失败:', error);
-  } finally {
-    previewLoading.value = false;
-  }
+  
+  // 设置当前参数名和文件路径
+  currentPreviewParamName.value = previewData.paramName || '';
+  currentPreviewFilePath.value = previewData.filePath || '';
+  
+  // 显示预览窗口
+  showPreviewModal.value = true;
 };
     // 监听节点选择变化，更新变量列表
     watch(canvasSelectedNode, () => {
@@ -736,92 +576,7 @@ const handleNodeUpdate = (nodeData: any) => {
   canvasGraph.value?.trigger('node:updated', { node });
 };
 
-// 处理工作表切换
-const handleSheetChange = async (displaySheetName: string): Promise<void> => {
-  if (!currentPreviewFilePath.value) return;
-  
-  // 设置loading状态
-  previewLoading.value = true;
-  
-  try {
-    // 从缓存中获取该文件的数据
-    const cachedResult = getCachedData(currentPreviewFilePath.value);
-    
-    if (cachedResult && cachedResult.data && cachedResult.data.data) {
-      // 尝试根据显示名称找到对应的工作表数据
-      const allSheets = cachedResult.data.data;
-      
-      // 查找对应的工作表对象
-      let targetSheetData = null;
-      
-      // 遍历所有工作表，查找匹配的sheet_name或键名
-      for (const [key, sheet] of Object.entries(allSheets)) {
-        if (sheet.sheet_name === displaySheetName || key === displaySheetName) {
-          targetSheetData = sheet;
-          break;
-        }
-      }
-      
-      if (targetSheetData) {
-        // 找到工作表数据，直接使用
-        previewSheetData.value = targetSheetData;
-        previewSheetName.value = displaySheetName;
-        return;
-      }
-    }
-    
-    // 如果缓存中没有找到对应的数据，需要重新请求API获取指定工作表的数据
-    const result = await httpClient.get(
-      `/file/excel_data_and_style?file_path=${encodeURIComponent(currentPreviewFilePath.value)}&sheet_name=${encodeURIComponent(displaySheetName)}`
-    );
-    
-    if (result.success && result.data && result.data.data) {
-      // 尝试直接获取指定名称的工作表
-      let foundSheet = null;
-      
-      // 首先尝试精确匹配sheet_name
-      for (const [key, sheet] of Object.entries(result.data.data)) {
-        if (sheet.sheet_name === displaySheetName || key === displaySheetName) {
-          foundSheet = sheet;
-          break;
-        }
-      }
-      
-      // 如果找到工作表数据
-      if (foundSheet) {
-        previewSheetData.value = foundSheet;
-        previewSheetName.value = displaySheetName;
-      } else {
-        // 降级处理：尝试使用第一个可用的工作表
-        const firstSheetEntry = Object.entries(result.data.data)[0];
-        if (firstSheetEntry && firstSheetEntry[1]) {
-          previewSheetData.value = firstSheetEntry[1];
-          previewSheetName.value = displaySheetName;
-          console.warn(`未找到指定工作表"${displaySheetName}"，使用第一个可用工作表`);
-        } else {
-          // 设置空数据作为兜底
-          previewSheetData.value = { columns: [], rows: [] };
-          previewSheetName.value = displaySheetName;
-          console.warn(`未找到任何工作表数据`);
-        }
-      }
-    } else {
-      // API返回失败或数据格式不正确
-      console.error('获取数据失败:', result.message || '未知错误');
-      // 设置空数据作为兜底
-      previewSheetData.value = { columns: [], rows: [] };
-      previewSheetName.value = displaySheetName;
-    }
-  } catch (error) {
-    console.error('获取指定工作表数据失败:', error);
-    // 发生错误时，设置空数据作为兜底
-    previewSheetData.value = { columns: [], rows: [] };
-    previewSheetName.value = displaySheetName;
-  } finally {
-    // 无论成功失败，都重置loading状态
-    previewLoading.value = false;
-  }
-};
+
 
 // 确认选择工作表并回写sheetName - 被DataPreviewModal组件的confirm-sheet事件调用
 function confirmSheetSelection(displaySheetName) {
@@ -831,6 +586,8 @@ function confirmSheetSelection(displaySheetName) {
   }
   showPreviewModal.value = false;
 }
+
+
 
 // 切换指令分类功能已移至InstructionPanel组件
 

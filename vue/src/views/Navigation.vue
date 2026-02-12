@@ -87,15 +87,12 @@ const validateLicenseFromBackend = async (licenseKey: string): Promise<boolean> 
       },
       body: JSON.stringify({ license_key: licenseKey })
     });
-    console.log('授权码验证接口响应:', response);
     if (!response.ok) {
       console.error('授权码验证接口请求失败:', response.status);
       return false;
     }
     
-    const result = await response.json();
-    console.log('后端授权码验证结果:', result);
-    
+    const result = await response.json();    
     return result.success === true;
   } catch (error) {
     console.error('授权码验证失败:', error);
@@ -108,7 +105,6 @@ onMounted(async () => {
   isLoading.value = true;
   try {
     isLicenseValid.value = await validateLicenseFromBackend(LICENSE_KEY);
-    console.log('授权码验证结果:', isLicenseValid.value);
   } finally {
     isLoading.value = false;
   }
