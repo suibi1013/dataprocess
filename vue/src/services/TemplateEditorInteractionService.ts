@@ -23,14 +23,14 @@ export class TemplateEditorInteractionService {
    * @param element 元素对象
    * @param container 容器元素
    * @param dataSources 数据源列表
-   * @param selectedDataSource 选中的数据源ID
+   * @param selectedDataSourceFilePath 选中的数据源文件路径
    * @param showToastMessage 显示Toast消息的方法
    */
   async updateExcelElementData(
     element: Element, 
     container: HTMLElement, 
     dataSources: any[], 
-    selectedDataSource: string, 
+    selectedDataSourceFilePath: string, 
     showToastMessage: (_message: string, _type?: 'success' | 'error' | 'info') => void
   ) {
     const dataSourceConfig = element.data?.data_source_config;

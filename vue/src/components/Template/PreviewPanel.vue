@@ -1,8 +1,5 @@
 <template>
   <div class="preview-panel">
-    <div class="preview-header">
-      <h2>预览面板</h2>
-    </div>
     <div class="preview-content">
       <div class="presentation-container" ref="presentationContainer">
         <!-- 动态生成的幻灯片内容 -->
@@ -777,7 +774,7 @@ function renderUnknownElement(element: Element): string {
 <style scoped>
 /* 预览面板样式 */
 .preview-panel {
-  width: 70%;
+  width: 72%;
   height: 100%;
   border-right: 1px solid #eee;
   background-color: #f5f5f5;
@@ -799,7 +796,6 @@ function renderUnknownElement(element: Element): string {
 }
 
 .preview-content {
-  padding: 20px;
   overflow: auto;
   flex: 1;
 }

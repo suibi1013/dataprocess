@@ -12,6 +12,7 @@
           :template="template"
           @edit="editTemplate"
           @delete="deleteTemplate"
+          @export="exportTemplateData"
         />
       </template>
       <!-- 空状态 -->
@@ -157,6 +158,16 @@ async function deleteTemplate(templateId: string) {
       console.error('删除模板失败:', error)
       alert('删除模板失败，请重试')
     }
+  }
+}
+
+// 数据导出
+async function exportTemplateData(templateId: string) {
+  try {
+    await templateService.replaceTemplateData(templateId)
+  } catch (error) {
+    console.error('数据导出失败:', error)
+    alert(`数据导出失败: ${(error as Error).message || '未知错误'}`)
   }
 }
 </script>

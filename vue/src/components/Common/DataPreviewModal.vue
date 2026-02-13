@@ -152,13 +152,13 @@ const emit = defineEmits<Emits>();
 // 处理确认选择（同时确认工作表和数据区域）
 const handleConfirm = () => {
   // 首先确认工作表选择
-  emit('confirm-sheet', props.currentSheet);
+  emit('confirm-sheet', selectedSheet.value);
   // 如果有数据区域选择，也确认数据区域
   if (hasValidSelection.value) {
     // 确保传递的选择对象包含sheetName属性
     const selectionWithSheetName = {
       ...selectionState.value.currentSelection,
-      sheetName: props.currentSheet // 添加sheetName属性，值为当前选中的工作表名称
+      sheetName: selectedSheet.value // 添加sheetName属性，值为当前选中的工作表名称
     };
     emit('confirm-selection', selectionWithSheetName);
   }
@@ -257,7 +257,7 @@ const handleMouseUp = () => {
  */
 const updateSelection = () => {
   const { startCell, endCell } = selectionState.value;
-  if (!startCell || !endCell || !props.sheetData) return;
+  if (!startCell || !endCell || !sheetData.value) return;
   
   // 计算选择区域
   const minRow = Math.min(startCell.row, endCell.row);
@@ -266,7 +266,7 @@ const updateSelection = () => {
   const maxCol = Math.max(startCell.col, endCell.col);
   
   // 获取列名
-  const columns = props.sheetData.columns;
+  const columns = sheetData.value.columns;
   const start_column = columns[minCol] || 'A';
   const end_column = columns[maxCol] || 'A';
   
@@ -337,15 +337,6 @@ const resetSelection = () => {
   };
 };
 
-// 处理确认选择数据区域 - 功能已合并到handleConfirm函数中
-
-
-
-
-
-
-
-
 /**
  * 取消
  */
@@ -414,7 +405,7 @@ const handleSheetChange = async () => {
     isLoading.value = true;
     try {
       // 调用API获取工作表数据
-      const response = await dataSourceService.getDataSourceDataByFilePath(props.filePath, sheetName, 100);
+      const response = await dataSourceService.getDataSourceDataByFilePath(props.filePath, sheetName, 20);
       if (response.success) {
         // 更新工作表数据
         sheetData.value = response.data;

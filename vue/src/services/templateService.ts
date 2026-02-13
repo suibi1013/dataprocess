@@ -160,4 +160,50 @@ export class TemplateService implements TemplateApiService {
       throw error;
     }
   }
+
+  /**
+   * 替换模板数据
+   */
+  async replaceTemplateData(templateId: string): Promise<void> {
+    try {
+      // 直接发起请求并处理文件下载
+      const response = await fetch(`/api/template/replace_data?template_id=${templateId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({})
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || '数据替换失败');
+      }
+      
+      // 获取文件名
+      const contentDisposition = response.headers.get('content-disposition');
+      let filename = `template_${templateId}_replaced.pptx`;
+      
+      if (contentDisposition) {
+        const matches = /filename="([^"]+)"/.exec(contentDisposition);
+        if (matches && matches[1]) {
+          filename = matches[1];
+        }
+      }
+      
+      // 处理文件下载
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('替换模板数据失败:', error);
+      throw error;
+    }
+  }
 }

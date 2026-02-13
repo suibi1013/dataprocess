@@ -3,182 +3,118 @@
     <div class="config-content">
       <!-- 页面和元素的配置页面 -->
       <div class="tab-content">
-        <div id="slide-info-display" v-if="selectedElementIndex >= 0">
+        <div id="slide-info-display">
           <p>幻灯片 {{ currentSlideIndex + 1 }} - 元素 {{ selectedElementIndex + 1 }}</p>
         </div>
-        <select 
-          class="element-dropdown" 
-          @change="handleElementSelect" 
-          v-model="selectedElementDropdown"
-        >
-          <option value="-1">请选择元素</option>
-          <option 
-            v-for="(element, index) in currentSlideElements"
-            :key="index"
-            :value="index"
-          >
-            {{ getElementDisplayName(element) }}-{{ element.id }}
-          </option>
-        </select>
-        
+        <el-select v-model="selectedElementDropdown" placeholder="请选择元素" style="width: 100%; margin-top: 10px;"
+          @change="handleElementSelect">
+          <el-option v-for="option in elementOptions" :key="option.value" :value="option.value" :label="option.label">
+          </el-option>
+        </el-select>
+
         <div class="config-section" v-if="selectedElementIndex >= 0" id="element-editor">
-          <h4>✏️ 元素编辑</h4>
-          
           <!-- Tab切换 -->
-          <div class="config-tabs">
-            <button 
-              class="config-tab" 
-              :class="{ active: currentTab === 'style' }"
-              @click="switchTab('style')"
-            >
-              样式
-            </button>
-            <button 
-              class="config-tab" 
-              :class="{ active: currentTab === 'data' }"
-              @click="switchTab('data')"
-            >
-              数据
-            </button>
-          </div>
-          
-          <!-- 样式Tab内容 -->
-          <div class="tab-content" id="style-tab-content" v-if="currentTab === 'style'">
-            <div class="config-item">
-              <label>元素ID</label>
-              <input type="text" :value="currentElement?.id || ''" readonly>
-            </div>
-            <div class="config-item">
-              <label>元素类型</label>
-              <input type="text" :value="currentElement?.element_type_name || ''" readonly>
-            </div>
-            <div class="config-item">
-              <label>左边距 (px)</label>
-              <input 
-                type="number" 
-                :value="currentElement?.position?.left || 0"
-                @change="updateElementPosition('left', $event)"
-              >
-            </div>
-            <div class="config-item">
-              <label>顶边距 (px)</label>
-              <input 
-                type="number" 
-                :value="currentElement?.position?.top || 0"
-                @change="updateElementPosition('top', $event)"
-              >
-            </div>
-            <div class="config-item">
-              <label>宽度 (px)</label>
-              <input 
-                type="number" 
-                :value="currentElement?.position?.width || 0"
-                @change="updateElementPosition('width', $event)"
-              >
-            </div>
-            <div class="config-item">
-              <label>高度 (px)</label>
-              <input 
-                type="number" 
-                :value="currentElement?.position?.height || 0"
-                @change="updateElementPosition('height', $event)"
-              >
-            </div>
-            <div class="config-item">
-              <label>字体大小</label>
-              <input 
-                type="text" 
-                :value="currentElement?.style?.font_size || ''"
-                @change="updateElementStyle('font_size', $event)"
-              >
-            </div>
-            <div class="config-item">
-              <label>字体颜色</label>
-              <input 
-                type="color" 
-                :value="currentElement?.style?.color || '#000000'"
-                @change="updateElementStyle('color', $event)"
-              >
-            </div>
-            <div class="config-item">
-              <label>背景颜色</label>
-              <input 
-                type="color" 
-                :value="currentElement?.style?.background_color || '#ffffff'"
-                @change="updateElementStyle('background_color', $event)"
-              >
-            </div>
-          </div>
-          
-          <!-- 数据Tab内容 -->
-          <div class="tab-content" id="data-tab-content" v-if="currentTab === 'data'">
-            <div class="config-item" v-if="currentElement?.element_type_name === 'text'">
-              <label>文本内容</label>
-              <textarea 
-                :value="currentElement?.data?.text_content || ''"
-                @change="updateElementContent($event)"
-              ></textarea>
-            </div>
-            <div 
-              class="config-item" 
-              id="image-upload-section" 
-              v-if="currentElement?.element_type_name === 'image'"
-            >
-              <label>图片上传</label>
-              <input type="file" accept="image/*" @change="handleImageUpload">
-              <div 
-                class="image-preview" 
-                v-if="currentElement?.data?.text_content"
-                style="margin-top: 10px; max-width: 200px; max-height: 150px; border: 1px solid #ddd; border-radius: 4px; overflow: hidden;"
-              >
-                <img 
-                  :src="currentElement?.data?.text_content || ''" 
-                  style="width: 100%; height: 100%; object-fit: contain;" 
-                  alt="预览"
-                >
+          <el-tabs v-model="currentTab" type="card">
+            <el-tab-pane label="数据" name="data">
+              <!-- 数据Tab内容 -->
+              <div class="tab-content" id="data-tab-content">
+                <div class="config-item" v-if="currentElement?.element_type_name === 'text'">
+                  <label>文本内容</label>
+                  <el-input :value="currentElement?.data?.text_content || ''" type="textarea" :rows="4"
+                    @change="(value) => updateElementContent(value)" />
+                </div>
+                <div class="config-item" id="image-upload-section" v-if="currentElement?.element_type_name === 'image'">
+                  <label>图片上传</label>
+                  <div class="upload-container">
+                    <el-upload class="avatar-uploader" action="#" :auto-upload="false" :on-change="handleImageUpload"
+                      :show-file-list="false" accept="image/*">
+                      <div v-if="currentElement?.data?.text_content" class="image-preview"
+                        style="max-width: 200px; max-height: 150px; border: 1px solid #ddd; border-radius: 4px; overflow: hidden;">
+                        <img :src="currentElement?.data?.text_content || ''"
+                          style="width: 100%; height: 100%; object-fit: contain;" alt="预览">
+                      </div>
+                      <el-button type="primary" v-else>点击上传</el-button>
+                    </el-upload>
+                    <div class="button-container">
+                      <el-button type="secondary" @click="resetImage">
+                        重置图片
+                      </el-button>
+                    </div>
+                  </div>
+                </div>
+                <!-- 数据源配置部分 -->
+                <div class="config-item" id="data-source-section">
+                  <label>数据源文件选择</label>
+                  <el-cascader v-model="selectedDataSourceFilePath" :options="cascaderOptions" :placeholder="'请选择数据源文件'"
+                    :loading="loading" @change="onCascaderChange" separator="/" :props="{ expandTrigger: 'hover' }"
+                    popper-class="custom-cascader-popper" />
+                </div>
+                <div class="button-row">
+                  <el-button type="primary" @click="openDataPreview" :disabled="!selectedDataSourceFilePath">
+                    选择数据区域
+                  </el-button>
+                </div>
+                <div class="config-item">
+                  <label>数据源信息</label>
+                  <div class="data-source-info">
+                    工作表：{{ props.currentDataSourceInfo?.sheet || selectedDataSourceSheet }},
+                    单元格范围：{{ props.currentDataSourceInfo?.range || selectedDataSourceRange }}
+                  </div>
+                </div>
               </div>
-              <button 
-                type="button" 
-                class="btn btn-secondary"
-                @click="resetImage"
-                style="margin-top: 5px;"
-              >
-                重置图片
-              </button>
-            </div>
-            <!-- 数据源配置部分 -->
-            <div class="config-item" id="data-source-section">
-              <label>数据源选择</label>
-              <select 
-                v-model="selectedDataSource"
-                @change="onDataSourceChange"
-              >
-                <option value="">请选择数据源</option>
-                <option 
-                  v-for="source in dataSources"
-                  :key="source.id"
-                  :value="source.id"
-                >
-                  {{ source.name }}
-                </option>
-              </select>
-              <button 
-                type="button" 
-                class="btn btn-primary"
-                @click="openDataPreview"
-                style="margin-top: 5px;"
-                :disabled="!selectedDataSource"
-              >
-                选择数据区域
-              </button>
-              
-              <label>数据源信息</label>
-              <div class="data-source-info">
-                工作表：{{ currentDataSourceInfo.sheet || '--' }}, 
-                单元格范围：{{ currentDataSourceInfo.range || '--' }}
+            </el-tab-pane><el-tab-pane label="样式" name="style">
+              <!-- 样式Tab内容 -->
+              <div class="tab-content" id="style-tab-content">
+                <div class="config-item">
+                  <label>元素ID</label>
+                  <el-input :value="currentElement?.id || ''" :disabled="true" />
+                </div>
+                <div class="config-item">
+                  <label>元素类型</label>
+                  <el-input :value="currentElement?.element_type_name || ''" :disabled="true" />
+                </div>
+                <div class="config-item">
+                  <label>左边距 (px)</label>
+                  <el-input-number :value="currentElement?.position?.left || 0"
+                    @change="(value) => updateElementPosition('left', value)" :min="0" :precision="0" :step="1"
+                    :disabled="true" />
+                </div>
+                <div class="config-item">
+                  <label>顶边距 (px)</label>
+                  <el-input-number :value="currentElement?.position?.top || 0"
+                    @change="(value) => updateElementPosition('top', value)" :min="0" :precision="0" :step="1"
+                    :disabled="true" />
+                </div>
+                <div class="config-item">
+                  <label>宽度 (px)</label>
+                  <el-input-number :value="currentElement?.position?.width || 0"
+                    @change="(value) => updateElementPosition('width', value)" :min="0" :precision="0" :step="1"
+                    :disabled="true" />
+                </div>
+                <div class="config-item">
+                  <label>高度 (px)</label>
+                  <el-input-number :value="currentElement?.position?.height || 0"
+                    @change="(value) => updateElementPosition('height', value)" :min="0" :precision="0" :step="1"
+                    :disabled="true" />
+                </div>
+                <div class="config-item">
+                  <label>字体大小</label>
+                  <el-input :value="currentElement?.style?.font_size || ''"
+                    @change="(value) => updateElementStyle('font_size', value)" :disabled="true" />
+                </div>
+                <div class="config-item">
+                  <label>字体颜色</label>
+                  <el-color-picker :value="currentElement?.style?.color || '#000000'"
+                    @change="(value) => updateElementStyle('color', value)" show-alpha :disabled="true" />
+                </div>
+                <div class="config-item">
+                  <label>背景颜色</label>
+                  <el-color-picker :value="currentElement?.style?.background_color || '#ffffff'"
+                    @change="(value) => updateElementStyle('background_color', value)" show-alpha :disabled="true" />
+                </div>
               </div>
-            </div>
-          </div>
+            </el-tab-pane>
+          </el-tabs>
         </div>
       </div>
     </div>
@@ -186,16 +122,21 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, onMounted, watch } from 'vue';
+import { ElCascader, ElSelect, ElOption, ElInput, ElInputNumber, ElColorPicker, ElUpload, ElButton, ElTabs, ElTabPane } from 'element-plus';
 import type { Element, PPTConfig } from '@/services/TemplateEditorService';
-import type { DataSource } from '@/types/dataSource';
+import { httpClient } from '@/services/httpClient';
 
 // 定义组件属性
 interface Props {
   pptConfig: PPTConfig | null;
   currentSlideIndex: number;
   selectedElementIndex: number;
-  dataSources: DataSource[];
+  dataSources?: any[];
+  currentDataSourceInfo?: {
+    sheet: string;
+    range: string;
+  };
 }
 
 const props = defineProps<Props>();
@@ -213,13 +154,64 @@ const emit = defineEmits<{
 }>();
 
 // 响应式数据
-const currentTab = ref<'style' | 'data'>('style');
-const selectedElementDropdown = ref('-1');
-const selectedDataSource = ref('');
-const currentDataSourceInfo = ref({
-  sheet: '',
-  range: ''
+const currentTab = ref<'style' | 'data'>('data');
+const selectedElementDropdown = ref<string | number>(-1);
+const selectedDataSourceFilePath = ref('');
+const selectedDataSourceSheet = ref('');
+const selectedDataSourceRange = ref('');
+
+// 级联选择器相关数据
+const dataSourcesOptions = ref<any[]>([]);
+const loading = ref(false);
+
+const cascaderOptions = computed(() => {
+  return dataSourcesOptions.value;
 });
+
+// 从接口获取数据源选项
+async function fetchDataSourceOptions() {
+  loading.value = true;
+  try {
+    const response = await httpClient.get('/datasource/all-options');
+    if (response.success && response.data) {
+      dataSourcesOptions.value = response.data;
+    }
+  } catch (error) {
+    console.error('获取数据源选项失败:', error);
+    dataSourcesOptions.value = [];
+  } finally {
+    loading.value = false;
+  }
+}
+
+// 组件挂载时获取数据
+onMounted(() => {
+  fetchDataSourceOptions();
+  // 初始化selectedElementDropdown
+  selectedElementDropdown.value = props.selectedElementIndex;
+
+  // 初始化数据源信息
+  if (props.selectedElementIndex >= 0) {
+    const element = currentSlideElements.value[props.selectedElementIndex];
+    updateDataSourceInfo(element);
+  }
+});
+
+// 监听selectedElementIndex变化，更新selectedElementDropdown和数据源信息
+watch(() => props.selectedElementIndex, (newIndex) => {
+  selectedElementDropdown.value = newIndex;
+
+  // 更新数据源信息
+  if (newIndex >= 0) {
+    const element = currentSlideElements.value[newIndex];
+    updateDataSourceInfo(element);
+  } else {
+    selectedDataSourceFilePath.value = '';
+    selectedDataSourceSheet.value = '';
+    selectedDataSourceRange.value = '';
+  }
+});
+
 
 // 计算属性：当前幻灯片的元素列表
 const currentSlideElements = computed(() => {
@@ -227,6 +219,18 @@ const currentSlideElements = computed(() => {
     return [];
   }
   return props.pptConfig.slides[props.currentSlideIndex].elements || [];
+});
+
+// 计算属性：元素选项列表
+const elementOptions = computed(() => {
+  const options = [{ value: -1, label: '请选择元素' }];
+  currentSlideElements.value.forEach((element, index) => {
+    options.push({
+      value: index,
+      label: `${getElementDisplayName(element)}-${element.id}`
+    });
+  });
+  return options;
 });
 
 // 计算属性：当前选中的元素
@@ -238,16 +242,22 @@ const currentElement = computed(() => {
   return undefined;
 });
 
-// 切换标签页
-function switchTab(tab: 'style' | 'data') {
-  currentTab.value = tab;
+function updateDataSourceInfo(element: Element) {
+  if (element && element.data && element.data.data_source_config) {
+    selectedDataSourceFilePath.value = element.data.data_source_config.data_source_path || '';
+    selectedDataSourceSheet.value = element.data.data_source_config.excel_sheet_name || '';
+    selectedDataSourceRange.value = element.data.data_source_config.excel_cell_range || '';
+  } else {
+    selectedDataSourceFilePath.value = '';
+    selectedDataSourceSheet.value = '';
+    selectedDataSourceRange.value = '';
+  }
 }
 
 // 处理元素选择
-function handleElementSelect(event: Event) {
-  const selectElement = event.target as HTMLSelectElement;
-  const elementIndex = parseInt(selectElement.value);
-  emit('element-select', elementIndex);
+function handleElementSelect(elementIndex: string | number) {
+  const index = parseInt(elementIndex.toString());
+  emit('element-select', index);
 }
 
 // 获取元素显示名称
@@ -265,46 +275,36 @@ function getElementDisplayName(element: Element): string {
     'msoPicture': '图片',
     'msoLine': '线条'
   };
-  
+
   // 优先使用element_type_name，如果存在的话
   if (element.element_type_name) {
     return typeMap[element.element_type_name] || element.element_type_name;
   }
-  
+
   return typeMap[element.type || ''] || '未知';
 }
 
 // 更新元素位置和大小
-function updateElementPosition(property: 'left' | 'top' | 'width' | 'height', event: Event) {
-  const inputElement = event.target as HTMLInputElement;
-  const value = parseInt(inputElement.value);
-  
+function updateElementPosition(property: 'left' | 'top' | 'width' | 'height', value: number) {
   if (!isNaN(value)) {
     emit('position-update', property, value);
   }
 }
 
 // 更新元素样式
-function updateElementStyle(property: string, event: Event) {
-  const inputElement = event.target as HTMLInputElement;
-  const value = inputElement.value;
+function updateElementStyle(property: string, value: string) {
   emit('style-update', property, value);
 }
 
 // 更新元素内容
-function updateElementContent(event: Event) {
-  const textareaElement = event.target as HTMLTextAreaElement;
-  const value = textareaElement.value;
+function updateElementContent(value: string) {
   emit('content-update', value);
 }
 
 // 处理图片上传
-function handleImageUpload(event: Event) {
-  const inputElement = event.target as HTMLInputElement;
-  const file = inputElement.files?.[0];
-  
-  if (file) {
-    emit('image-upload', file);
+function handleImageUpload(file: any) {
+  if (file && file.raw) {
+    emit('image-upload', file.raw);
   }
 }
 
@@ -313,10 +313,19 @@ function resetImage() {
   emit('reset-image');
 }
 
-// 数据源变更
-function onDataSourceChange() {
-  emit('data-source-change', selectedDataSource.value);
+// 处理级联选择器变化
+function onCascaderChange(value: string[]) {
+  if (value && value.length > 0) {
+    // 最后一级是文件路径
+    selectedDataSourceFilePath.value = value[value.length - 1];
+    emit('data-source-change', selectedDataSourceFilePath.value);
+  } else {
+    selectedDataSourceFilePath.value = '';
+    emit('data-source-change', '');
+  }
 }
+
+
 
 // 打开数据预览
 function openDataPreview() {
@@ -325,161 +334,81 @@ function openDataPreview() {
 </script>
 
 <style scoped>
-/* 配置面板样式 */
-.config-panel {
-  width: 40%;
-  height: 100%;
-  background-color: #f9f9f9;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-}
-
-.config-content {
-  padding: 20px;
-  overflow: auto;
-  flex: 1;
-}
-
-/* 配置部分样式 */
-.config-section {
-  background-color: white;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  margin-top: 20px;
-}
-
-.config-section h4 {
-  margin: 0 0 20px 0;
-  font-size: 16px;
-  color: #333;
-}
-
-/* 标签切换样式 */
-.config-tabs {
-  display: flex;
-  border-bottom: 1px solid #eee;
-  margin-bottom: 20px;
-}
-
-.config-tab {
-  padding: 10px 20px;
-  border: none;
-  background: none;
-  cursor: pointer;
-  font-size: 14px;
-  color: #666;
-  border-bottom: 2px solid transparent;
-  transition: all 0.2s ease;
-}
-
-.config-tab:hover {
-  color: #007bff;
-}
-
-.config-tab.active {
-  color: #007bff;
-  border-bottom-color: #007bff;
-  font-weight: 500;
-}
-
 /* 配置项样式 */
 .config-item {
   margin-bottom: 20px;
+  display: flex;
+  align-items: center;
 }
 
 .config-item label {
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 0;
+  margin-right: 10px;
   font-weight: 500;
   color: #333;
   font-size: 14px;
+  min-width: 100px;
 }
 
-.config-item input[type="text"],
-.config-item input[type="number"],
-.config-item textarea {
+.config-item .el-input,
+.config-item .el-input-number,
+.config-item .el-color-picker,
+.config-item .el-upload {
+  flex: 1;
+}
+
+/* 文本域特殊处理 */
+.config-item .el-input--textarea {
+  flex: 1;
+}
+
+/* 图片上传特殊处理 */
+#image-upload-section {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+#image-upload-section label {
+  margin-bottom: 10px;
+}
+
+#image-upload-section .upload-container {
+  display: flex;
+  align-items: center;
   width: 100%;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 14px;
-  box-sizing: border-box;
 }
 
-.config-item textarea {
-  min-height: 100px;
-  resize: vertical;
+#image-upload-section .el-upload {
+  flex: 1;
+  margin-bottom: 0;
+  margin-right: 10px;
 }
 
-.config-item input[type="color"] {
+#image-upload-section .button-container {
+  display: flex;
+  align-items: center;
+}
+
+/* 数据源配置特殊处理 */
+#data-source-section {
   width: 100%;
-  height: 40px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  cursor: pointer;
 }
 
-/* 元素下拉选择样式 */
-.element-dropdown {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 14px;
-  margin-top: 20px;
+/* 按钮行样式 */
+.button-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 20px;
 }
 
-/* 数据源信息样式 */
+/* 数据源信息特殊处理 */
 .data-source-info {
+  flex: 1;
   background-color: #f8f9fa;
   padding: 10px;
   border-radius: 4px;
-  margin-top: 10px;
   font-size: 14px;
   color: #666;
-}
-
-/* 按钮样式 */
-.btn {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: background-color 0.2s ease;
-}
-
-.btn-primary {
-  background-color: #007bff;
-  color: white;
-}
-
-.btn-primary:hover {
-  background-color: #0056b3;
-}
-
-.btn-secondary {
-  background-color: #6c757d;
-  color: white;
-}
-
-.btn-secondary:hover {
-  background-color: #545b62;
-}
-
-/* 响应式设计 */
-@media (max-width: 1200px) {
-  .config-panel {
-    width: 50%;
-  }
-}
-
-@media (max-width: 768px) {
-  .config-panel {
-    width: 100%;
-    height: auto;
-  }
 }
 </style>

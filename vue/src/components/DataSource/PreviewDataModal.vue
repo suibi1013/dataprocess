@@ -340,7 +340,7 @@ const selectSheetTab = async (sheetName: string) => {
         const data = await httpClient.get('/datasource/file-data', {
           file_path: currentSelectedFile.value,
           sheet_name: sheetName,
-          limit: 100
+          limit: 20
         });
         if (data.success && data.data) {
           // API现在直接返回工作表数据
@@ -438,16 +438,6 @@ const handleCellClick = (event: Event, rowIndex: number, colIndex: number) => {
   const cellAddress = `${String.fromCharCode(65 + colIndex)}${rowIndex + 1}`;
   selectedCellRange.value = cellAddress;
 };
-
-// // 确认数据源选择
-// const confirmDataSourceSelection = () => {
-//   if (!selectedCellRange.value) {
-//     return;
-//   }
-  
-//   // 这里可以添加确认选择的逻辑
-//   handleClose();
-// };
 
 // 处理重试
 const handleRetry = () => {

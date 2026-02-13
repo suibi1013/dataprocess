@@ -76,6 +76,7 @@ export interface Element {
       data_source_config?: {
         type: string;
         data_source_name: string;
+        data_source_path: string;
         excel_sheet_name: string;
         excel_cell_range?: string;
       };
@@ -169,16 +170,9 @@ export class TemplateEditorService {
         config_data: config
       });
       
-      // 保存到本地存储，以便快速访问
-      sessionStorage.setItem('pptConfig', JSON.stringify(config));
-      
       return response;
     } catch (error) {
-      console.error('保存模板配置失败:', error);
-      
-      // 即使API调用失败，也尝试保存到本地存储
-      sessionStorage.setItem('pptConfig', JSON.stringify(config));
-      
+      console.error('保存模板配置失败:', error);      
       throw error;
     }
   }

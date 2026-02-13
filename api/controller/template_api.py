@@ -136,7 +136,7 @@ async def delete_template(
         raise HTTPException(status_code=500, detail=f'删除模板失败: {str(e)}')
 
 
-@api_router.get("/check_config_update")
+@api_router.get("/template/check_config_update")
 async def check_config_update(
     file_name: str = Query(..., description="文件名"),
     template_service: TemplateService = Depends(lambda: inject(TemplateService))
@@ -202,3 +202,39 @@ async def serve_static(
         return FileResponse(file_path)
     else:
         raise HTTPException(status_code=404, detail='文件未找到')
+
+
+@api_router.post("/template/replace_data")
+async def replace_template_data(
+    template_id: str = Query(..., description="模板ID"),
+    template_service: TemplateService = Depends(lambda: inject(TemplateService))
+):
+    """模板数据替换接口
+    根据模板id，读取模板页配置信息，获取数据源文件数据，替换PPT内元素数据
+    返回替换后的PPT文件流
+    """
+    try:
+        # 调用服务层进行数据替换
+        result = await template_service.replace_template_data(template_id)
+        
+        # 根据结果返回相应的响应
+        if result.success:
+            output_file_path = result.data.get('output_file_path')
+            if output_file_path:
+                # 返回文件流
+                # 从文件路径中提取文件名
+                import os
+                output_file_name = os.path.basename(output_file_path)
+                return FileResponse(
+                    output_file_path,
+                    media_type='application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                    filename=output_file_name
+                )
+            else:
+                raise HTTPException(status_code=500, detail='文件生成失败')
+        else:
+            raise HTTPException(status_code=500, detail=result.message)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f'数据替换失败: {str(e)}')

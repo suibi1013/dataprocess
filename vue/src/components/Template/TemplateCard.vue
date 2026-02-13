@@ -14,6 +14,13 @@
       >
         模板配置
       </button>
+      <button 
+        class="btn btn-sm btn-primary" 
+        @click="exportData(props.template.id)"
+        :disabled="props.template.status !== templateStatus.READY"
+      >
+        数据导出
+      </button>
       <button class="btn btn-sm btn-danger" @click="deleteTemplate(props.template.id)">
         删除
       </button>
@@ -33,6 +40,7 @@ interface Props {
 const emit = defineEmits<{
   'edit': [_templateId: string];
   'delete': [_templateId: string];
+  'export': [_templateId: string];
 }>();
 
 const props = defineProps<Props>();
@@ -67,6 +75,11 @@ function editTemplate(templateId: string): void {
 // 删除模板
 function deleteTemplate(templateId: string): void {
   emit('delete', templateId);
+}
+
+// 数据导出
+function exportData(templateId: string): void {
+  emit('export', templateId);
 }
 </script>
 
