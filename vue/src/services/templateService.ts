@@ -179,15 +179,15 @@ export class TemplateService implements TemplateApiService {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.detail || '数据替换失败');
       }
-      
       // 获取文件名
       const contentDisposition = response.headers.get('content-disposition');
       let filename = `template_${templateId}_replaced.pptx`;
       
+      // 优先使用后端返回的filename
       if (contentDisposition) {
-        const matches = /filename="([^"]+)"/.exec(contentDisposition);
+        const matches = contentDisposition.match(/filename\*=UTF-8''([\w%\-.]+)/i);      
         if (matches && matches[1]) {
-          filename = matches[1];
+          filename = decodeURIComponent(matches[1]);
         }
       }
       

@@ -177,7 +177,7 @@ watch(() => props.canvasInitialized, (initialized) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 12px;
+  padding: 5px 8px;
   background: #fafafa;
   border-bottom: 1px solid #e8e8e8;
   z-index: 100;

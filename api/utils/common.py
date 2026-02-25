@@ -100,4 +100,13 @@ class CommonUtils:
             return f"<{type(data).__name__} object>"
         else:  # 处理其他复杂类型
             return str(data)
+    @staticmethod
+    def safe_filename(filename: str) -> str:
+        """清理文件名，移除危险字符（可选但推荐）"""
+        # 移除 Windows 不允许的字符
+        import re
+        cleaned = re.sub(r'[<>:"/\\|?*\x00-\x1f]', '_', filename)
+        # 防止全为点或空格
+        cleaned = cleaned.strip('. ')
+        return cleaned or "unnamed_file"
 

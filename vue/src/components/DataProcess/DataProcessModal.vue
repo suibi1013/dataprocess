@@ -1244,7 +1244,7 @@ onUnmounted(() => {
 
 /* 指令面板容器 */
 .instruction-panel-wrapper {
-  width: 280px;
+  width: 250px;
   flex-shrink: 0;
   background: #fafafa;
 }

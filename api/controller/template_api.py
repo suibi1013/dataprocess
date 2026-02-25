@@ -4,14 +4,11 @@
 
 from fastapi import APIRouter, UploadFile, File, Form, Query, Depends, HTTPException
 from fastapi.responses import FileResponse
-from typing import Dict, Any
 import os
-from dataclasses import dataclass
-import json
-from datetime import datetime
-
+from urllib.parse import quote
 # 导入配置和服务
 from config import config
+from utils.common import CommonUtils
 from service.ppt_service import PPTservice
 from service.config_service import Configservice
 from service.template_service import TemplateService
@@ -223,12 +220,18 @@ async def replace_template_data(
             if output_file_path:
                 # 返回文件流
                 # 从文件路径中提取文件名
-                import os
                 output_file_name = os.path.basename(output_file_path)
+                # 【关键】清理并编码文件名
+                safe_name = CommonUtils.safe_filename(output_file_name)
+                encoded_filename = quote(safe_name, safe='')  # safe='' 表示对所有非字母数字字符编码
+
+                # 构造只包含 filename* 的 Content-Disposition（符合 RFC 5987）
+                content_disposition = f"attachment; filename*=UTF-8''{encoded_filename}"
+
                 return FileResponse(
                     output_file_path,
                     media_type='application/vnd.openxmlformats-officedocument.presentationml.presentation',
-                    filename=output_file_name
+                    headers={'Content-Disposition': content_disposition}
                 )
             else:
                 raise HTTPException(status_code=500, detail='文件生成失败')

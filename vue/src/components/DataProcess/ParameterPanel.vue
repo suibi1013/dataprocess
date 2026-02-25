@@ -1603,7 +1603,7 @@ const onHandleButtonEventClick = async (item) => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px;
+  padding: 10px;
   border-bottom: 1px solid #e8e8e8;
   background: #fafafa;
 }

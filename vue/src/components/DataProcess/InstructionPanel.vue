@@ -2,10 +2,19 @@
   <div class="instructions-panel">
     <div class="panel-header">
       <h4 class="panel-title">指令列表</h4>
+      <div class="search-box">
+        <el-input 
+          v-model="searchKeyword" 
+          placeholder="搜索指令名称或描述..."
+          clearable
+          prefix-icon="el-icon-search"
+        >
+        </el-input>
+      </div>
     </div>
     <div class="panel-content">
       <div v-if="instructionLoading" class="loading-state">
-        <i class="icon-loading"></i>
+        <el-icon class="is-loading"><Loading /></el-icon>
         <span>加载中...</span>
       </div>
       <div v-else class="instruction-categories">
@@ -30,12 +39,28 @@
             >
               <div class="instruction-icon">
                 <component v-if="instruction.icon && instruction.icon.startsWith('el-icon-')" :is="getIconComponent(instruction.icon)"></component>
-                <i v-else :class="instruction.icon || 'icon-code'"></i>
+                <i v-else :class="instruction.icon || 'icon-code'" ></i>
               </div>
               <div class="instruction-info">
-                  <div class="instruction-name">{{ instruction.name }}</div>
-                  <div class="instruction-desc">{{ instruction.description }}</div>
-                </div>
+                <div class="instruction-name">{{ instruction.name }}</div>
+                <div class="instruction-desc">{{ instruction.description }}</div>
+              </div>
+              <el-popover
+                :content="instruction.description"
+                placement="right"
+                trigger="hover"
+                effect="dark"
+              >
+                <template #reference>
+                  <el-button 
+                    type="text" 
+                    size="small" 
+                    class="desc-button"
+                  >
+                    <el-icon><InfoFilled /></el-icon>
+                  </el-button>
+                </template>
+              </el-popover>
             </div>
           </div>
         </div>
@@ -45,8 +70,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import * as ElementPlusIconsVue from '@element-plus/icons-vue';
+import { Loading, InfoFilled } from '@element-plus/icons-vue';
 
 // Props
 interface Props {
@@ -56,9 +82,38 @@ interface Props {
 
 const props = defineProps<Props>();
 
-// 使用计算属性来显示指令分类
+// 搜索关键词
+const searchKeyword = ref('');
+
+// 使用计算属性来显示指令分类，支持搜索
 const displayInstructionCategories = computed(() => {
-  return props.instructionCategories;
+  const keyword = searchKeyword.value.toLowerCase().trim();
+  
+  // 如果没有搜索关键词，直接返回所有分类
+  if (!keyword) {
+    return props.instructionCategories;
+  }
+  
+  // 过滤包含匹配指令的分类
+  return props.instructionCategories.map(category => {
+    // 过滤当前分类下匹配的指令
+    const filteredInstructions = category.instructions.filter((instruction: any) => {
+      const name = instruction.name?.toLowerCase() || '';
+      const description = instruction.description?.toLowerCase() || '';
+      return name.includes(keyword) || description.includes(keyword);
+    });
+    
+    // 如果当前分类有匹配的指令，返回包含过滤后指令的分类
+    if (filteredInstructions.length > 0) {
+      return {
+        ...category,
+        instructions: filteredInstructions
+      };
+    }
+    
+    // 否则返回null，后续会过滤掉
+    return null;
+  }).filter((category: any) => category !== null);
 });
 
 // Emits
@@ -110,9 +165,12 @@ const onToggleCategory = (categoryId: string) => {
 }
 
 .instructions-panel .panel-header {
-  padding: 16px;
+  padding: 10px;
   border-bottom: 1px solid #e8e8e8;
   background: white;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .instructions-panel .panel-title {
@@ -122,11 +180,15 @@ const onToggleCategory = (categoryId: string) => {
   color: #262626;
 }
 
+.search-box {
+  width: 100%;
+}
+
 .instructions-panel .panel-content {
   flex: 1;
   overflow-y: auto;
   padding: 8px;
-  max-height: calc(100% - 140px); /* 减去头部和底部间距，避免被modal-footer遮挡 */
+  max-height: calc(100% - 220px); /* 减去头部和底部间距，避免被modal-footer遮挡 */
 }
 
 .loading-state {
@@ -136,6 +198,19 @@ const onToggleCategory = (categoryId: string) => {
   gap: 8px;
   padding: 40px 16px;
   color: #8c8c8c;
+}
+
+.loading-state .is-loading {
+  animation: rotating 1s linear infinite;
+}
+
+@keyframes rotating {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .instruction-categories {
@@ -196,6 +271,16 @@ const onToggleCategory = (categoryId: string) => {
   transition: all 0.2s ease;
   background: white;
   border: 1px solid transparent;
+}
+
+.desc-button {
+  flex-shrink: 0;
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .instruction-item:hover {

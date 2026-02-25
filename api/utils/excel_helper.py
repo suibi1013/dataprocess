@@ -75,26 +75,32 @@ class ExcelHelper:
     @staticmethod
     def _get_merged_cells_in_range(worksheet, range_obj):
         """获取指定范围内的合并单元格信息"""
-        merged_cells = []
+        merged = []
+        if not range_obj:
+            range_obj = worksheet.used_range
+            if range_obj is None:
+                return []
         
-        try:
-            if hasattr(worksheet, 'api'):
-                ws_api = worksheet.api
-                if hasattr(ws_api, 'UsedRange') and hasattr(ws_api.UsedRange, 'MergedCells'):
-                    # 遍历工作表中的所有合并单元格
-                    for merged_area in ws_api.UsedRange.MergedCells:
-                        if hasattr(merged_area, 'Address'):
-                            merged_cells.append({
-                                'range': merged_area.Address,
-                                'row_start': merged_area.Row,
-                                'col_start': merged_area.Column,
-                                'row_count': merged_area.Rows.Count,
-                                'col_count': merged_area.Columns.Count
+        start_row = range_obj.row
+        start_col = range_obj.column
+        for row_idx in range(range_obj.shape[0]):
+            for col_idx in range(range_obj.shape[1]):
+                cell = worksheet.cells(start_row + row_idx, start_col + col_idx)
+                if cell.merge_area.shape != (1, 1):  # 是合并单元格
+                    top_left = cell.merge_area.row, cell.merge_area.column
+                    bottom_right = (
+                        top_left[0] + cell.merge_area.rows.count - 1,
+                        top_left[1] + cell.merge_area.columns.count - 1,
+                    )
+                    if (top_left, bottom_right) not in merged:
+                        merged.append({
+                                'range': cell.merged_area.address,
+                                'row_start': cell.merge_area.row,
+                                'col_start': cell.merge_area.column,
+                                'row_count': top_left[0] + cell.merge_area.rows.count - 1,
+                                'col_count': top_left[1] + cell.merge_area.columns.count - 1
                             })
-        except Exception as e:
-            print(f"获取合并单元格信息时出错: {str(e)}")
-        
-        return merged_cells
+        return merged
     
     @staticmethod
     def _get_cell_style_info(cell):
@@ -383,7 +389,17 @@ class ExcelHelper:
     
     @staticmethod
     def _read_excel_range_with_xlwings(file_path: str, sheet_name: str = None, cell_range: str = None):
-        """使用xlwings读取Excel文件的指定范围数据，包含样式信息"""
+        """
+        使用xlwings读取Excel文件的指定范围数据，包含样式信息
+        :param file_path: Excel文件路径
+        :param sheet_name: 工作表名称，默认第一个工作表
+        :param cell_range: 单元格范围，默认整个工作表,单元格范围，支持 A1:C3 或 A1 格式
+        :return: 包含数据、样式和合并单元格信息的字典
+        :key: 列名
+        :value: 包含单元格数据、公式和样式信息的字典
+        :key: 列名
+        :value: 单元格数据
+        """
         app = None
         workbook = None
         try:

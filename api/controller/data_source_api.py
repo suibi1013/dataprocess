@@ -390,32 +390,6 @@ async def upload_multiple_excel(
         raise
     except Exception as exc:
         return await handle_internal_error(exc)
-
-@router.get("/datasource/file-data")
-async def get_data_source_data(
-    file_path: str = Query(..., description="Excel文件路径"),
-    sheet_name: Optional[str] = Query(None, description="工作表名称"),
-    limit: int = Query(100, description="返回数据行数限制"),
-    data_source_service: DataSourceservice = Depends(lambda: inject(DataSourceservice))
-):
-    """获取Excel文件数据"""
-    try:
-        result = await data_source_service.get_data_source_by_file_path(file_path, sheet_name, limit)
-        
-        if result.success:
-            return {
-                "success": True,
-                "message": result.message,
-                "data": result.data
-            }
-        else:
-            raise HTTPException(status_code=404, detail=result.message)
-            
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"获取Excel文件数据失败: {str(e)}")
-
 @router.post("/datasource/{data_source_id}/range")
 async def get_data_source_range(
     data_source_id: str = PathParam(..., description="数据源ID"),
