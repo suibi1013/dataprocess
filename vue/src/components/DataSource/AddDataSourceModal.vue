@@ -673,23 +673,6 @@ const handleInputChange = (field: string, value: any) => {
   color: #8c8c8c;
 }
 
-.remove-file-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border: none;
-  background: #ff4d4f;
-  color: white;
-  border-radius: 50%;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.remove-file-btn:hover {
-  background: #ff7875;
-}
 
 .modal-footer {
   display: flex;

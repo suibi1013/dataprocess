@@ -83,9 +83,7 @@
                       <p class="file-name">{{ file.name }}</p>
                       <p class="file-size">{{ formatFileSize(file.size) }}</p>
                     </div>
-                    <button type="button" class="remove-file-btn" @click="removeFileByIndex(index)">
-                      <i class="el-icon-close"></i>
-                    </button>
+                    <el-button @click="removeFileByIndex(index)" circle ><el-icon><Close /></el-icon></el-button>
                     </div>
                   </template>
                   <!-- 编辑模式下显示文件 -->
@@ -101,13 +99,7 @@
                           </p>
                           <p class="file-size">{{ file.file_size || file.size ? formatFileSize(file.file_size || file.size) : '未知大小' }}</p>
                         </div>
-                        <button 
-                          type="button" 
-                          class="remove-file-btn" 
-                          @click="handleRemoveNewFile(file)"
-                        >
-                          <i class="el-icon-close"></i>
-                        </button>
+                        <el-button @click="handleRemoveNewFile(file)" circle ><el-icon><Close /></el-icon></el-button>
                       </div>
                     </div>
                   </template>
@@ -1196,24 +1188,6 @@ const handleOverlayClick = (event: Event) => {
   color: #8c8c8c;
 }
 
-.remove-file-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border: none;
-  background: #ff4d4f;
-  color: white;
-  border-radius: 50%;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.remove-file-btn:hover {
-  background: #ff7875;
-}
-
 .modal-footer {
   display: flex;
   align-items: center;
@@ -1257,7 +1231,6 @@ const handleOverlayClick = (event: Event) => {
 .file-item i {
   font-size: 20px;
   color: #1890ff;
-  margin-right: 12px;
   flex-shrink: 0;
 }
 
@@ -1293,26 +1266,6 @@ const handleOverlayClick = (event: Event) => {
   margin: 0;
   font-size: 12px;
   color: #8c8c8c;
-}
-
-.remove-file-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border: none;
-  background: #ff4d4f;
-  color: white;
-  border-radius: 4px;
-  cursor: pointer;
-  margin-left: 8px;
-  flex-shrink: 0;
-  transition: all 0.2s ease;
-}
-
-.remove-file-btn:hover {
-  background: #ff7875;
 }
 
 .upload-message {

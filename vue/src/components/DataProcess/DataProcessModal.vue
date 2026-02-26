@@ -1636,19 +1636,6 @@ onUnmounted(() => {
     font-size: 14px;
   }
   
-  .remove-file-btn {
-    padding: 2px 8px;
-    background-color: #f5222d;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 12px;
-  }
-  
-  .remove-file-btn:hover {
-    background-color: #ff4d4f;
-  }
 
   /* 结果模态框样式 */
   /* 动画效果 */

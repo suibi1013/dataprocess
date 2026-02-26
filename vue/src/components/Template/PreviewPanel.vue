@@ -291,12 +291,9 @@ function generateElementHTML(element: Element): string {
   let elementHTML = `<div style="${styleString}">`;
   
   const data = element.data || {};
-  const dataSourceConfig = data.data_source_config;
   
-  // 优先处理数据源配置元素
-  if (dataSourceConfig && dataSourceConfig.type === 'excel' && dataSourceConfig.data_source_name && dataSourceConfig.excel_sheet_name) {
-    elementHTML += renderExcelDataSourceElement(element);
-  } else if (data.chart_data && data.chart_data.type) {
+  // 直接根据元素类型渲染，不再优先处理数据源配置元素
+  if (data.chart_data && data.chart_data.type) {
     // 处理图表元素
     elementHTML += renderChartElement(element);
   } else {
@@ -454,17 +451,17 @@ function renderOLEElement(element: Element): string {
 }
 
 // 渲染Excel数据源元素
-function renderExcelDataSourceElement(element: Element): string {
-  const data = element.data || {};
-  if (data.data_source_config) {
-    return `<div style="padding: 20px; text-align: center; color: #666;">
-              Excel数据源: ${data.data_source_config.data_source_name}<br>
-              工作表: ${data.data_source_config.excel_sheet_name}<br>
-              范围: ${data.data_source_config.excel_cell_range}
-            </div>`;
-  }
-  return '<div style="padding: 20px; text-align: center; color: #666;">Excel数据源元素</div>';
-}
+// function renderExcelDataSourceElement(element: Element): string {
+//   const data = element.data || {};
+//   if (data.data_source_config) {
+//     return `<div style="padding: 20px; text-align: center; color: #666;">
+//               Excel数据源: ${data.data_source_config.data_source_name}<br>
+//               工作表: ${data.data_source_config.excel_sheet_name}<br>
+//               范围: ${data.data_source_config.excel_cell_range}
+//             </div>`;
+//   }
+//   return '<div style="padding: 20px; text-align: center; color: #666;">Excel数据源元素</div>';
+// }
 
 // 生成表格HTML
 function generateTableHTML(tableData: any, tableOptions: any = {},elementId: string = ''): string {  

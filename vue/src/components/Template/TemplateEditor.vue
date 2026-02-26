@@ -461,68 +461,12 @@ export default class TemplateEditor extends Vue {
         sheet: this.currentSelectedSheet,
         range: element.data.data_source_config.excel_cell_range
       }
-
-      // 获取实际数据并更新元素
-      this.replaceElementDataWithSelectedRange(selection).then(() => {
-        this.saveConfig()
-        this.showToastMessage(`已选择区域: 行${selection.start_row}-${selection.end_row}, 列${selection.start_column}-${selection.end_column}`, 'success')
-        this.closeDataPreviewModal()
-
-        // 数据源更新后重新初始化图表
-        this.handleElementDataUpdate()
-      }).catch(error => {
-        console.error('获取和更新数据失败:', error)
-        this.showToastMessage('数据更新失败: ' + (error as Error).message, 'error')
-      })
+      this.saveConfig()
+      this.showToastMessage(`已选择区域: 行${selection.start_row}-${selection.end_row}, 列${selection.start_column}-${selection.end_column}`, 'success')
+      this.closeDataPreviewModal()
     }
   }
 
-  // 替换元素数据为选中的数据区域
-  async replaceElementDataWithSelectedRange(selection: DataSelection) {
-    try {
-      // 从已加载的数据源数据中提取指定范围的数据
-      const allData = this.dataSourceSheetsData[this.currentSelectedSheet] || [];
-
-      // 解析选择范围
-      const startRow = selection.start_row - 1; // 转换为0基索引
-      const endRow = selection.end_row - 1;
-      const startCol = this.columnToNumber(selection.start_column);
-      const endCol = this.columnToNumber(selection.end_column);
-
-      // 提取指定范围的数据
-      const selectedData = allData.slice(startRow, endRow + 1).map((row: any[]) => {
-        return row.slice(startCol, endCol + 1);
-      });
-
-      // 调用服务方法，传递提取的数据
-      await templateEditorInteractionService.replaceElementDataWithSelectedRange(
-        selection,
-        this.selectedDataSourceFilePath,
-        this.currentSelectedSheet,
-        () => this.getCurrentSlideElements(),
-        this.selectedElementIndex,
-        (message, type) => this.showToastMessage(message, type),
-        selectedData
-      );
-    } catch (error) {
-      console.error('获取和更新数据失败:', error);
-      this.showToastMessage('数据更新失败: ' + (error as Error).message, 'error');
-    }
-  }
-
-  // 将列字母转换为数字索引 (A=0, B=1, ...)
-  columnToNumber(column: string): number {
-    let result = 0;
-    for (let i = 0; i < column.length; i++) {
-      result = result * 26 + (column.charCodeAt(i) - 'A'.charCodeAt(0) + 1);
-    }
-    return result - 1;
-  }
-
-  // 将数据转换为图表格式
-  convertDataToChartFormat(newData: any, existingChartData: any): any {
-    return templateEditorInteractionService.convertDataToChartFormat(newData, existingChartData)
-  }
 
   // 保存配置
   async saveConfig() {
@@ -570,19 +514,7 @@ export default class TemplateEditor extends Vue {
     templateEditorInteractionService.updatePreviewPanelElements(
       this.currentSlideIndex,
       this.selectedElementIndex,
-      () => this.getCurrentSlideElements(),
-      (element, container) => this.updateExcelElementData(element, container)
-    );
-  }
-
-  // 更新Excel元素数据
-  async updateExcelElementData(element: Element, container: HTMLElement) {
-    await templateEditorInteractionService.updateExcelElementData(
-      element,
-      container,
-      this.dataSources,
-      this.selectedDataSourceFilePath,
-      (message, type) => this.showToastMessage(message, type)
+      () => this.getCurrentSlideElements()
     );
   }
 

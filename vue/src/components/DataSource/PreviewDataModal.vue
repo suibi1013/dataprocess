@@ -126,11 +126,9 @@
             
             <!-- 无数据状态 -->
             <div v-else class="empty-data">
-              <div class="empty-icon">
-                <i class="el-icon-document-empty"></i>
-              </div>
-              <h4 class="empty-title">暂无数据</h4>
-              <p class="empty-message">该数据源中没有找到任何数据</p>
+              <el-empty>
+                请点击加载数据按钮加载数据
+              </el-empty>
             </div>
           </div>
         </div>
@@ -794,38 +792,6 @@ const handleOverlayClick = (event: Event) => {
   margin: 0;
   font-size: 14px;
 }
-
-.empty-data {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 20px;
-  text-align: center;
-}
-
-.empty-icon {
-  margin-bottom: 16px;
-}
-
-.empty-icon i {
-  font-size: 48px;
-  color: #d9d9d9;
-}
-
-.empty-title {
-  margin: 0 0 8px 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: #262626;
-}
-
-.empty-message {
-  margin: 0;
-  font-size: 14px;
-  color: #8c8c8c;
-}
-
 .modal-footer {
   display: flex;
   align-items: center;

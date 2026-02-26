@@ -1,41 +1,21 @@
 <template>
-  <el-dialog
-    v-model="dialogVisible"
-    title="数据预览与区域选择"
-    :width="'95%'"
-    :top="'5vh'"
-    :close-on-click-modal="false"
-    :close-on-press-escape="false"
-    class="data-preview-modal"
-  >
+  <el-dialog v-model="dialogVisible" title="数据预览与区域选择" :width="'95%'" :top="'5vh'" :close-on-click-modal="false"
+    :close-on-press-escape="false" class="data-preview-modal">
     <template #header>
       <div class="modal-header">
         <h3>数据预览与区域选择</h3>
       </div>
     </template>
-    
-    <div v-loading="isLoading" element-loading-text="正在加载数据，请稍候..." element-loading-background="rgba(255, 255, 255, 0.8)" class="modal-body">
+
+    <div v-loading="isLoading" element-loading-text="正在加载数据，请稍候..."
+      element-loading-background="rgba(255, 255, 255, 0.8)" class="modal-body">
       <!-- 工作表选择下拉列表 -->
       <div class="sheet-selection">
         <div class="flex items-center gap-2">
-          <el-select 
-            v-model="selectedSheet" 
-            placeholder="请选择工作表"
-            style="width: 240px"
-          >
-            <el-option 
-              v-for="sheet in sheetsList" 
-              :key="sheet"
-              :label="sheet"
-              :value="sheet"
-            />
+          <el-select v-model="selectedSheet" placeholder="请选择工作表" style="width: 240px">
+            <el-option v-for="sheet in sheetsList" :key="sheet" :label="sheet" :value="sheet" />
           </el-select>
-          <el-button 
-            type="primary" 
-            @click="handleSheetChange"
-            :loading="isLoading"
-            style="margin: 0px 10px"
-          >
+          <el-button type="primary" @click="handleSheetChange" :loading="isLoading" style="margin: 0px 10px">
             加载数据
           </el-button>
         </div>
@@ -43,43 +23,22 @@
       <!-- 数据表格容器 -->
       <div class="table-container">
         <div v-if="sheetData && sheetData.columns && sheetData.rows" class="table-wrapper">
-          <table 
-            id="selectableTable" 
-            class="selectable-data-table"
-            @mousedown="handleMouseDown"
-            @mousemove="handleMouseMove"
-            @mouseup="handleMouseUp"
-            @selectstart.prevent
-          >
+          <table id="selectableTable" class="selectable-data-table" @mousedown="handleMouseDown"
+            @mousemove="handleMouseMove" @mouseup="handleMouseUp" @selectstart.prevent>
             <thead>
               <tr>
                 <th class="row-number-header">行号</th>
-                <th 
-                  v-for="(col, index) in sheetData.columns" 
-                  :key="index"
-                  :data-col-index="index"
-                  :data-col-name="col"
-                >
+                <th v-for="(col, index) in sheetData.columns" :key="index" :data-col-index="index" :data-col-name="col">
                   {{ col }}
                 </th>
               </tr>
             </thead>
             <tbody>
-              <tr 
-                v-for="(row, rowIndex) in sheetData.rows" 
-                :key="rowIndex"
-                :data-row-index="rowIndex"
-              >
+              <tr v-for="(row, rowIndex) in sheetData.rows" :key="rowIndex" :data-row-index="rowIndex">
                 <td class="row-number">{{ rowIndex + 1 }}</td>
-                <td 
-                  v-for="(col, colIndex) in sheetData.columns" 
-                  :key="colIndex"
-                  class="selectable-cell"
-                  :data-row="rowIndex"
-                  :data-col="colIndex"
-                  :data-col-name="col"
-                  :style="getCellBackgroundStyle(row[col])"
-                >
+                <td v-for="(col, colIndex) in sheetData.columns" :key="colIndex" class="selectable-cell"
+                  :data-row="rowIndex" :data-col="colIndex" :data-col-name="col"
+                  :style="getCellBackgroundStyle(row[col])">
                   <!-- 处理单元格数据，如果是包含样式的对象则提取文本内容并应用样式 -->
                   <span :style="getCellTextStyle(row[col])">
                     {{ getCellContent(row[col]) }}
@@ -89,23 +48,22 @@
             </tbody>
           </table>
         </div>
-        
+
         <div v-else class="empty-data">
-          <el-empty description="暂无数据" />
+          <el-empty>
+            请点击加载数据按钮加载数据
+          </el-empty>
         </div>
       </div>
     </div>
-    
+
     <template #footer>
       <div class="selection-actions">
         <div class="bottom-selection-status" :class="{ 'has-selection': hasValidSelection }">
           已选择区域：{{ selectionStatusText }}
         </div>
         <el-button @click="handleClearSelection">清除选择</el-button>
-        <el-button 
-          type="primary" 
-          @click="handleConfirm"
-        >
+        <el-button type="primary" @click="handleConfirm">
           确认选择
         </el-button>
         <el-button @click="handleCancel">取消</el-button>
@@ -150,19 +108,19 @@ interface Emits {
 const emit = defineEmits<Emits>();
 
 // 处理确认选择（同时确认工作表和数据区域）
-const handleConfirm = () => {
-  // 首先确认工作表选择
-  emit('confirm-sheet', selectedSheet.value);
-  // 如果有数据区域选择，也确认数据区域
-  if (hasValidSelection.value) {
-    // 确保传递的选择对象包含sheetName属性
-    const selectionWithSheetName = {
-      ...selectionState.value.currentSelection,
-      sheetName: selectedSheet.value // 添加sheetName属性，值为当前选中的工作表名称
-    };
-    emit('confirm-selection', selectionWithSheetName);
-  }
-};
+  const handleConfirm = () => {
+    // 首先确认工作表选择
+    emit('confirm-sheet', selectedSheet.value);
+    // 如果有数据区域选择，也确认数据区域
+    if (hasValidSelection.value && selectionState.value.currentSelection) {
+      // 确保传递的选择对象包含sheetName属性
+      const selectionWithSheetName: DataSelection = {
+        ...selectionState.value.currentSelection,
+        sheetName: selectedSheet.value // 添加sheetName属性，值为当前选中的工作表名称
+      };
+      emit('confirm-selection', selectionWithSheetName);
+    }
+  };
 
 // 本地状态
 const dialogVisible = computed({
@@ -199,7 +157,7 @@ const selectionStatusText = computed(() => {
   if (!selection) {
     return '--暂无选择区域--';
   }
-  
+
   return ` ${selection.start_column}${selection.start_row}:${selection.end_column}${selection.end_row}`;
 });
 
@@ -214,17 +172,17 @@ const hasValidSelection = computed(() => {
 const handleMouseDown = (event: MouseEvent) => {
   const cell = (event.target as HTMLElement).closest('.selectable-cell') as HTMLElement;
   if (!cell) return;
-  
+
   event.preventDefault();
   isMouseDown.value = true;
-  
+
   const row = parseInt(cell.dataset.row || '0');
   const col = parseInt(cell.dataset.col || '0');
-  
+
   selectionState.value.isSelecting = true;
   selectionState.value.startCell = { row, col };
   selectionState.value.endCell = { row, col };
-  
+
   updateSelection();
 };
 
@@ -233,13 +191,13 @@ const handleMouseDown = (event: MouseEvent) => {
  */
 const handleMouseMove = (event: MouseEvent) => {
   if (!isMouseDown.value || !selectionState.value.isSelecting) return;
-  
+
   const cell = (event.target as HTMLElement).closest('.selectable-cell') as HTMLElement;
   if (!cell) return;
-  
+
   const row = parseInt(cell.dataset.row || '0');
   const col = parseInt(cell.dataset.col || '0');
-  
+
   selectionState.value.endCell = { row, col };
   updateSelection();
 };
@@ -258,18 +216,18 @@ const handleMouseUp = () => {
 const updateSelection = () => {
   const { startCell, endCell } = selectionState.value;
   if (!startCell || !endCell || !sheetData.value) return;
-  
+
   // 计算选择区域
   const minRow = Math.min(startCell.row, endCell.row);
   const maxRow = Math.max(startCell.row, endCell.row);
   const minCol = Math.min(startCell.col, endCell.col);
   const maxCol = Math.max(startCell.col, endCell.col);
-  
+
   // 获取列名
   const columns = sheetData.value.columns;
   const start_column = columns[minCol] || 'A';
   const end_column = columns[maxCol] || 'A';
-  
+
   // 更新选择状态
   selectionState.value.currentSelection = {
     start_row: minRow + 1, // 转换为1基索引
@@ -279,7 +237,7 @@ const updateSelection = () => {
     startColIndex: minCol,
     endColIndex: maxCol
   };
-  
+
   // 更新表格样式
   updateTableSelection(minRow, maxRow, minCol, maxCol);
 };
@@ -293,14 +251,14 @@ const updateTableSelection = (minRow: number, maxRow: number, minCol: number, ma
   allCells.forEach(cell => {
     cell.classList.remove('selected', 'selection-start', 'selection-end');
   });
-  
+
   // 添加新的选择样式
   for (let row = minRow; row <= maxRow; row++) {
     for (let col = minCol; col <= maxCol; col++) {
       const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
       if (cell) {
         cell.classList.add('selected');
-        
+
         if (row === minRow && col === minCol) {
           cell.classList.add('selection-start');
         }
@@ -317,7 +275,7 @@ const updateTableSelection = (minRow: number, maxRow: number, minCol: number, ma
  */
 const handleClearSelection = () => {
   resetSelection();
-  
+
   // 清除表格样式
   const allCells = document.querySelectorAll('.selectable-cell');
   allCells.forEach(cell => {
@@ -351,14 +309,14 @@ watch(
     if (visible) {
       // 重置选择状态
       resetSelection();
-      
+
       // 重置工作表列表和选中状态
       sheetsList.value = [];
       selectedSheet.value = '';
-      
+
       // 等待DOM更新后初始化
       await nextTick();
-      
+
       // 如果文件路径存在，获取工作表列表
       if (props.filePath) {
         await loadSheetsList();
@@ -372,7 +330,7 @@ watch(
  */
 const loadSheetsList = async () => {
   if (!props.filePath) return;
-  
+
   isLoading.value = true;
   try {
     // 调用API获取工作表列表
@@ -440,10 +398,10 @@ const getCellContent = (cellData: any): string => {
  */
 const getCellTextStyle = (cellData: any): Record<string, string> => {
   const style: Record<string, string> = {};
-  
+
   if (typeof cellData === 'object' && cellData !== null && 'text' in cellData) {
     const cellObj = cellData as CellData;
-    
+
     // 应用字体样式
     if (cellObj.font_name) style.fontFamily = cellObj.font_name;
     if (cellObj.font_size) style.fontSize = `${cellObj.font_size}px`;
@@ -452,7 +410,7 @@ const getCellTextStyle = (cellData: any): Record<string, string> => {
     if (cellObj.font_italic) style.fontStyle = 'italic';
     if (cellObj.font_underline) style.textDecoration = 'underline';
   }
-  
+
   return style;
 };
 
@@ -462,17 +420,17 @@ const getCellTextStyle = (cellData: any): Record<string, string> => {
  */
 const getCellBackgroundStyle = (cellData: any): Record<string, string> => {
   const style: Record<string, string> = {};
-  
+
   if (typeof cellData === 'object' && cellData !== null && 'text' in cellData) {
     const cellObj = cellData as CellData;
-    
+
     // 应用背景颜色
     if (cellObj.background_color) style.backgroundColor = cellObj.background_color;
-    
+
     // 应用对齐方式
     if (cellObj.horizontal_align) style.textAlign = cellObj.horizontal_align;
     if (cellObj.vertical_align) style.verticalAlign = cellObj.vertical_align;
-    
+
     // 应用边框样式
     if (cellObj.border_top?.style !== 'none') {
       style.borderTop = `${cellObj.border_top?.width}px ${cellObj.border_top?.style} ${cellObj.border_top?.color}`;
@@ -487,7 +445,7 @@ const getCellBackgroundStyle = (cellData: any): Record<string, string> => {
       style.borderRight = `${cellObj.border_right?.width}px ${cellObj.border_right?.style} ${cellObj.border_right?.color}`;
     }
   }
-  
+
   return style;
 };
 </script>
@@ -703,13 +661,13 @@ const getCellBackgroundStyle = (cellData: any): Record<string, string> => {
 }
 
 /* 数据表格容器样式 - 设置高度为屏幕区域高度的60% */
-  .table-container {
-    height: 60vh;
-    overflow: auto;
-  }
-  
-  /* 滚动条样式 */
-  .table-container::-webkit-scrollbar {
+.table-container {
+  height: 60vh;
+  overflow: auto;
+}
+
+/* 滚动条样式 */
+.table-container::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }

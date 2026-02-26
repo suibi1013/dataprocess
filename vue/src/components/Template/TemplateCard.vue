@@ -2,7 +2,7 @@
   <div class="template-card">
     <div class="template-info">
       <h3>{{ props.template.name }}</h3>
-      <p>文件名: {{ props.template.filename || '-' }}</p>
+      <p>文件名: {{ props.template.file_name || '-' }}</p>
       <p>创建时间: {{ formatDate(props.template.createTime) }}</p>
       <p>状态: {{ getStatusText(props.template.status) }}</p>
     </div>
