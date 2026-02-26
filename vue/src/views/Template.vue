@@ -13,6 +13,7 @@
           @edit="editTemplate"
           @delete="deleteTemplate"
           @export="exportTemplateData"
+          ref="templateCards"
         />
       </template>
       <!-- 空状态 -->
@@ -53,6 +54,9 @@ const templates = ref<Template[]>([])
 const showModal = ref(false)
 const showEditorModal = ref(false)
 const selectedTemplateId = ref('')
+
+// 模板卡片引用
+const templateCards = ref<InstanceType<typeof TemplateCard>[]>([])
 
 // 生命周期钩子
 onMounted(() => {
@@ -161,13 +165,19 @@ async function deleteTemplate(templateId: string) {
   }
 }
 
-// 数据导出
+// 模板生成
 async function exportTemplateData(templateId: string) {
   try {
     await templateService.replaceTemplateData(templateId)
   } catch (error) {
-    console.error('数据导出失败:', error)
-    alert(`数据导出失败: ${(error as Error).message || '未知错误'}`)
+    console.error('模板生成失败:', error)
+    alert(`模板生成失败: ${(error as Error).message || '未知错误'}`)
+  } finally {
+    // 重置对应模板卡片的加载状态
+    const cardIndex = templates.value.findIndex(t => t.id === templateId)
+    if (cardIndex !== -1 && templateCards.value[cardIndex]) {
+      templateCards.value[cardIndex].resetExportStatus()
+    }
   }
 }
 </script>

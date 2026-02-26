@@ -17,9 +17,14 @@
       <button 
         class="btn btn-sm btn-primary" 
         @click="exportData(props.template.id)"
-        :disabled="props.template.status !== templateStatus.READY"
+        :disabled="props.template.status !== templateStatus.READY || isExporting"
       >
-        数据导出
+        <span v-if="isExporting">
+          <i class="loading-spinner"></i> 生成中...
+        </span>
+        <span v-else>
+          模板生成
+        </span>
       </button>
       <button class="btn btn-sm btn-danger" @click="deleteTemplate(props.template.id)">
         删除
@@ -29,6 +34,7 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue';
 import { Template, TemplateStatus } from '@/types/template';
 
 // 定义组件属性
@@ -47,6 +53,9 @@ const props = defineProps<Props>();
 
 // 暴露TemplateStatus枚举给模板使用
 const templateStatus = TemplateStatus;
+
+// 加载状态
+const isExporting = ref(false);
 
 // 格式化日期
 function formatDate(dateString: string): string {
@@ -77,10 +86,21 @@ function deleteTemplate(templateId: string): void {
   emit('delete', templateId);
 }
 
-// 数据导出
+// 模板生成
 function exportData(templateId: string): void {
+  // 设置加载状态
+  isExporting.value = true;
+  
+  // 发出导出事件
   emit('export', templateId);
 }
+
+// 重置加载状态（供父组件调用）
+defineExpose({
+  resetExportStatus: () => {
+    isExporting.value = false;
+  }
+});
 </script>
 
 <style scoped>
@@ -175,5 +195,24 @@ function exportData(templateId: string): void {
 
 .btn:disabled:hover {
   background-color: inherit;
+}
+
+/* 加载动画 */
+.loading-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 1s ease-in-out infinite;
+  margin-right: 6px;
+  vertical-align: text-bottom;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>

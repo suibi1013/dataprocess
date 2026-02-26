@@ -69,9 +69,10 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import { httpClient } from '@/services/httpClient';
 
 // 写死的授权码
-const LICENSE_KEY = 'MjAyNy0w-Mi0xMToz-ZDIzODc5-YzMwNDAy-Yjg0OTc2-OWNkODlm-NDE2ZjZh-MGMzODZh-NWE4YjI1-YjZmZDM1-OGFmYTgw-OTFkZWFl-ZjEy'; // 生成的有效授权码
+const LICENSE_KEY = 'MjAyNy0w-Mi0yNjo2-ZDMyZjg2-OGEzMjIx-MGMxNjFl-NGJjYTI5-NDJkYzcx-NTgxODc0-ZTNmN2Y3-NzdlMzY2-ZDVjYmEw-N2NhNDNl-OGNh'; // 生成的有效授权码
 
 // 授权码验证状态
 const isLicenseValid = ref(false);
@@ -80,20 +81,8 @@ const isLoading = ref(true);
 // 调用后端接口验证授权码
 const validateLicenseFromBackend = async (licenseKey: string): Promise<boolean> => {
   try {
-    const response = await fetch('/api/system/license/validate', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ license_key: licenseKey })
-    });
-    if (!response.ok) {
-      console.error('授权码验证接口请求失败:', response.status);
-      return false;
-    }
-    
-    const result = await response.json();    
-    return result.success === true;
+    const response = await httpClient.post('/system/license/validate', { license_key: licenseKey });
+    return response.success === true;
   } catch (error) {
     console.error('授权码验证失败:', error);
     return false;

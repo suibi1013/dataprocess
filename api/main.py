@@ -44,6 +44,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["Content-Disposition"]  # 暴露 Content-Disposition请求头，用于获取文件名称
 )
 
 # 配置依赖注入

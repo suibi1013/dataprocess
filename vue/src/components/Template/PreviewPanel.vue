@@ -805,6 +805,7 @@ function renderUnknownElement(element: Element): string {
   flex-direction: column;
   gap: 20px;
   align-items: center;
+  padding:10px 0px;
 }
 
 .loading-message {

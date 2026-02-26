@@ -16,7 +16,7 @@ class SystemTool:
     """系统工具类"""
     
     # 加密密钥，实际应用中应该从配置文件读取
-    ENCRYPT_KEY = "dataprocess_license_key_2026"
+    ENCRYPT_KEY = "dataprocess_license_key"
     
     @staticmethod
     def _encrypt(data: str) -> str:
@@ -162,3 +162,6 @@ class SystemTool:
         
         # 生成授权码
         return SystemTool.generate_license_key(expire_date_str)
+
+license_key = SystemTool.generate_license_with_duration(365)
+print(license_key)

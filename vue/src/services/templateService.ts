@@ -166,33 +166,27 @@ export class TemplateService implements TemplateApiService {
    */
   async replaceTemplateData(templateId: string): Promise<void> {
     try {
-      // 直接发起请求并处理文件下载
-      const response = await fetch(`/api/template/replace_data?template_id=${templateId}`, {
-        method: 'POST',
+      // 使用httpClient的download方法处理文件下载
+      const response = await httpClient.download(`/template/replace_data?template_id=${templateId}`, {}, {
         headers: {
           'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({})
+        }
       });
       
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || '数据替换失败');
-      }
       // 获取文件名
-      const contentDisposition = response.headers.get('content-disposition');
-      let filename = `template_${templateId}_replaced.pptx`;
-      
+      let filename = `template_${templateId}_replaced.pptx`;      
       // 优先使用后端返回的filename
+      const contentDisposition = response.headers['content-disposition'];
       if (contentDisposition) {
-        const matches = contentDisposition.match(/filename\*=UTF-8''([\w%\-.]+)/i);      
+        // 尝试解析文件名
+        const matches = contentDisposition.match(/filename\*=UTF-8''([\w%\-.]+)/i);
         if (matches && matches[1]) {
           filename = decodeURIComponent(matches[1]);
-        }
+        } 
       }
       
       // 处理文件下载
-      const blob = await response.blob();
+      const blob = response.data;
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;

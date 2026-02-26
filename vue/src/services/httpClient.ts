@@ -136,6 +136,20 @@ export class HttpClient {
   }
 
   /**
+   * 文件下载
+   */
+  async download(url: string, data?: any, config?: AxiosRequestConfig): Promise<AxiosResponse<Blob>> {
+    return this.instance.post<Blob>(url, data, {
+      responseType: 'blob',
+      ...config,
+      // 确保Axios能够正确处理响应头
+      transformResponse: [function (data) {
+        return data;
+      }]
+    });
+  }
+
+  /**
    * 格式化响应数据
    */
   private formatResponse<T>(response: AxiosResponse): ApiResponse<T> {
