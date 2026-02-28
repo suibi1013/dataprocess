@@ -18,47 +18,24 @@
             <el-tab-pane label="数据" name="data">
               <!-- 数据Tab内容 -->
               <div class="tab-content" id="data-tab-content">
-                <div class="config-item" v-if="currentElement?.element_type_name === 'text'">
-                  <label>文本内容</label>
-                  <el-input :value="currentElement?.data?.text_content || ''" type="textarea" :rows="4"
-                    @change="(value) => updateElementContent(value)" />
-                </div>
-                <div class="config-item" id="image-upload-section" v-if="currentElement?.element_type_name === 'image'">
-                  <label>图片上传</label>
-                  <div class="upload-container">
-                    <el-upload class="avatar-uploader" action="#" :auto-upload="false" :on-change="handleImageUpload"
-                      :show-file-list="false" accept="image/*">
-                      <div v-if="currentElement?.data?.text_content" class="image-preview"
-                        style="max-width: 200px; max-height: 150px; border: 1px solid #ddd; border-radius: 4px; overflow: hidden;">
-                        <img :src="currentElement?.data?.text_content || ''"
-                          style="width: 100%; height: 100%; object-fit: contain;" alt="预览">
-                      </div>
-                      <el-button type="primary" v-else>点击上传</el-button>
-                    </el-upload>
-                    <div class="button-container">
-                      <el-button type="secondary" @click="resetImage">
-                        重置图片
-                      </el-button>
-                    </div>
-                  </div>
-                </div>
                 <!-- 数据源配置部分 -->
                 <div class="config-item" id="data-source-section">
                   <label>数据源文件选择</label>
-                  <el-cascader v-model="selectedDataSourceFilePath" :options="cascaderOptions" :placeholder="'请选择数据源文件'"
-                    :loading="loading" @change="onCascaderChange" separator="/" :props="{ expandTrigger: 'hover' }"
-                    popper-class="custom-cascader-popper" />
+                  <el-cascader v-model="currentElementDataSourceConfig.data_source_path"
+                    :options="cascaderOptions" :placeholder="'请选择数据源文件'" :loading="loading" @change="onCascaderChange"
+                    separator="/" :props="{ expandTrigger: 'hover' }" popper-class="custom-cascader-popper" />
                 </div>
                 <div class="button-row">
-                  <el-button type="primary" @click="openDataPreview" :disabled="!selectedDataSourceFilePath">
+                  <el-button type="primary" @click="openDataPreview"
+                    :disabled="!currentElementDataSourceConfig.data_source_path">
                     选择数据区域
                   </el-button>
                 </div>
                 <div class="config-item">
                   <label>数据源信息</label>
                   <div class="data-source-info">
-                    工作表：{{ props.currentDataSourceInfo?.sheet || selectedDataSourceSheet }},
-                    单元格范围：{{ props.currentDataSourceInfo?.range || selectedDataSourceRange }}
+                    工作表：{{ currentElementDataSourceConfig.excel_sheet_name }},
+                    单元格范围：{{ currentElementDataSourceConfig.excel_cell_range }}
                   </div>
                 </div>
               </div>
@@ -123,7 +100,7 @@
 
 <script setup lang="ts">
 import { computed, ref, onMounted, watch } from 'vue';
-import { ElCascader, ElSelect, ElOption, ElInput, ElInputNumber, ElColorPicker, ElUpload, ElButton, ElTabs, ElTabPane } from 'element-plus';
+import { ElCascader, ElSelect, ElOption, ElInput, ElInputNumber, ElColorPicker, ElButton, ElTabs, ElTabPane } from 'element-plus';
 import type { Element, PPTConfig } from '@/services/TemplateEditorService';
 import { httpClient } from '@/services/httpClient';
 
@@ -133,10 +110,6 @@ interface Props {
   currentSlideIndex: number;
   selectedElementIndex: number;
   dataSources?: any[];
-  currentDataSourceInfo?: {
-    sheet: string;
-    range: string;
-  };
 }
 
 const props = defineProps<Props>();
@@ -156,9 +129,7 @@ const emit = defineEmits<{
 // 响应式数据
 const currentTab = ref<'style' | 'data'>('data');
 const selectedElementDropdown = ref<string | number>(-1);
-const selectedDataSourceFilePath = ref('');
-const selectedDataSourceSheet = ref('');
-const selectedDataSourceRange = ref('');
+let currentElementDataSourceConfig = ref<any>({});
 
 // 级联选择器相关数据
 const dataSourcesOptions = ref<any[]>([]);
@@ -200,15 +171,17 @@ onMounted(() => {
 // 监听selectedElementIndex变化，更新selectedElementDropdown和数据源信息
 watch(() => props.selectedElementIndex, (newIndex) => {
   selectedElementDropdown.value = newIndex;
-
   // 更新数据源信息
   if (newIndex >= 0) {
     const element = currentSlideElements.value[newIndex];
     updateDataSourceInfo(element);
-  } else {
-    selectedDataSourceFilePath.value = '';
-    selectedDataSourceSheet.value = '';
-    selectedDataSourceRange.value = '';
+  }
+  if (Object.keys(currentElementDataSourceConfig).length === 0) {
+    currentElementDataSourceConfig.value = {
+      data_source_path: '',
+      excel_sheet_name: '',
+      excel_cell_range: ''
+    };
   }
 });
 
@@ -243,14 +216,15 @@ const currentElement = computed(() => {
 });
 
 function updateDataSourceInfo(element: Element) {
-  if (element && element.data && element.data.data_source_config) {
-    selectedDataSourceFilePath.value = element.data.data_source_config.data_source_path || '';
-    selectedDataSourceSheet.value = element.data.data_source_config.excel_sheet_name || '';
-    selectedDataSourceRange.value = element.data.data_source_config.excel_cell_range || '';
-  } else {
-    selectedDataSourceFilePath.value = '';
-    selectedDataSourceSheet.value = '';
-    selectedDataSourceRange.value = '';
+  if (props.pptConfig && props.pptConfig.slides && props.pptConfig.slides[props.currentSlideIndex] && element.element_name) {
+    currentElementDataSourceConfig.value = props.pptConfig.slides[props.currentSlideIndex].data_source_config_info?.[`${element.element_name}`] || {};
+  }
+  if (Object.keys(currentElementDataSourceConfig).length === 0) {
+    currentElementDataSourceConfig.value = {
+      data_source_path: '',
+      excel_sheet_name: '',
+      excel_cell_range: ''
+    };
   }
 }
 
@@ -281,7 +255,7 @@ function getElementDisplayName(element: Element): string {
     return typeMap[element.element_type_name] || element.element_type_name;
   }
 
-  return typeMap[element.type || ''] || '未知';
+  return typeMap[element.element_type_name || ''] || '未知';
 }
 
 // 更新元素位置和大小
@@ -295,32 +269,14 @@ function updateElementPosition(property: 'left' | 'top' | 'width' | 'height', va
 function updateElementStyle(property: string, value: string) {
   emit('style-update', property, value);
 }
-
-// 更新元素内容
-function updateElementContent(value: string) {
-  emit('content-update', value);
-}
-
-// 处理图片上传
-function handleImageUpload(file: any) {
-  if (file && file.raw) {
-    emit('image-upload', file.raw);
-  }
-}
-
-// 重置图片
-function resetImage() {
-  emit('reset-image');
-}
-
 // 处理级联选择器变化
 function onCascaderChange(value: string[]) {
   if (value && value.length > 0) {
     // 最后一级是文件路径
-    selectedDataSourceFilePath.value = value[value.length - 1];
-    emit('data-source-change', selectedDataSourceFilePath.value);
+    currentElementDataSourceConfig.value.data_source_path = value[value.length - 1];
+    emit('data-source-change', currentElementDataSourceConfig.value.data_source_path);
   } else {
-    selectedDataSourceFilePath.value = '';
+    currentElementDataSourceConfig.value.data_source_path = '';
     emit('data-source-change', '');
   }
 }

@@ -54,6 +54,7 @@ class TemplateSlideRepository(BaseRepository[TemplateSlide]):
         """
         # 将elements转换为JSON字符串
         elements_json = json.dumps(template_slide.elements)
+        data_source_config_info_json = json.dumps(template_slide.data_source_config_info, ensure_ascii=False)
         
         data = {
             "id": template_slide.id,
@@ -63,11 +64,26 @@ class TemplateSlideRepository(BaseRepository[TemplateSlide]):
             "height": template_slide.height,
             "background": template_slide.background,
             "elements": elements_json,
+            "data_source_config_info": data_source_config_info_json,
             "created_at": template_slide.created_at,
             "updated_at": template_slide.updated_at
         }
         return await self.insert(self.TABLE_NAME, data)
-    
+    async def update_data_source_config_info(self, template_id: str, slide_index: int, data_source_config_info: any) -> bool:
+        """更新数据源配置信息（异步）
+        
+        Args:
+            template_id: 模板ID
+            slide_index: 幻灯片索引
+            data_source_config_info: 数据源配置信息
+            
+        Returns:
+            bool: 更新是否成功
+        """
+        data = {
+            "data_source_config_info": json.dumps(data_source_config_info, ensure_ascii=False)
+        }
+        return await super().update(self.TABLE_NAME, data, "template_id = ? AND slide_index = ?", (template_id, slide_index))
     async def update(self, template_slide: TemplateSlide) -> bool:
         """更新数据模板页面配置（异步）
         
@@ -79,6 +95,7 @@ class TemplateSlideRepository(BaseRepository[TemplateSlide]):
         """
         # 将elements转换为JSON字符串
         elements_json = json.dumps(template_slide.elements)
+        data_source_config_info_json = json.dumps(template_slide.data_source_config_info, ensure_ascii=False)
         
         data = {
             "template_id": template_slide.template_id,
@@ -87,6 +104,7 @@ class TemplateSlideRepository(BaseRepository[TemplateSlide]):
             "height": template_slide.height,
             "background": template_slide.background,
             "elements": elements_json,
+            "data_source_config_info": data_source_config_info_json,
             "updated_at": template_slide.updated_at
         }
         return await super().update(self.TABLE_NAME, data, "id = ?", (template_slide.id,))
@@ -179,5 +197,7 @@ class TemplateSlideRepository(BaseRepository[TemplateSlide]):
         # 解析elements JSON字符串
         if result["elements"]:
             result["elements"] = json.loads(result["elements"])
+        if result["data_source_config_info"]:
+            result["data_source_config_info"] = json.loads(result["data_source_config_info"])
         
         return self.dict_to_model(result, TemplateSlide)

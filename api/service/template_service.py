@@ -174,21 +174,16 @@ class TemplateService(BaseService):
                 # 确保 slide_index 对应的键存在
                 if slide_info.slide_index not in elements_to_replace:
                     elements_to_replace[slide_info.slide_index] = {}
-                
-                for element in slide_info.elements:
-                    if 'data' in element and 'data_source_config' in element['data']:
-                            data_source_config = element['data']['data_source_config']
-                            if not data_source_config:
-                                continue
-                            data_source_path = data_source_config.get('data_source_path')
-                            excel_sheet_name = data_source_config.get('excel_sheet_name')
-                            excel_cell_range = data_source_config.get('excel_cell_range')
-                            elements_to_replace[slide_info.slide_index][element.get('element_name')]={
-                                "element_type": element.get('element_type'),
-                                "data_source_path": data_source_path,
-                                "excel_sheet_name": excel_sheet_name,
-                                "excel_cell_range": excel_cell_range
-                            }
+                for data_source_config in slide_info.data_source_config_info.values():
+                    data_source_path = data_source_config.get('data_source_path')
+                    excel_sheet_name = data_source_config.get('excel_sheet_name')
+                    excel_cell_range = data_source_config.get('excel_cell_range')
+                    elements_to_replace[slide_info.slide_index][data_source_config.get('element_name')]={
+                        "element_type": data_source_config.get('element_type'),
+                        "data_source_path": data_source_path,
+                        "excel_sheet_name": excel_sheet_name,
+                        "excel_cell_range": excel_cell_range
+                    }
             # 初始化COM库
             pythoncom.CoInitialize()
             

@@ -1,5 +1,5 @@
 <template>
-  <div v-if="visible" class="template-editor-modal-overlay" @click="handleClose">
+  <div v-show="visible" class="template-editor-modal-overlay" @click="handleClose">
     <div class="template-editor-modal-content" @click.stop>
       <div class="template-editor-modal-header">
         <h2>模板配置</h2>
@@ -15,21 +15,15 @@
           <!-- 配置编辑器面板 -->
           <config-panel :ppt-config="pptConfig" :current-slide-index="currentSlideIndex"
             :selected-element-index="selectedElementIndex" :data-sources="dataSources"
-            :current-data-source-info="currentDataSourceInfo"
             @element-select="handleElementSelect" @position-update="updateElementPosition"
-            @style-update="updateElementStyle" @content-update="updateElementContent" @image-upload="handleImageUpload"
-            @reset-image="resetImage" @data-source-change="onDataSourceChange"
+            @style-update="updateElementStyle" @reset-image="resetImage" @data-source-change="onDataSourceChange"
             @open-data-preview="openDataPreviewModal" />
         </div>
 
         <!-- 数据预览模态框 - 组件版 -->
-        <DataPreviewModal
-          v-model:visible="showDataPreviewModal"
-          :file-path="selectedDataSourceFilePath"
-          @cancel="closeDataPreviewModal"
-          @confirm-selection="handleConfirmDataSelection"
-          @confirm-sheet="onSheetChange"
-        />
+        <DataPreviewModal v-model:visible="showDataPreviewModal"
+          :file-path="currentElementDataSourceConfig.data_source_path" @cancel="closeDataPreviewModal"
+          @confirm-selection="handleConfirmDataSelection" @confirm-sheet="onSheetChange" />
 
         <!-- 提示消息 -->
         <div class="toast" :class="{ show: showToast, error: toastType === 'error', success: toastType === 'success' }"
@@ -110,12 +104,7 @@ export default class TemplateEditor extends Vue {
   selectedElementDropdown: string = '-1'
   currentTab: 'style' | 'data' = 'style'
   dataSources: DataSource[] = []
-  selectedDataSourceFilePath: string = ''
-  currentDataSourceInfo: {
-    sheet: string
-    range: string
-  } = { sheet: '', range: '' }
-
+  currentElementDataSourceConfig: any = {};
   // 数据预览相关
   showDataPreviewModal: boolean = false
   previewSheetData: any = null
@@ -130,22 +119,10 @@ export default class TemplateEditor extends Vue {
   toastType: 'success' | 'error' | 'info' = 'info'
 
   // 生命周期钩子
-  async mounted() {
+  mounted() {
     if (!this.templateId) {
       this.showToastMessage('未找到模板ID', 'error')
       return
-    }
-
-    try {
-      // 先加载数据源列表
-      await this.loadDataSources()
-      // 再加载模板配置
-      await this.loadTemplateConfig()
-      // 加载Chart.js库并初始化图表
-      this.loadChartJs();
-    } catch (error) {
-      console.error('初始化失败:', error)
-      this.showToastMessage('初始化失败: ' + (error as Error).message, 'error')
     }
   }
 
@@ -177,23 +154,8 @@ export default class TemplateEditor extends Vue {
     try {
       // 只从API获取配置
       const response = await templateEditorService.loadTemplateConfig(this.templateId)
-
       if (response.success && response.data) {
         this.pptConfig = response.data
-
-        // 从配置中获取选中的数据源信息
-        if (this.selectedElementIndex >= 0) {
-          const current_element = this.getCurrentElement()
-          const data_source_config = current_element?.data?.data_source_config
-          if (data_source_config) {
-            // 直接使用数据源文件路径
-            this.selectedDataSourceFilePath = data_source_config.data_source_path || '';
-            this.currentDataSourceInfo = {
-              sheet: data_source_config.excel_sheet_name || '',
-              range: data_source_config.excel_cell_range || ''
-            }
-          }
-        }
       }
 
     } catch (error) {
@@ -245,12 +207,14 @@ export default class TemplateEditor extends Vue {
     this.currentSlideIndex = slideIndex
     this.selectedElementIndex = elementIndex
     this.selectedElementDropdown = elementIndex.toString()
+    this.setCurrentElementDataSourceConfig()
   }
 
   // 处理元素选择
   handleElementSelect(elementIndex: number) {
     if (elementIndex >= 0) {
       this.selectedElementIndex = elementIndex
+      this.setCurrentElementDataSourceConfig()
     } else {
       this.selectedElementIndex = -1
     }
@@ -273,102 +237,74 @@ export default class TemplateEditor extends Vue {
     }
     return undefined
   }
-
+  setCurrentElementDataSourceConfig(): any {
+    const currentElement = this.getCurrentElement()
+    let data_source_config_info = this.pptConfig?.slides?.[this.currentSlideIndex]?.data_source_config_info || {};
+    if (currentElement && currentElement.element_name) {
+      if (!data_source_config_info) {
+        data_source_config_info = {};
+      }
+      if (!data_source_config_info[currentElement.element_name]) {
+        data_source_config_info[currentElement.element_name] = {
+          element_name: currentElement.element_name,
+          element_type: currentElement.element_type,
+          element_type_name: currentElement.element_type_name,
+          data_source_path: '',
+          excel_sheet_name: '',
+          excel_cell_range: ''
+        };
+      }
+      this.currentElementDataSourceConfig = data_source_config_info[currentElement.element_name];
+    }
+  }
   // 更新元素位置和大小
   updateElementPosition(property: string, value: number) {
-    const elements = this.getCurrentSlideElements()
-    if (this.selectedElementIndex >= 0 && this.selectedElementIndex < elements.length) {
+    const currentElement = this.getCurrentElement()
+    if (currentElement) {
       // 使用类型断言解决索引访问问题
-      (elements[this.selectedElementIndex] as any)[property] = value
+      (currentElement as any)[property] = value
       this.saveConfig()
     }
   }
 
   // 更新元素样式
   updateElementStyle(property: string, value: string) {
-    const elements = this.getCurrentSlideElements()
-    if (this.selectedElementIndex >= 0 && this.selectedElementIndex < elements.length) {
+    const currentElement = this.getCurrentElement()
+    if (currentElement) {
       // 使用类型断言解决索引访问问题
-      (elements[this.selectedElementIndex] as any)[property] = value
+      (currentElement as any)[property] = value
       this.saveConfig()
     }
   }
-
-  // 更新元素内容
-  updateElementContent(value: string) {
-    const elements = this.getCurrentSlideElements()
-    if (this.selectedElementIndex >= 0 && this.selectedElementIndex < elements.length) {
-      elements[this.selectedElementIndex].content = value
-      this.saveConfig()
-
-      // 内容更新后重新初始化图表
-      this.handleElementDataUpdate()
-    }
-  }
-
-  // 处理图片上传
-  handleImageUpload(event: Event) {
-    const inputElement = event.target as HTMLInputElement
-    const file = inputElement.files?.[0]
-
-    if (!file) return
-
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const elements = this.getCurrentSlideElements()
-      if (this.selectedElementIndex >= 0 && this.selectedElementIndex < elements.length) {
-        elements[this.selectedElementIndex].content = e.target?.result as string
-        this.saveConfig()
-        this.showToastMessage('图片上传成功', 'success')
-      }
-    }
-    reader.readAsDataURL(file)
-  }
-
-  // 重置图片
-  resetImage() {
-    const elements = this.getCurrentSlideElements()
-    if (this.selectedElementIndex >= 0 && this.selectedElementIndex < elements.length) {
-      elements[this.selectedElementIndex].content = ''
-      this.saveConfig()
-      this.showToastMessage('图片已重置', 'info')
-    }
-  }
-
   // 数据源变更事件
   onDataSourceChange(sourceFilePath: string) {
-    // 更新组件自身的selectedDataSourceFilePath属性
-    this.selectedDataSourceFilePath = sourceFilePath;
-
-    const elements = this.getCurrentSlideElements()
-    if (this.selectedElementIndex >= 0 && this.selectedElementIndex < elements.length) {
-      const element = elements[this.selectedElementIndex];
-      if (element) {
-        if (!element.data) {
-          element.data = {};
-        }
-        if (!element.data.data_source_config) {
-          element.data.data_source_config = {
-            type: '', // 默认值根据实际需求填写，比如 'excel'
-            data_source_name: '',
-            data_source_path:'',
-            excel_sheet_name: ''
-          };
-        }
-        // 更新数据源文件路径
-        element.data.data_source_config.data_source_path = sourceFilePath;
-      }
-      this.saveConfig()
+    const currentElement = this.getCurrentElement()
+    if (!currentElement) {
+      return;
     }
+    this.setCurrentElementDataSourceConfig()
+    // 更新数据源文件路径
+    if (this.currentElementDataSourceConfig.data_source_path == sourceFilePath) {
+      return;
+    }
+    this.currentElementDataSourceConfig.data_source_path = sourceFilePath;
+    const data_source_config_info = this.pptConfig?.slides?.[this.currentSlideIndex]?.data_source_config_info || {};
+    if (data_source_config_info) {
+      // 更新当前元素的数据源配置
+      if (currentElement.element_name) {
+        data_source_config_info[currentElement.element_name] = this.currentElementDataSourceConfig;
+      }
+    }
+    this.saveConfig()
   }
 
   // 打开数据预览模态框
   openDataPreviewModal() {
-    if (!this.selectedDataSourceFilePath) {
+    if (!this.currentElementDataSourceConfig.data_source_path) {
       this.showToastMessage('请先选择数据源', 'error')
       return
     }
-    
+
     this.showDataPreviewModal = true
   }
 
@@ -421,8 +357,6 @@ export default class TemplateEditor extends Vue {
     }
   }
 
-
-
   // 切换工作表
   onSheetChange(sheetName: string) {
     this.currentSelectedSheet = sheetName
@@ -430,41 +364,24 @@ export default class TemplateEditor extends Vue {
 
   // 处理数据选择确认
   handleConfirmDataSelection(selection: DataSelection) {
-    const elements = this.getCurrentSlideElements()
-    if (this.selectedElementIndex >= 0 && this.selectedElementIndex < elements.length) {
-      const element = elements[this.selectedElementIndex]
-
-      if (!element.data) {
-        element.data = {}
-      }
-
-      // 更新数据源配置
-      if (!element.data.data_source_config) {
-        element.data.data_source_config = {
-          type: 'excel',
-          data_source_name: '',
-          data_source_path:'',
-          excel_sheet_name: '',
-          excel_cell_range: ''
-        }
-      }
-
-      // 设置选择的工作表和范围
-      element.data.data_source_config.excel_sheet_name = this.currentSelectedSheet
-      element.data.data_source_config.excel_cell_range = `${selection.start_column}${selection.start_row}:${selection.end_column}${selection.end_row}`
-
-      // 直接使用数据源文件路径作为数据源名称
-      element.data.data_source_config.data_source_path = this.selectedDataSourceFilePath
-
-      // 更新显示信息
-      this.currentDataSourceInfo = {
-        sheet: this.currentSelectedSheet,
-        range: element.data.data_source_config.excel_cell_range
-      }
-      this.saveConfig()
-      this.showToastMessage(`已选择区域: 行${selection.start_row}-${selection.end_row}, 列${selection.start_column}-${selection.end_column}`, 'success')
-      this.closeDataPreviewModal()
+    const currentElement = this.getCurrentElement()
+    if (!currentElement) {
+      return;
     }
+    this.setCurrentElementDataSourceConfig()
+    this.currentElementDataSourceConfig.excel_sheet_name = this.currentSelectedSheet
+    this.currentElementDataSourceConfig.excel_cell_range = `${selection.start_column}${selection.start_row}:${selection.end_column}${selection.end_row}`
+    const data_source_config_info = this.pptConfig?.slides?.[this.currentSlideIndex]?.data_source_config_info || {};
+    if (data_source_config_info) {
+      // 更新当前元素的数据源配置
+      if (currentElement.element_name) {
+        data_source_config_info[currentElement.element_name] = this.currentElementDataSourceConfig;
+      }
+    }
+
+    this.saveConfig()
+    this.showToastMessage(`已选择区域: 行${selection.start_row}-${selection.end_row}, 列${selection.start_column}-${selection.end_column}`, 'success')
+    this.closeDataPreviewModal()
   }
 
 
@@ -472,8 +389,9 @@ export default class TemplateEditor extends Vue {
   async saveConfig() {
     if (this.pptConfig) {
       try {
+        const data_source_config_info = this.pptConfig?.slides?.[this.currentSlideIndex]?.data_source_config_info || {};
         // 只保存到服务器
-        await templateEditorService.saveTemplateConfig(this.templateId, this.pptConfig)
+        await templateEditorService.saveTemplateConfig(this.templateId, this.currentSlideIndex, data_source_config_info)
       } catch (error) {
         console.error('保存配置到服务器失败:', error)
         // 服务器保存失败时，显示错误提示
@@ -497,25 +415,6 @@ export default class TemplateEditor extends Vue {
   // 重新初始化页面上所有的图表
   reinitializeCharts() {
     templateEditorInteractionService.reinitializeCharts(this.pptConfig);
-  }
-
-  // 当元素数据更新时重新初始化图表
-  handleElementDataUpdate() {
-    this.$nextTick(() => {
-      this.reinitializeCharts();
-
-      // 直接更新预览面板中的元素数据
-      this.updatePreviewPanelElements();
-    });
-  }
-
-  // 更新预览面板中的元素数据
-  updatePreviewPanelElements() {
-    templateEditorInteractionService.updatePreviewPanelElements(
-      this.currentSlideIndex,
-      this.selectedElementIndex,
-      () => this.getCurrentSlideElements()
-    );
   }
 
   // 滚动到OLE对象中的活动单元格逻辑已移至PreviewPanel组件

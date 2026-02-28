@@ -85,8 +85,6 @@ class ElementData(BaseModel):
     active_cell: Optional[Dict[str, Any]] = Field(None, description="活动单元格信息")
     table_row_heights: Optional[List[float]] = Field(None, description="表格行高信息")
     table_col_widths: Optional[List[float]] = Field(None, description="表格列宽信息")
-    data_source_config: Optional[Dict[str, Any]] = Field(None, description="数据源配置信息，包括Excel单元格范围")
-
 
 class PPTElement(BaseModel):
     """PPT元素DTO"""
@@ -121,7 +119,7 @@ class SlideConfig(BaseModel):
     height: float = Field(..., description="幻灯片高度", example=1080.0, gt=0)
     background: str = Field(..., description="背景样式", example="#FFFFFF")
     elements: List[PPTElement] = Field(..., description="元素列表")
-
+    data_source_config_info: Optional[Dict[str, Any]] = Field(None, description="数据源配置信息，格式为{'Chart 1':{'element_name': 'Chart 1','element_type': '3','element_type_name': 'msoChart','data_source_path': 'E:\\test.xlsx', 'excel_sheet_name': 'Sheet1', 'excel_cell_range': 'A1:B2'}}")
 
 class PPTConfig(BaseModel):
     """PPT配置DTO"""
@@ -147,7 +145,8 @@ class PPTConfig(BaseModel):
         return v
 class ConfigUpdateDto(BaseModel):
     template_id: str = Field(..., description="模板id")
-    config_data: dict = Field(..., description="配置数据")
+    slide_index: int = Field(..., description="幻灯片索引", example=1, ge=0)
+    data_source_config_info: dict = Field(None, description="数据源配置信息")
 
 class ConfigSaveDto(BaseModel):
     """PPT保存配置DTO"""

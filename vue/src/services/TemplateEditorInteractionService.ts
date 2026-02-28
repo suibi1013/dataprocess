@@ -1,4 +1,4 @@
-import type { PPTConfig, Element } from './TemplateEditorService';
+import type { PPTConfig } from './TemplateEditorService';
 
 // 扩展Window接口，添加Chart属性
 declare global {
@@ -78,48 +78,6 @@ export class TemplateEditorInteractionService {
         console.error('重新初始化图表失败:', error);
       }
     });
-  }
-
-  /**
-   * 更新预览面板中的元素数据
-   * @param currentSlideIndex 当前幻灯片索引
-   * @param selectedElementIndex 选中的元素索引
-   * @param getCurrentSlideElements 获取当前幻灯片元素的方法
-   */
-  updatePreviewPanelElements(
-    currentSlideIndex: number, 
-    selectedElementIndex: number, 
-    getCurrentSlideElements: () => Element[]
-  ) {
-    // 检查是否有选中的元素
-    const elements = getCurrentSlideElements();
-    if (selectedElementIndex >= 0 && selectedElementIndex < elements.length) {
-      const element = elements[selectedElementIndex];
-      const slidePreview = document.querySelector(`#slide_${currentSlideIndex}`);
-      
-      if (slidePreview) {
-        // 查找对应元素的DOM容器
-        const elementId = element.id || `element-${currentSlideIndex}-${selectedElementIndex}`;
-        let elementContainer = slidePreview.querySelector(`[data-element-id="${elementId}"]`);
-        
-        // 如果没找到带有data-element-id的容器，尝试其他方式
-        if (!elementContainer) {
-          // 对于图表元素
-          const chartContainer = slidePreview.querySelector(`.chart-container canvas[id="chart-${elementId}"]`);
-          if (chartContainer) {
-            elementContainer = chartContainer.closest('.chart-container');
-          }
-          
-          // 对于表格或OLE对象
-          if (!elementContainer) {
-            const tableContainer = slidePreview.querySelector(`[id^="table_${elementId}"]`);
-            if (tableContainer) {
-              elementContainer = tableContainer;
-            }
-          }
-        }
-      }
-    }
   }
 
   /**

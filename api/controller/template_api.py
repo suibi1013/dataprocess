@@ -65,8 +65,8 @@ async def update_config(
     """更新配置"""
     try:
         # 调用服务层方法更新配置
-        config_data=await config_service.update_config(request.template_id, request.config_data)
-        return {'success': True, 'message': '配置更新成功',"config_data": config_data}
+        await config_service.update_config(request.template_id, request.slide_index, request.data_source_config_info)
+        return {'success': True, 'message': '配置更新成功'}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f'内部服务器错误: {str(e)}')
 
@@ -80,7 +80,7 @@ async def load_config(
     try:
         # 调用服务层方法加载配置
         config_data = await config_service.load_config(config_id)
-        return {'success': True, "message": "配置加载成功",'config_data': config_data}
+        return {'success': True, "message": "配置加载成功",'data': config_data}
     except HTTPException:
         raise
     except Exception as e:
