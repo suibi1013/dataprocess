@@ -98,20 +98,23 @@ export class DataSourceService {
    * 通过文件路径和工作表名获取数据源数据
    * @param filePath 文件路径
    * @param sheetName 工作表名
-   * @param limit 数据限制数量
+   * @param page 页码
+   * @param pageSize 每页行数
    * @returns 数据源详细信息
    */
   async getDataSourceDataByFilePath(
     filePath: string, 
     sheetName: string, 
-    limit: number = 1
+    page: number = 1,
+    pageSize: number = 100
   ): Promise<ApiResponse<DataSourceDetails>> {
     try {
       // 构建查询参数
       const params = new URLSearchParams({
         file_path: filePath,
         sheet_name: sheetName,
-        limit: limit.toString()
+        page: page.toString(),
+        page_size: pageSize.toString()
       });
       
       return await httpClient.get(`/datasource/file-data?${params}`);

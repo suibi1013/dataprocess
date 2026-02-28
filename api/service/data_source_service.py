@@ -335,7 +335,7 @@ class DataSourceservice:
                 data=False
             )
     
-    async def get_data_source_data(self, data_source_id: str, sheet_name: str = None, limit: int = 100) -> ApiResponse[Dict[str, Any]]:
+    async def get_data_source_data(self, data_source_id: str, sheet_name: str = None, page: int = 1, page_size: int = 100) -> ApiResponse[Dict[str, Any]]:
         """获取数据源数据"""
         try:
             # 获取数据源信息（异步执行）
@@ -354,11 +354,11 @@ class DataSourceservice:
             data_source_dto = create_data_source_from_dict(data_source_dict)
             
             if data_source_dict['type'] == 'excel':
-                result = await self._get_excel_data(data_source_dict, sheet_name, limit)
+                result = await self._get_excel_data(data_source_dict, sheet_name, page, page_size)
             elif data_source_dict['type'] == 'api':
-                result = await self._get_api_data(data_source_dict, limit)
+                result = await self._get_api_data(data_source_dict, page, page_size)
             elif data_source_dict['type'] == 'database':
-                result = await self._get_database_data(data_source_dict, limit)
+                result = await self._get_database_data(data_source_dict, page, page_size)
             else:
                 return ApiResponse(
                     success=False,
@@ -423,7 +423,7 @@ class DataSourceservice:
     
 
     
-    async def get_data_source_by_file_path(self, file_path: str, sheet_name: str, limit: int = 100) -> ApiResponse[Dict[str, Any]]:
+    async def get_data_source_by_file_path(self, file_path: str, sheet_name: str, page: int = 1, page_size: int = 100) -> ApiResponse[Dict[str, Any]]:
         """通过文件路径和工作表名获取数据源数据"""
         try:
             # 验证文件是否存在
@@ -442,8 +442,11 @@ class DataSourceservice:
                     data=None
                 )
             
+            # 计算偏移量
+            offset = (page - 1) * page_size
+            
             # 使用ExcelHelper读取Excel文件
-            excel_data = await ExcelHelper.read_excel_file(file_path, sheet_name, limit)
+            excel_data = await ExcelHelper.read_excel_file(file_path, sheet_name, page_size, offset)
             
             # 检查ExcelHelper返回值
             if not excel_data.get('success') or not excel_data.get('data'):
@@ -463,7 +466,10 @@ class DataSourceservice:
                 'columns': [],
                 'rows': [],
                 'total_rows': 0,
-                'displayed_rows': 0
+                'displayed_rows': 0,
+                'page': page,
+                'page_size': page_size,
+                'total_pages': 0
             }
             
             # 从ExcelHelper返回的数据中提取工作表数据
@@ -472,6 +478,10 @@ class DataSourceservice:
                 sheet_key = f"{os.path.basename(file_path)}_{sheet_name}"
                 if excel_data_content['data'].get(sheet_key):
                     sheet_data = excel_data_content['data'][sheet_key]
+                    # 添加分页信息
+                    sheet_data['page'] = page
+                    sheet_data['page_size'] = page_size
+                    sheet_data['total_pages'] = (sheet_data['total_rows'] + page_size - 1) // page_size
             
             return ApiResponse(
                 success=True,
@@ -488,7 +498,7 @@ class DataSourceservice:
                 data=None
             )
             
-    async def _get_excel_data(self, data_source: Dict[str, Any], sheet_name: str = None, limit: int = 100) -> Dict[str, Any]:
+    async def _get_excel_data(self, data_source: Dict[str, Any], sheet_name: str = None, page: int = 1, page_size: int = 100) -> Dict[str, Any]:
         """获取Excel文件数据 - 使用file_service中的公共方法"""
         try:
             config_data = data_source.get('config', {})
@@ -508,6 +518,9 @@ class DataSourceservice:
                 # 旧的数据结构
                 config_list = config_data
             
+            # 计算偏移量
+            offset = (page - 1) * page_size
+            
             for i, config_dict in enumerate(config_list):
                 config=ExcelDataSourceConfig(**config_dict)
                 file_name = config.unique_name
@@ -521,7 +534,7 @@ class DataSourceservice:
                 print(f"尝试读取Excel文件: {config.file_path} -> {file_path}")
                 
                 # 调用ExcelHelper读取Excel文件
-                file_result = await ExcelHelper.read_excel_file(file_path, sheet_name, limit)
+                file_result = await ExcelHelper.read_excel_file(file_path, sheet_name, page_size, offset)
                 
                 
                 if file_result['success'] and file_result['data']:
@@ -551,7 +564,10 @@ class DataSourceservice:
                             'columns': sheet_data['columns'],
                             'rows': sheet_data['rows'],
                             'total_rows': sheet_data['total_rows'],
-                            'displayed_rows': sheet_data['displayed_rows']
+                            'displayed_rows': sheet_data['displayed_rows'],
+                            'page': page,
+                            'page_size': page_size,
+                            'total_pages': (sheet_data['total_rows'] + page_size - 1) // page_size
                         }
                 else:
                     print(f"读取文件 {file_path} 失败: {file_result.get('message', '未知错误')}")
@@ -579,7 +595,7 @@ class DataSourceservice:
                 'data': None
             }
     
-    async def _get_api_data(self, data_source: Dict[str, Any], limit: int = 100) -> Dict[str, Any]:
+    async def _get_api_data(self, data_source: Dict[str, Any], page: int = 1, page_size: int = 100) -> Dict[str, Any]:
         """获取API数据源数据"""
         try:
             config = data_source.get('config', {})
@@ -603,17 +619,26 @@ class DataSourceservice:
             
             data = await asyncio.to_thread(make_request)
             
-            # 如果返回的是列表，限制数量
-            if isinstance(data, list) and len(data) > limit:
-                data = data[:limit]
+            # 计算总数和分页数据
+            total_items = len(data) if isinstance(data, list) else 1
+            total_pages = (total_items + page_size - 1) // page_size
+            
+            # 如果返回的是列表，进行分页
+            if isinstance(data, list):
+                start = (page - 1) * page_size
+                end = start + page_size
+                data = data[start:end]
             
             return {
                 'success': True,
                 'message': '数据获取成功',
                 'data': {
                     'api_response': data,
-                    'total_items': len(data) if isinstance(data, list) else 1,
-                    'displayed_items': len(data) if isinstance(data, list) else 1
+                    'total_items': total_items,
+                    'displayed_items': len(data) if isinstance(data, list) else 1,
+                    'page': page,
+                    'page_size': page_size,
+                    'total_pages': total_pages
                 }
             }
             
@@ -625,7 +650,7 @@ class DataSourceservice:
                 'data': None
             }
     
-    async def _get_database_data(self, data_source: Dict[str, Any], limit: int = 100) -> Dict[str, Any]:
+    async def _get_database_data(self, data_source: Dict[str, Any], page: int = 1, page_size: int = 100) -> Dict[str, Any]:
         """获取数据库数据"""
         return {
             'success': False,

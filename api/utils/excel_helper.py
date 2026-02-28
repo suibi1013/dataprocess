@@ -324,7 +324,7 @@ class ExcelHelper:
         return style_info
     
     @staticmethod
-    def _extract_sheet_data_with_styles(worksheet, limit: int = 100):
+    def _extract_sheet_data_with_styles(worksheet, limit: int = 100, offset: int = 0):
         """从worksheet中提取数据、样式和公式信息"""
         # 获取工作表的实际数据范围
         used_range = worksheet.used_range
@@ -347,10 +347,11 @@ class ExcelHelper:
         # 提取数据、样式和公式
         rows_data = []
         
-        # 限制读取的行数
-        actual_limit = min(limit, max_row) if max_row > 0 else 0
+        # 计算实际读取的起始行和结束行
+        start_row = offset + 1  # Excel行号从1开始
+        end_row = min(start_row + limit - 1, max_row)
         
-        for row_idx in range(1, actual_limit + 1):
+        for row_idx in range(start_row, end_row + 1):
             row_data = {}
             
             for col_idx in range(1, max_col + 1):
@@ -546,7 +547,7 @@ class ExcelHelper:
                     print(f"退出Excel应用程序时出错: {str(quit_error)}")
     
     @staticmethod
-    async def read_excel_file(file_path: str, sheet_name: str = None, limit: int = 100) -> Dict[str, Any]:
+    async def read_excel_file(file_path: str, sheet_name: str = None, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
         """
         读取Excel文件数据和格式信息
         
@@ -554,6 +555,7 @@ class ExcelHelper:
             file_path: Excel文件路径
             sheet_name: 指定工作表名称，默认为None（读取所有工作表）
             limit: 每个工作表读取的最大行数
+            offset: 读取的起始行偏移量
             
         Returns:
             Dict: 包含文件信息、工作表信息和数据的字典
@@ -607,7 +609,7 @@ class ExcelHelper:
             if sheet_name:
                 if sheet_name in sheet_names:
                     worksheet = workbook.sheets[sheet_name]
-                    sheet_data = ExcelHelper._extract_sheet_data_with_styles(worksheet, limit)
+                    sheet_data = ExcelHelper._extract_sheet_data_with_styles(worksheet, limit, offset)
                     
                     # 使用文件名+sheet名作为key，避免重复
                     key = f"{os.path.basename(file_path)}_{sheet_name}"
@@ -624,7 +626,7 @@ class ExcelHelper:
                 # 读取所有sheet的数据（每个sheet限制行数）
                 for sheet in sheet_names:
                     worksheet = workbook.sheets[sheet]
-                    sheet_data = ExcelHelper._extract_sheet_data_with_styles(worksheet, limit)
+                    sheet_data = ExcelHelper._extract_sheet_data_with_styles(worksheet, limit, offset)
                     
                     # 使用文件名+sheet名作为key，避免重复
                     key = f"{os.path.basename(file_path)}_{sheet}"

@@ -50,12 +50,24 @@
         </div>
 
         <div v-else class="empty-data">
-          <el-empty>
-            请点击加载数据按钮加载数据
-          </el-empty>
+            <el-empty>
+              请点击加载数据按钮加载数据
+            </el-empty>
+          </div>
+        </div>
+        <!-- 分页控件 -->
+        <div v-if="sheetData" class="pagination-container">
+          <el-pagination
+            v-model:current-page="currentPage"
+            v-model:page-size="pageSize"
+            :page-sizes="[20, 50, 100, 200]"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="totalRows"
+            @size-change="handlePageSizeChange"
+            @current-change="handlePageChange"
+          />
         </div>
       </div>
-    </div>
 
     <template #footer>
       <div class="selection-actions">
@@ -139,6 +151,12 @@ const sheetData = ref<SheetData | null>(null);
 
 // 加载状态
 const isLoading = ref(false);
+
+// 分页相关状态
+const currentPage = ref(1);
+const pageSize = ref(50);
+const totalPages = ref(1);
+const totalRows = ref(0);
 
 // 选择状态
 const selectionState = ref<SelectionState>({
@@ -325,6 +343,21 @@ watch(
   }
 );
 
+// 监听工作表选择变化，清空数据表格
+watch(
+  () => selectedSheet.value,
+  () => {
+    // 当工作表变化时，清空数据表格
+    sheetData.value = null;
+    // 同时重置选择状态
+    resetSelection();
+    // 重置分页状态
+    currentPage.value = 1;
+    totalRows.value = 0;
+    totalPages.value = 1;
+  }
+);
+
 /**
  * 加载工作表列表
  */
@@ -358,26 +391,62 @@ const loadSheetsList = async () => {
  * 处理工作表切换
  */
 const handleSheetChange = async () => {
+  // 重置页码
+  currentPage.value = 1;
+  // 加载数据
+  await loadSheetData();
+};
+
+/**
+ * 加载工作表数据
+ */
+const loadSheetData = async () => {
   const sheetName = selectedSheet.value;
   if (sheetName && props.filePath) {
     isLoading.value = true;
     try {
       // 调用API获取工作表数据
-      const response = await dataSourceService.getDataSourceDataByFilePath(props.filePath, sheetName, 20);
+      const response = await dataSourceService.getDataSourceDataByFilePath(props.filePath, sheetName, currentPage.value, pageSize.value);
       if (response.success) {
         // 更新工作表数据
         sheetData.value = response.data;
+        // 更新分页信息
+        if (response.data) {
+          totalRows.value = response.data.total_rows || 0;
+          totalPages.value = response.data.total_pages || 1;
+        }
       } else {
         console.error('获取工作表数据失败:', response.error);
         sheetData.value = null;
+        totalRows.value = 0;
+        totalPages.value = 1;
       }
     } catch (error) {
       console.error('获取工作表数据异常:', error);
       sheetData.value = null;
+      totalRows.value = 0;
+      totalPages.value = 1;
     } finally {
       isLoading.value = false;
     }
   }
+};
+
+/**
+ * 处理页码变化
+ */
+const handlePageChange = (page: number) => {
+  currentPage.value = page;
+  loadSheetData();
+};
+
+/**
+ * 处理每页行数变化
+ */
+const handlePageSizeChange = (size: number) => {
+  pageSize.value = size;
+  currentPage.value = 1;
+  loadSheetData();
 };
 
 /**
@@ -684,5 +753,21 @@ const getCellBackgroundStyle = (cellData: any): Record<string, string> => {
 
 .table-container::-webkit-scrollbar-thumb:hover {
   background: #a8a8a8;
+}
+
+/* 分页容器样式 */
+.pagination-container {
+  margin-top: 10px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 10px;
+  border-top: 1px solid #ebeef5;
+  background: #fafafa;
+  border-radius: 0 0 6px 6px;
+}
+
+.pagination-container :deep(.el-pagination) {
+  margin: 0;
 }
 </style>

@@ -99,12 +99,13 @@ async def create_data_source(
 async def get_data_source_by_file_path(
     file_path: str = Query(..., description="Excel文件路径"), 
     sheet_name: str = Query(..., description="工作表名称"), 
-    limit: int = Query(100, description="返回数据的最大行数"),
+    page: int = Query(1, ge=1, description="页码"),
+    page_size: int = Query(100, ge=1, le=1000, description="每页行数"),
     data_source_service: DataSourceservice = Depends(lambda: inject(DataSourceservice))
 ):
     """通过文件路径和工作表名获取数据源数据"""
     try:
-        result = await data_source_service.get_data_source_by_file_path(file_path, sheet_name, limit)
+        result = await data_source_service.get_data_source_by_file_path(file_path, sheet_name, page, page_size)
         
         if result.success:
             return {
