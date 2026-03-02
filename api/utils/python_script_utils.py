@@ -65,7 +65,7 @@ class PythonScriptUtils:
                 # 尝试根据类型注解进行转换
                 try:
                     # 如果参数值已经是目标类型，则不需要转换
-                    if isinstance(param_value, param.annotation):
+                    if not param_value or isinstance(param_value, param.annotation):
                         converted_params[param_name] = param_value
                         continue
                     # 处理常见类型的转换

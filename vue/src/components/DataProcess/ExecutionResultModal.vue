@@ -104,16 +104,15 @@
                   </div>
                 </div>
               </div>
-            </el-tab-pane>
+            </el-tab-pane> 
           </el-tabs>
+          
         </div>
       </div>
     </div>
   </Modal>
 </template>
-
 <script setup lang="ts">
-
 import Modal from '@/components/Common/Modal.vue';
 import { ElTabs, ElTabPane, ElMessage, ElTree, ElButton } from 'element-plus';
 import { DocumentCopy } from '@element-plus/icons-vue';
@@ -198,42 +197,29 @@ const parseJson = (str: string | undefined): any => {
 
 
 
-// 将JSON数据转换为树节点数据
-const convertJsonToTreeNode = (data: any, parentKey: string = ''): any[] => {
+// 将JSON数据转换为树节点数据（保持原始数据结构）
+const convertJsonToTreeNode = (data: any, parentPath: string = ''): any[] => {
   const treeNode: any[] = [];
-  // 处理null值
-  if (data === null) {
-    // 如果是子节点且数据为null，添加一个null节点
-    if (parentKey) {
-      treeNode.push({
-        key: `${parentKey}.null`,
-        label: `null`,
-        value: null,
-        isObject: false,
-        isArray: false,
-        leaf: true,
-        parentKey: parentKey
-      });
-    }
-  }
+  
   // 处理非null对象类型
-  else if (typeof data === 'object' && !Array.isArray(data)) {
+  if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
     // 遍历对象属性，创建对应的树节点
     for (const key in data) {
       if (Object.prototype.hasOwnProperty.call(data, key)) {
-        const nodeKey = parentKey ? `${parentKey}.${key}` : key;
+        const currentPath = parentPath ? `${parentPath}.${key}` : key;
         const value = data[key];
-        const hasChildren = value && typeof value === 'object';
         
-        treeNode.push({
-          key: nodeKey,
+        // 创建节点，只添加el-tree必需的key和label属性
+        // label使用原始属性名，不添加任何额外属性
+        const node: any = {
+          // 唯一key，用于el-tree组件
+          key: currentPath,
+          // 标签使用原始属性名
           label: key,
-          value: value,
-          isObject: typeof value === 'object' && !Array.isArray(value),
-          isArray: Array.isArray(value),
-          leaf: !hasChildren,
-          parentKey: parentKey
-        });
+          value: value
+        };
+        
+        treeNode.push(node);
       }
     }
   }
@@ -241,46 +227,31 @@ const convertJsonToTreeNode = (data: any, parentKey: string = ''): any[] => {
   else if (Array.isArray(data)) {
     // 遍历数组元素，创建对应的树节点
     data.forEach((item, index) => {
-      const nodeKey = parentKey ? `${parentKey}[${index}]` : `[${index}]`;
-      const hasChildren = item && typeof item === 'object';
+      const currentPath = parentPath ? `${parentPath}[${index}]` : `[${index}]`;
       
-      treeNode.push({
-        key: nodeKey,
+      // 创建节点，只添加el-tree必需的key和label属性
+      // label使用数组索引，不添加任何额外属性
+      const node: any = {
+        // 唯一key，用于el-tree组件
+        key: currentPath,
+        // 标签使用数组索引
         label: `[${index}]`,
-        value: item,
-        isObject: typeof item === 'object' && !Array.isArray(item),
-        isArray: Array.isArray(item),
-        leaf: !hasChildren,
-        parentKey: parentKey
-      });
+        value: item
+      };      
+      
+      treeNode.push(node);
     });
   }
-  // 处理基本类型（字符串、数字、布尔值、undefined）
-  else {
-    // 如果是子节点且为基本类型，添加一个叶子节点
-    if (parentKey) {
-      treeNode.push({
-        key: `${parentKey}.${data}`,
-        label: `${data}`,
-        value: data,
-        isObject: false,
-        isArray: false,
-        leaf: true,
-        parentKey: parentKey
-      });
-    }
-  }
-  
   return treeNode;
 };
 
 // 懒加载树节点
-const loadTreeNode = (node: any, resolve: (_data: any[]) => void) => {
+const loadTreeNode = (node: any, resolve: (_data: any[]) => void) => {  
   const nodeData = node.data;
-  // 确定节点的实际值，考虑不同的数据结构
+  // 确定节点的实际值，使用value存储原始数据
   const actualValue = nodeData.value !== undefined ? nodeData.value : nodeData;
-  const parentKey = nodeData.key || '';
-  const childrenData = convertJsonToTreeNode(actualValue, parentKey);
+  // 生成子节点数据，保持原始数据结构
+  const childrenData = convertJsonToTreeNode(actualValue, nodeData.key);
   resolve(childrenData);
 };
 
@@ -325,6 +296,7 @@ watch(() => props.resultModalData, (newData) => {
     if (flowData.value?.final_result && isJsonString(flowData.value.final_result)) {
       try {
         const finalResult = typeof flowData.value.final_result === 'string' ? JSON.parse(flowData.value.final_result) : flowData.value.final_result;
+        // 直接使用最终结果数据转换为树节点，确保按原始属性显示
         finalResultTreeData.value = convertJsonToTreeNode(finalResult);
       } catch (e) {
         finalResultTreeData.value = [];

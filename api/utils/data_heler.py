@@ -13,20 +13,35 @@ class data_helper:
         try:
             match param_type:
                 case "string":
-                    if not isinstance(value, str):
-                        value=str(value)
+                    if not value:
+                        value=None
+                    else:
+                        if not isinstance(value, str):
+                            value=str(value)
                 case "int":
-                    if not isinstance(value, int):
-                        value=int(value)
+                    if not value:
+                        value=None
+                    else:
+                        if not isinstance(value, int):
+                            value=int(value)
                 case "float":
-                    if not isinstance(value, float):
-                        value=float(value)
-                case "boolean":
-                    if not isinstance(value, bool):
-                        value=bool(value)
-                case "file":
-                    if not isinstance(value, io.IOBase):
-                        raise ValueError("参数类型 'file' 要求 value 是文件对象")
+                    if not value:
+                        value=None
+                    else:
+                        if not isinstance(value, float):
+                            value=float(value)
+                case "boolean":                                       
+                    if not value:
+                        value=None
+                    else:
+                        if not isinstance(value, bool):
+                            value=bool(value)
+                case "file":                    
+                    if not value:
+                        value=None
+                    else:
+                        if not isinstance(value, io.IOBase):
+                            raise ValueError("参数类型 'file' 要求 value 是文件对象")
                 case "dict":
                     if not value:
                         value=dict()
